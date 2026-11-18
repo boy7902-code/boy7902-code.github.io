@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=24" />
+<link rel="stylesheet" href="style.css?v=25" />
 </head>
 <body>
 <div class="app">
@@ -47,6 +47,7 @@
     </div>
 
     <div class="top-actions">
+      <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
       <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 모드 잠김 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 모드</span></button>
       <button class="btn sync-badge" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
       <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
@@ -204,8 +205,10 @@
           </div>
           <div class="dex-wrap">
             <div class="dex-head">
+              <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1세대 151종 전체 도감을 엽니다">📖 151 도감</button>
               <b>🏆 내 포켓몬 도감</b>
-              <span class="pill" id="dexCount">0마리</span>
+              <span class="pill" id="dexCount">0/151</span>
+              <span class="pill ghost" id="dexTrophyCount">아직 없어요</span>
             </div>
             <div class="dex-row" id="dexRow"></div>
           </div>
@@ -336,6 +339,33 @@
     <input type="file" id="importFile" accept="application/json,.json" hidden />
   </footer>
 </div>
+
+<!-- ======================= 대기화면 (거실 디지털 액자) ======================= -->
+<section class="standby" id="standby" hidden aria-label="대기화면">
+  <div class="sb-glow" aria-hidden="true"></div>
+  <div class="sb-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="sb-top">
+    <div class="sb-brand"><span aria-hidden="true">🏡</span><b id="sbTitle">우리 가족 대시보드</b></div>
+    <button class="btn sb-exit" id="standbyExit" title="대시보드로 돌아가기">🏠 홈으로</button>
+  </div>
+  <div class="sb-grid">
+    <div class="sb-left">
+      <div class="sb-clock"><span id="sbTime">--:--</span><small id="sbSec">00</small></div>
+      <div class="sb-date" id="sbDate">날짜를 불러오는 중…</div>
+      <div class="sb-weather" id="sbWeather"></div>
+      <div class="sb-mission" id="sbMission"></div>
+    </div>
+    <div class="sb-right">
+      <div class="sb-poke" id="sbPoke">
+        <div class="sb-stage" id="sbStage"></div>
+        <div class="sb-say" id="sbSay" aria-live="polite"></div>
+      </div>
+      <div class="sb-name" id="sbName">피카츄</div>
+      <div class="sb-sub" id="sbSub"></div>
+      <div class="sb-tap">포켓몬을 톡톡 눌러 봐!</div>
+    </div>
+  </div>
+</section>
 
 <!-- ======================= 모달: 공통 입력 ======================= -->
 <div class="modal" id="modal" hidden>
@@ -481,22 +511,38 @@
 <div class="modal" id="partnerModal" hidden>
   <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="partnerTitle">
     <h3 id="partnerTitle">🐾 파트너 포켓몬 고르기</h3>
-    <p class="hint" id="partnerHint">누적 포인트가 쌓이면 고른 진화 라인을 따라 함께 자라요. 언제든 바꿀 수 있습니다.</p>
+    <p class="hint" id="partnerHint">1세대 151종 어느 계열이든 고를 수 있어요. 아이 포인트로만 자라고, 200P에 닿으면 이로치가 되어 도감에 남습니다.</p>
+    <div class="partner-tools">
+      <input type="search" id="partnerSearch" class="grow" placeholder="이름으로 찾기 (예: 라프라스, 피카츄, 25)" autocomplete="off" />
+      <span class="pill" id="partnerCount">81계열</span>
+    </div>
     <div class="partner-grid" id="partnerGrid"></div>
     <div class="modal-actions">
-      <button class="btn primary" type="button" id="partnerClose">닫기</button>
+      <button class="btn" type="button" id="partnerClose">닫기</button>
     </div>
   </div>
 </div>
 
-<!-- ======================= 모달: 도감 상세 ======================= -->
+<!-- ======================= 모달: 포켓몬 도감 (1세대 151종) ======================= -->
 <div class="modal" id="dexModal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
-    <h3 id="dexTitle">🏆 내 포켓몬</h3>
-    <p class="hint" id="dexMeta"></p>
-    <div class="dex-detail" id="dexDetail"></div>
+  <div class="modal-card wide dex-modal" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
+    <div class="dex-modal-head">
+      <div>
+        <h3 id="dexTitle">📖 포켓몬 도감</h3>
+        <p class="hint" id="dexMeta">1세대 151종</p>
+      </div>
+      <button class="btn icon sm ghost" type="button" id="dexClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="dex-tools">
+      <input type="search" id="dexSearch" class="grow" placeholder="이름·번호로 찾기 (예: 피카츄, 25)" autocomplete="off" />
+      <div class="dex-filter" id="dexFilter" role="group" aria-label="도감 필터"></div>
+    </div>
+    <div class="dex-panes">
+      <div class="dex-grid" id="dexGrid" aria-label="1세대 151종 도감"></div>
+      <aside class="dex-side" id="dexSide" aria-live="polite"></aside>
+    </div>
     <div class="modal-actions">
-      <button class="btn primary" type="button" id="dexClose">닫기</button>
+      <button class="btn primary" type="button" id="dexCloseBtn">닫기</button>
     </div>
   </div>
 </div>
@@ -578,9 +624,15 @@
         포켓몬은 <b>'아이' 구성원의 포인트</b>로만 자랍니다. 아이가 미션을 끝내면
         <b>현재 파트너 경험치</b>·<b>누적 경험치</b>·<b>사용 가능 포인트</b>가 함께 오르고(취소하면 함께 돌아감),
         성인 미션은 성인 통계에만 쌓입니다.<br />
+        <b>1세대 포켓몬 151종 전체</b>를 파트너로 기를 수 있습니다. <b>🐾 파트너</b>를 누르면 이름으로 찾아 고를 수 있고,
+        진화 계열(이상해씨 → 이상해풀 → 이상해꽃, 이브이 → 샤미드 · 쥬피썬더 · 부스터 …)과 진화하지 않는 친구
+        (라프라스 · 잠만보 · 프리져 · 썬더 · 파이어 · 뮤츠 · 뮤 …) 모두 들어 있습니다.
+        파트너는 미션을 끝낼 때마다 <b>둥실둥실 움직이고</b>, <b>톡톡 누르면 점프하며 하트·반짝이와 함께 대답해요</b>.<br />
+        <b>📖 151 도감</b>을 누르면 151종 전체를 번호순으로 볼 수 있고, 아직 만나지 못한 친구는 <b>실루엣</b>으로 보입니다.
+        칸을 누르면 진화 단계와 기준 포인트, 언제 만났는지가 나오고 그 자리에서 그 계열을 기를 수도 있어요.<br />
         <b>🎁 포인트 사용</b>을 누르면 부모가 무엇을 사줬는지와 사용 포인트를 적어 잔액을 줄일 수 있습니다.
         <b>사용해도 경험치와 진화 단계는 절대로 풀리지 않아요.</b> 내역은 <b>포인트 사용 내역</b>에 남습니다.<br />
-        현재 파트너가 <b>200P(최종 진화)</b>에 도달하면 <b>🏆 내 포켓몬 도감</b>에 영구히 저장되고,
+        현재 파트너가 <b>200P</b>에 도달하면 마지막 모습의 <b>이로치</b>가 되어 <b>🏆 내 포켓몬 도감</b>에 영구히 저장되고,
         <b>✨ 새 포켓몬 입양하기</b>로 다른 포켓몬을 <b>0P부터</b> 새로 키울 수 있습니다.
         이때도 누적 경험치와 사용 가능 포인트는 그대로 유지됩니다.
       </p>
@@ -596,10 +648,20 @@
       <h4>7. 🎁 사고 싶은 것 &amp; 🔒 부모 모드</h4>
       <p class="settings-note">
         <b>사고 싶은 것</b> 카드에 갖고 싶은 물건을 적으면, 지금 선물 코인으로 <b>✅ 지금 살 수 있어요!</b> 인지
-        <b>🪙 몇 P 더 모아야 하는지</b> 바로 보여 줍니다. 적는 것은 아이도 자유롭게 할 수 있어요.<br />
+        <b>🪙 몇 P 더 모아야 하는지</b> 바로 보여 줍니다. 적을 때 <b>장난감 · 준비물 · 책 · 기타</b> 중에서 분류를 고르면
+        카드 위에 알록달록한 <b>태그 배지</b>로 붙고, 부모 모드에서 나중에 바꿀 수도 있어요. 적는 것은 아이도 자유롭게 할 수 있어요.<br />
         상단 <b>🔒 부모 모드</b>는 기본이 잠금입니다. 잠긴 동안 아이는 <b>미션 체크·포켓몬 도감·편지 쓰기·사고 싶은 것 적기·타이머·월간 달성 보기</b>를 그대로 쓸 수 있고,
         <b>미션 추가·수정·삭제, 포인트 사용(선물 사주기), 일정·장보기·위키 편집, 편지 삭제, 설정</b>처럼 보호자가 해야 하는 일은 4자리 PIN을 넣어야 열립니다.
         부모 모드는 5분 뒤 자동으로 잠기고, <b>🔓 부모 모드</b>를 누르면 바로 잠급니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>8. 🖼️ 대기화면 (거실 디지털 액자)</h4>
+      <p class="settings-note">
+        상단의 <b>🖼️ 대기화면</b>을 누르면 화면 전체가 거실 액자 모드로 바뀝니다.
+        큰 <b>실시간 시계·날짜</b>, <b>오늘 날씨와 미세먼지</b>, <b>오늘 아이 미션 달성률·선물 코인</b>,
+        그리고 화면 가득 <b>살아 움직이는 파트너 포켓몬</b>이 나옵니다. 포켓몬을 누르면 하트가 터지며 대답해요.<br />
+        오른쪽 위 <b>🏠 홈으로</b>를 누르면(또는 ESC) 대시보드로 바로 돌아옵니다. 대기화면에서는 아무것도 바뀌지 않아 아이가 마음껏 눌러도 안전합니다.
       </p>
     </div>
     <div class="modal-actions">
@@ -612,6 +674,6 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

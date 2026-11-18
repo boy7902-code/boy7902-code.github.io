@@ -61,12 +61,402 @@
   const FINAL_P = 200;        // 최종 진화 기준 경험치(현재 파트너)
   const LOG_KEEP_DAYS = 400;  // 완료 이력은 400일(1년 이상) 보존 — 월간·연간 달성 현황 조회용
 
+  /* ------------------------------------------------------ missions/character */
+  /* 1세대 포켓몬 151종 — 이름·타입
+     PokeAPI 의 한국어 이름과 타입을 그대로 옮겨 적었습니다 (No.001 이상해씨 ~ No.151 뮤).
+     "번호|이름|타입" 한 줄씩. 두 번째 타입은 쉼표로 이어 붙입니다. */
+  const GEN1_TABLE = `
+1|이상해씨|풀,독
+2|이상해풀|풀,독
+3|이상해꽃|풀,독
+4|파이리|불꽃
+5|리자드|불꽃
+6|리자몽|불꽃,비행
+7|꼬부기|물
+8|어니부기|물
+9|거북왕|물
+10|캐터피|벌레
+11|단데기|벌레
+12|버터플|벌레,비행
+13|뿔충이|벌레,독
+14|딱충이|벌레,독
+15|독침붕|벌레,독
+16|구구|노말,비행
+17|피죤|노말,비행
+18|피죤투|노말,비행
+19|꼬렛|노말
+20|레트라|노말
+21|깨비참|노말,비행
+22|깨비드릴조|노말,비행
+23|아보|독
+24|아보크|독
+25|피카츄|전기
+26|라이츄|전기
+27|모래두지|땅
+28|고지|땅
+29|니드런♀|독
+30|니드리나|독
+31|니드퀸|독,땅
+32|니드런♂|독
+33|니드리노|독
+34|니드킹|독,땅
+35|삐삐|페어리
+36|픽시|페어리
+37|식스테일|불꽃
+38|나인테일|불꽃
+39|푸린|노말,페어리
+40|푸크린|노말,페어리
+41|주뱃|독,비행
+42|골뱃|독,비행
+43|뚜벅쵸|풀,독
+44|냄새꼬|풀,독
+45|라플레시아|풀,독
+46|파라스|벌레,풀
+47|파라섹트|벌레,풀
+48|콘팡|벌레,독
+49|도나리|벌레,독
+50|디그다|땅
+51|닥트리오|땅
+52|나옹|노말
+53|페르시온|노말
+54|고라파덕|물
+55|골덕|물
+56|망키|격투
+57|성원숭|격투
+58|가디|불꽃
+59|윈디|불꽃
+60|발챙이|물
+61|슈륙챙이|물
+62|강챙이|물,격투
+63|캐이시|에스퍼
+64|윤겔라|에스퍼
+65|후딘|에스퍼
+66|알통몬|격투
+67|근육몬|격투
+68|괴력몬|격투
+69|모다피|풀,독
+70|우츠동|풀,독
+71|우츠보트|풀,독
+72|왕눈해|물,독
+73|독파리|물,독
+74|꼬마돌|바위,땅
+75|데구리|바위,땅
+76|딱구리|바위,땅
+77|포니타|불꽃
+78|날쌩마|불꽃
+79|야돈|물,에스퍼
+80|야도란|물,에스퍼
+81|코일|전기,강철
+82|레어코일|전기,강철
+83|파오리|노말,비행
+84|두두|노말,비행
+85|두트리오|노말,비행
+86|쥬쥬|물
+87|쥬레곤|물,얼음
+88|질퍽이|독
+89|질뻐기|독
+90|셀러|물
+91|파르셀|물,얼음
+92|고오스|고스트,독
+93|고우스트|고스트,독
+94|팬텀|고스트,독
+95|롱스톤|바위,땅
+96|슬리프|에스퍼
+97|슬리퍼|에스퍼
+98|크랩|물
+99|킹크랩|물
+100|찌리리공|전기
+101|붐볼|전기
+102|아라리|풀,에스퍼
+103|나시|풀,에스퍼
+104|탕구리|땅
+105|텅구리|땅
+106|시라소몬|격투
+107|홍수몬|격투
+108|내루미|노말
+109|또가스|독
+110|또도가스|독
+111|뿔카노|땅,바위
+112|코뿌리|땅,바위
+113|럭키|노말
+114|덩쿠리|풀
+115|캥카|노말
+116|쏘드라|물
+117|시드라|물
+118|콘치|물
+119|왕콘치|물
+120|별가사리|물
+121|아쿠스타|물,에스퍼
+122|마임맨|에스퍼,페어리
+123|스라크|벌레,비행
+124|루주라|얼음,에스퍼
+125|에레브|전기
+126|마그마|불꽃
+127|쁘사이저|벌레
+128|켄타로스|노말
+129|잉어킹|물
+130|갸라도스|물,비행
+131|라프라스|물,얼음
+132|메타몽|노말
+133|이브이|노말
+134|샤미드|물
+135|쥬피썬더|전기
+136|부스터|불꽃
+137|폴리곤|노말
+138|암나이트|바위,물
+139|암스타|바위,물
+140|투구|바위,물
+141|투구푸스|바위,물
+142|프테라|바위,비행
+143|잠만보|노말
+144|프리져|얼음,비행
+145|썬더|전기,비행
+146|파이어|불꽃,비행
+147|미뇽|드래곤
+148|신뇽|드래곤
+149|망나뇽|드래곤,비행
+150|뮤츠|에스퍼
+151|뮤|에스퍼
+`;
+
+  const POKE_INFO = {};
+  const POKE_NOS = [];
+  GEN1_TABLE.trim().split('\n').forEach((row) => {
+    const parts = row.split('|');
+    const id = +parts[0];
+    if (!(id > 0)) return;
+    POKE_INFO[id] = {
+      id,
+      name: String(parts[1] || '').trim(),
+      types: String(parts[2] || '').split(',').map((s) => s.trim()).filter(Boolean),
+    };
+    POKE_NOS.push(id);
+  });
+  // 피츄(No.172)는 2세대 유아 진화지만 피카츄 계열의 첫 단계라 데이터에만 함께 담았습니다 (151 도감 번호에는 넣지 않음)
+  POKE_INFO[172] = { id: 172, name: '피츄', types: ['전기'] };
+
+  const POKE_TYPE_TINT = {
+    '풀': '#5fae7f', '독': '#a26bd6', '불꽃': '#f0803c', '비행': '#8f9ee0', '물': '#4f9fdf',
+    '벌레': '#94b93c', '노말': '#b0a999', '전기': '#e5b52b', '땅': '#c9964f', '페어리': '#eb9bc9',
+    '격투': '#d4553f', '에스퍼': '#ef6f9c', '바위': '#b59a55', '얼음': '#6fc9d8', '고스트': '#8a76cc',
+    '드래곤': '#6b7ce8', '강철': '#93a1bd', '악': '#77675c',
+  };
+  const pokeInfo = (id) => POKE_INFO[id] || { id, name: `No.${id}`, types: [] };
+  const pokeName = (id) => pokeInfo(id).name;
+  const pokeTint = (id) => POKE_TYPE_TINT[pokeInfo(id).types[0]] || '#9aa4bd';
+  const pokeNoText = (id) => (id <= 151 ? `No.${pad(id)}` : '');
+
+  /* 진화 계열 — 한 줄이 파트너가 함께 자라는 한 계열입니다.
+     PokeAPI evolution-chain 을 1세대 종만 남겨 정리했고, 갈라지는 계열(이브이)은 줄마다 따로 두었습니다. */
+  const GEN1_LINES = [
+    [1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12], [13, 14, 15], [16, 17, 18],
+    [19, 20], [21, 22], [23, 24], [172, 25, 26], [27, 28], [29, 30, 31],
+    [32, 33, 34], [35, 36], [37, 38], [39, 40], [41, 42], [43, 44, 45],
+    [46, 47], [48, 49], [50, 51], [52, 53], [54, 55], [56, 57],
+    [58, 59], [60, 61, 62], [63, 64, 65], [66, 67, 68], [69, 70, 71], [72, 73],
+    [74, 75, 76], [77, 78], [79, 80], [81, 82], [83], [84, 85],
+    [86, 87], [88, 89], [90, 91], [92, 93, 94], [95], [96, 97],
+    [98, 99], [100, 101], [102, 103], [104, 105], [106], [107],
+    [108], [109, 110], [111, 112], [113], [114], [115],
+    [116, 117], [118, 119], [120, 121], [122], [123], [124],
+    [125], [126], [127], [128], [129, 130], [131],
+    [132], [133, 134], [133, 135], [133, 136], [137], [138, 139],
+    [140, 141], [142], [143], [144], [145], [146],
+    [147, 148, 149], [150], [151],
+  ];
+
+  /* 단계별 기준 경험치 — 한 계열을 0P부터 200P까지 고르게 나눕니다.
+     200P에 닿으면 마지막 모습의 '이로치'가 되어 도감에 영구 저장됩니다. */
+  const STAGE_MINS = { 1: [0], 2: [0, 60], 3: [0, 40, 90] };
+
+  function buildLine(ids) {
+    const mins = STAGE_MINS[Math.min(3, ids.length)] || [0, 40, 90];
+    const stages = ids.map((id, i) => ({
+      id,
+      name: pokeName(id),
+      min: mins[Math.min(i, mins.length - 1)],
+      tint: pokeTint(id),
+    }));
+    const fin = stages[stages.length - 1];
+    stages.push({ id: fin.id, name: `이로치 ${fin.name}`, min: FINAL_P, crown: true, shiny: true, tint: fin.tint });
+    const base = pokeName(ids[0]);
+    return {
+      key: 'L' + ids.join('-'),
+      label: ids[0] === 133 ? `${base} → ${fin.name}` : base,
+      tint: pokeTint(ids[0]),
+      stages,
+      members: ids.slice(),
+      finalId: fin.id,
+      finalBase: fin.name,
+    };
+  }
+
+  /* 예전에 쓰던 다른 세대 계열 — 이미 기르던 파트너가 갑자기 바뀌지 않도록 그대로 남겨 둡니다 */
+  const EXTRA_LINES = [
+    { key: 'riolu', label: '리오르', tint: '#4f7fd6', finalBase: '루카리오', members: [447, 448],
+      stages: [
+        { id: 447, name: '리오르', min: 0, tint: '#4f7fd6' },
+        { id: 448, name: '루카리오', min: 70, tint: '#4f7fd6' },
+        { id: 10059, name: '메가루카리오', min: FINAL_P, crown: true, tint: '#4f7fd6' },
+      ] },
+    { key: 'froakie', label: '개구마르', tint: '#4f95ff', finalBase: '개굴닌자', members: [656, 657, 658],
+      stages: [
+        { id: 656, name: '개구마르', min: 0, tint: '#4f95ff' },
+        { id: 657, name: '개굴반장', min: 60, tint: '#4f95ff' },
+        { id: 658, name: '개굴닌자', min: FINAL_P, crown: true, tint: '#4f95ff' },
+      ] },
+    { key: 'piplup', label: '팽도리', tint: '#4aa3d8', finalBase: '엠페르트', members: [393, 394, 395],
+      stages: [
+        { id: 393, name: '팽도리', min: 0, tint: '#4aa3d8' },
+        { id: 394, name: '팽태자', min: 70, tint: '#4aa3d8' },
+        { id: 395, name: '엠페르트', min: FINAL_P, crown: true, tint: '#4aa3d8' },
+      ] },
+    { key: 'chimchar', label: '불꽃숭이', tint: '#f4883c', finalBase: '초염몽', members: [390, 391, 392],
+      stages: [
+        { id: 390, name: '불꽃숭이', min: 0, tint: '#f4883c' },
+        { id: 391, name: '파이숭이', min: 70, tint: '#f4883c' },
+        { id: 392, name: '초염몽', min: FINAL_P, crown: true, tint: '#f4883c' },
+      ] },
+    { key: 'turtwig', label: '모부기', tint: '#7cbf5a', finalBase: '토대부기', members: [387, 388, 389],
+      stages: [
+        { id: 387, name: '모부기', min: 0, tint: '#7cbf5a' },
+        { id: 388, name: '수풀부기', min: 70, tint: '#7cbf5a' },
+        { id: 389, name: '토대부기', min: FINAL_P, crown: true, tint: '#7cbf5a' },
+      ] },
+  ];
+
+  const LINES = GEN1_LINES.map(buildLine).concat(EXTRA_LINES);
+  const LINE_BY_KEY = {};
+  LINES.forEach((l) => { LINE_BY_KEY[l.key] = l; });
+
+  // 예전 저장값(계열 이름 키)을 새 계열 키로 이어 줍니다
+  const LEGACY_KEYS = {
+    pikachu: 'L172-25-26', charmander: 'L4-5-6', squirtle: 'L7-8-9', bulbasaur: 'L1-2-3',
+    eevee: 'L133-134', dratini: 'L147-148-149', gastly: 'L92-93-94',
+  };
+  const DEFAULT_PARTNER = 'L' + GEN1_LINES[0].join('-');
+  const POKE_KEYS = Object.keys(LINE_BY_KEY);
+
+  function resolvePartnerKey(k) {
+    const key = String(k || '');
+    if (LINE_BY_KEY[key]) return key;
+    if (LEGACY_KEYS[key] && LINE_BY_KEY[LEGACY_KEYS[key]]) return LEGACY_KEYS[key];
+    return LINE_BY_KEY[DEFAULT_PARTNER] ? DEFAULT_PARTNER : POKE_KEYS[0];
+  }
+
+  const partnerOf = (key) => LINE_BY_KEY[resolvePartnerKey(key)] || LINES[0];
+  const stagesOf = () => partnerOf(S.pokemon.key).stages;
+  const finalStageOf = (p) => p.stages[p.stages.length - 1];
+  function stageIndex(n) {
+    const st = stagesOf();
+    let idx = 0;
+    st.forEach((s, i) => { if (n >= s.min) idx = i; });
+    return idx;
+  }
+  // 이 종이 들어 있는 계열(이브이처럼 갈라지는 계열은 여러 줄)
+  const linesForSpecies = (id) => LINES.filter((l) => l.members.indexOf(+id) >= 0);
+  const lineForSpecies = (id) => linesForSpecies(id)[0] || null;
+
+  /* 그림 — PokeAPI/sprites
+     움직이는 showdown GIF(파트너·대기화면) → 공식 일러스트 PNG → 로컬 SVG 순서로 자동 대체됩니다. */
+  const SPRITE_ROOT = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+  const POKE_ART = (id) => `${SPRITE_ROOT}/other/official-artwork/${id}.png`;
+  const POKE_GIF = (id) => `${SPRITE_ROOT}/other/showdown/${id}.gif`;
+  const POKE_GIF_SHINY = (id) => `${SPRITE_ROOT}/other/showdown/shiny/${id}.gif`;
+  const POKE_MINI = (id) => `${SPRITE_ROOT}/${id}.png`;
+  const POKE_MINI_SHINY = (id) => `${SPRITE_ROOT}/shiny/${id}.png`;
+
+  // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
+  function pokeFallback(stage, tint) {
+    const color = tint || stage.tint || '#9aa4bd';
+    const crown = stage.crown
+      ? '<path d="M100 16 l9 15 17 3 -12 12 3 17 -17 -8 -17 8 3 -17 -12 -12 17 -3z" fill="#ffd166" stroke="#e0a92b" stroke-width="3" stroke-linejoin="round"/>'
+      : '';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<circle cx="100" cy="106" r="78" fill="' + color + '" opacity=".16"/>'
+      + crown
+      + '<path d="M54 100 q-12 -36 6 -50 q15 11 14 32z" fill="' + color + '" opacity=".92"/>'
+      + '<path d="M146 100 q12 -36 -6 -50 q-15 11 -14 32z" fill="' + color + '" opacity=".92"/>'
+      + '<ellipse cx="100" cy="142" rx="46" ry="37" fill="' + color + '"/>'
+      + '<ellipse cx="100" cy="150" rx="27" ry="21" fill="#fffdf8" opacity=".6"/>'
+      + '<circle cx="100" cy="94" r="42" fill="' + color + '"/>'
+      + '<circle cx="84" cy="92" r="7" fill="#22304a"/><circle cx="116" cy="92" r="7" fill="#22304a"/>'
+      + '<circle cx="86.4" cy="89" r="2.6" fill="#fff"/><circle cx="118.4" cy="89" r="2.6" fill="#fff"/>'
+      + '<path d="M90 110 q10 9 20 0" fill="none" stroke="#22304a" stroke-width="4" stroke-linecap="round"/>'
+      + '<ellipse cx="68" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
+      + '<ellipse cx="132" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
+      + '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  /* opts: { mini } 작은 칸은 정지 스프라이트 · { art } 공식 일러스트 · { shiny } 이로치 · { eager } 바로 불러오기 */
+  function pokeImg(stage, cls, tint, opts = {}) {
+    const color = tint || stage.tint || pokeTint(stage.id);
+    const shiny = !!(opts.shiny || stage.shiny);
+    const src = opts.art
+      ? POKE_ART(stage.id)
+      : (opts.mini
+        ? (shiny ? POKE_MINI_SHINY(stage.id) : POKE_MINI(stage.id))
+        : (shiny ? POKE_GIF_SHINY(stage.id) : POKE_GIF(stage.id)));
+    return `<img class="${cls}" src="${src}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}"`
+      + ` data-fallback="${esc(POKE_ART(stage.id))}" data-fallback2="${esc(pokeFallback(stage, color))}"`
+      + ` loading="${opts.eager ? 'eager' : 'lazy'}" decoding="async" draggable="false">`;
+  }
+
+  // 그림 로딩 실패 → 공식 일러스트 → 로컬 SVG (깨진 그림이 남지 않습니다)
+  function swapPokeFallback(img) {
+    if (!img || !img.dataset) return false;
+    const lvl = img.dataset.fb || '0';
+    if (lvl === '0' && img.dataset.fallback) { img.dataset.fb = '1'; img.src = img.dataset.fallback; return true; }
+    if (lvl !== '2' && img.dataset.fallback2) { img.dataset.fb = '2'; img.src = img.dataset.fallback2; return true; }
+    return false;
+  }
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (img && img.tagName === 'IMG' && img.dataset && img.dataset.poke) swapPokeFallback(img);
+  }, true);
+
+  function checkPokeImages() {
+    $$('img[data-poke]').forEach((img) => {
+      if (!img.dataset.fb && img.complete && img.naturalWidth === 0) swapPokeFallback(img);
+    });
+  }
+
+  /* ---- 도감: 만난 종 남기기 ---- */
+  const caughtMap = () => (S.pokemon && S.pokemon.caught && typeof S.pokemon.caught === 'object') ? S.pokemon.caught : {};
+  const caughtOf = (id) => caughtMap()[String(id)] || '';
+  function markCaught(ids, date) {
+    if (!S.pokemon.caught || typeof S.pokemon.caught !== 'object') S.pokemon.caught = {};
+    let changed = false;
+    (ids || []).forEach((id) => {
+      const k = String(id);
+      if (!(+id > 0) || S.pokemon.caught[k]) return;
+      S.pokemon.caught[k] = date || todayStr();
+      changed = true;
+    });
+    return changed;
+  }
+  // 지금 파트너가 지나온 단계는 모두 '만난 종'으로 도감에 남습니다
+  function syncCaught() {
+    const st = stagesOf();
+    const idx = stageIndex(S.pokemon.xp);
+    return markCaught(st.slice(0, idx + 1).map((s) => s.id));
+  }
+  const caughtCount = () => POKE_NOS.filter((id) => caughtOf(id)).length;
+
   /* ------------------------------------------------------------- data model */
   const KEY = 'family-dashboard:v1';
   const WKEY = 'family-dashboard:weather';
 
-  // 파트너 포켓몬 진화 라인 키 — 저장된 데이터를 읽을 때 이 목록으로 검증합니다
-  const POKE_KEYS = ['pikachu', 'charmander', 'squirtle', 'bulbasaur', 'eevee', 'riolu', 'froakie', 'dratini', 'gastly', 'piplup', 'chimchar', 'turtwig'];
+  /* 🎁 사고 싶은 것 분류 태그 */
+  const WISH_CATS = [
+    { key: 'toy', label: '장난감', ico: '🧸' },
+    { key: 'supply', label: '준비물', ico: '🎒' },
+    { key: 'book', label: '책', ico: '📚' },
+    { key: 'etc', label: '기타', ico: '📦' },
+  ];
+  const WISH_CAT_KEYS = WISH_CATS.map((c) => c.key);
+  const wishCatOf = (key) => WISH_CATS.find((c) => c.key === key) || WISH_CATS[WISH_CATS.length - 1];
 
   const DEFAULT_STATE = () => ({
     v: 3,
@@ -75,8 +465,8 @@
     dashboardTitle: '',          // 헤더·탭 제목 — 비우면 '우리 가족 대시보드'
     showAdultMissions: false,    // false = 아이(KID_ID) 미션만 보기 (성인 미션은 지우지 않고 숨김)
     parentPin: '0000',           // 부모 모드 기본 PIN — 실제 PIN은 비공개 동기화 DB에서만 내려옵니다
-    wishlist: [],                // 사고 싶은 것 { id, title, need, at, by, boughtAt }
-    pokemon: { key: 'pikachu', xp: 0, dex: [] },   // 현재 파트너 라인 · 현재 파트너 경험치 · 수집 완료 도감
+    wishlist: [],                // 사고 싶은 것 { id, title, need, cat, at, by, boughtAt }
+    pokemon: { key: 'pikachu', xp: 0, dex: [], caught: {} },   // 현재 파트너 계열(기본: 피카츄 계열) · 경험치 · 완성 트로피 · 만난 종
     location: null,             // { lat, lon, name } — 사용자가 정한 경우에만 저장
     members: [
       { id: 'm1', name: '성인 1', color: '#ff7a6b' },
@@ -126,7 +516,7 @@
 
   function mergeState(raw) {
     const base = DEFAULT_STATE();
-    if (!raw || typeof raw !== 'object') return base;
+    if (!raw || typeof raw !== 'object') raw = {};   // 처음 열었을 때도 기본값을 같은 규칙으로 정리합니다
     const out = Object.assign({}, base, raw);
     // 배열/객체 타입 보정
     ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses'].forEach((k) => {
@@ -168,11 +558,11 @@
     // ---- 포켓몬 파트너/도감 (형식 2 → 3 마이그레이션 포함) ----
     const pkRaw = (raw.pokemon && typeof raw.pokemon === 'object') ? raw.pokemon : null;
     const pk = {
-      key: (pkRaw && pkRaw.key) || raw.partner || base.pokemon.key,
+      key: resolvePartnerKey((pkRaw && pkRaw.key) || raw.partner || base.pokemon.key),
       xp: 0,
       dex: (pkRaw && Array.isArray(pkRaw.dex)) ? pkRaw.dex : [],
+      caught: {},
     };
-    if (!POKE_KEYS.includes(pk.key)) pk.key = base.pokemon.key;
     if (prevV < 3) {
       // 형식 2까지는 '가족 전체 누적 포인트'로 진화했습니다.
       // 형식 3부터는 아이(m3) 누적 포인트를 경험치로 삼으므로, 지금까지 아이가 모은 포인트를 현재 파트너 경험치로 옮겨 옵니다.
@@ -181,15 +571,32 @@
       pk.xp = Math.max(0, Math.round(+pkRaw.xp || 0));
     }
     pk.xp = clamp(pk.xp, 0, FINAL_P);
-    pk.dex = pk.dex.filter((d) => d && typeof d === 'object' && POKE_KEYS.includes(d.key)).map((d) => ({
-      key: d.key,
-      label: String(d.label || ''),
-      finalName: String(d.finalName || ''),
-      finalId: Math.max(0, Math.round(+d.finalId || 0)),
-      tint: String(d.tint || ''),
-      at: /^\d{4}-\d{2}-\d{2}$/.test(String(d.at || '')) ? d.at : '',
-      times: Math.max(1, Math.round(+d.times || 1)),
-    }));
+    pk.dex = pk.dex.map((d) => {
+      if (!d || typeof d !== 'object') return null;
+      const rawKey = String(d.key || '');
+      const key = LINE_BY_KEY[rawKey] ? rawKey : (LEGACY_KEYS[rawKey] || '');
+      if (!key) return null;
+      return {
+        key,
+        label: String(d.label || ''),
+        finalName: String(d.finalName || ''),
+        finalId: Math.max(0, Math.round(+d.finalId || 0)),
+        tint: String(d.tint || ''),
+        at: /^\d{4}-\d{2}-\d{2}$/.test(String(d.at || '')) ? d.at : '',
+        times: Math.max(1, Math.round(+d.times || 1)),
+      };
+    }).filter(Boolean);
+    // ---- 도감: 만난 종(caught) — { '25': '2026-11-18' } ----
+    const caughtRaw = (pkRaw && pkRaw.caught && typeof pkRaw.caught === 'object') ? pkRaw.caught : {};
+    Object.keys(caughtRaw).forEach((k) => {
+      const id = parseInt(k, 10);
+      if (!(id > 0) || id > 99999) return;
+      pk.caught[String(id)] = isDateStr(caughtRaw[k]) ? caughtRaw[k] : todayStr();
+    });
+    // 예전 계열 완성 기록도 '만난 종'으로 옮겨 둡니다
+    pk.dex.forEach((d) => {
+      if (d.finalId > 0 && !pk.caught[String(d.finalId)]) pk.caught[String(d.finalId)] = d.at || todayStr();
+    });
     out.pokemon = pk;
     delete out.partner;
     delete out.budget;          // 가계부 카드는 더 이상 쓰지 않습니다 (예전 백업은 무시)
@@ -216,6 +623,7 @@
         id: w.id || 'w' + Math.random().toString(36).slice(2, 9),
         title: String(w.title || '').slice(0, 40),
         need: Math.max(0, Math.round(+w.need || 0)),
+        cat: WISH_CAT_KEYS.indexOf(String(w.cat || '')) >= 0 ? String(w.cat) : 'etc',
         at: isDateStr(w.at) ? w.at : '',
         by: String(w.by || KID_ID),
         boughtAt: isDateStr(w.boughtAt) ? w.boughtAt : '',
@@ -887,6 +1295,7 @@
     }
     if (W.now.apparent_temperature != null) chips.push(`<span class="wchip">체감 <b>${Math.round(W.now.apparent_temperature)}°</b></span>`);
     $('#wChips').innerHTML = chips.join('');
+    if (standbyOn) renderStandby();
   }
 
   function requestGeo() {
@@ -1041,170 +1450,6 @@
     save(); renderSchedule(); toast('일정을 저장했어요', 'mint');
   }
 
-  /* ------------------------------------------------------ missions/character */
-  /* 파트너 포켓몬 진화 라인
-     - 그림은 PokeAPI 공식 일러스트(official-artwork) CDN에서 받아 옵니다.
-     - CDN이 느리거나 막히면 로컬에서 만든 SVG로 자동 대체되어 깨진 그림이 남지 않습니다. */
-  const POKE_ART = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
-
-  const PARTNERS = [
-    {
-      key: 'pikachu', label: '피카츄', tint: '#f2c53d',
-      stages: [
-        { id: 172, name: '피츄', min: 0 },
-        { id: 25, name: '피카츄', min: 30 },
-        { id: 26, name: '라이츄', min: 90 },
-        { id: 25, name: '캡틴 피카츄', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'charmander', label: '파이리', tint: '#f0803c',
-      stages: [
-        { id: 4, name: '파이리', min: 0 },
-        { id: 5, name: '리자드', min: 30 },
-        { id: 6, name: '리자몽', min: 90 },
-        { id: 10034, name: '메가리자몽 X', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'squirtle', label: '꼬부기', tint: '#5aa9e6',
-      stages: [
-        { id: 7, name: '꼬부기', min: 0 },
-        { id: 8, name: '어니부기', min: 30 },
-        { id: 9, name: '거북왕', min: 90 },
-        { id: 10036, name: '메가거북왕', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'bulbasaur', label: '이상해씨', tint: '#63b489',
-      stages: [
-        { id: 1, name: '이상해씨', min: 0 },
-        { id: 2, name: '이상해풀', min: 30 },
-        { id: 3, name: '이상해꽃', min: 90 },
-        { id: 10033, name: '메가이상해꽃', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'eevee', label: '이브이 (님피아·블래키)', tint: '#c8a06a',
-      stages: [
-        { id: 133, name: '이브이', min: 0 },
-        { id: 700, name: '님피아', min: 100 },
-        { id: 197, name: '블래키', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'riolu', label: '리오르', tint: '#4f7fd6',
-      stages: [
-        { id: 447, name: '리오르', min: 0 },
-        { id: 448, name: '루카리오', min: 70 },
-        { id: 10059, name: '메가루카리오', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'froakie', label: '개구마르', tint: '#4f95ff',
-      stages: [
-        { id: 656, name: '개구마르', min: 0 },
-        { id: 657, name: '개굴반장', min: 60 },
-        { id: 658, name: '개굴닌자', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'dratini', label: '미뇽', tint: '#7fb3e8',
-      stages: [
-        { id: 147, name: '미뇽', min: 0 },
-        { id: 148, name: '신뇽', min: 60 },
-        { id: 149, name: '망나뇽', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'gastly', label: '고오스', tint: '#8f7bd0',
-      stages: [
-        { id: 92, name: '고오스', min: 0 },
-        { id: 93, name: '고우스트', min: 40 },
-        { id: 94, name: '팬텀', min: 110 },
-        { id: 10038, name: '메가팬텀', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'piplup', label: '팽도리', tint: '#4aa3d8',
-      stages: [
-        { id: 393, name: '팽도리', min: 0 },
-        { id: 394, name: '팽태자', min: 70 },
-        { id: 395, name: '엠페르트', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'chimchar', label: '불꽃숭이', tint: '#f4883c',
-      stages: [
-        { id: 390, name: '불꽃숭이', min: 0 },
-        { id: 391, name: '파이숭이', min: 70 },
-        { id: 392, name: '초염몽', min: 200, crown: true },
-      ],
-    },
-    {
-      key: 'turtwig', label: '모부기', tint: '#7cbf5a',
-      stages: [
-        { id: 387, name: '모부기', min: 0 },
-        { id: 388, name: '수풀부기', min: 70 },
-        { id: 389, name: '토대부기', min: 200, crown: true },
-      ],
-    },
-  ];
-
-  const partnerOf = (key) => PARTNERS.find((p) => p.key === key) || PARTNERS[0];
-  const stagesOf = () => partnerOf(S.pokemon.key).stages;
-  const finalStageOf = (p) => p.stages[p.stages.length - 1];
-  function stageIndex(n) {
-    const st = stagesOf();
-    let idx = 0;
-    st.forEach((s, i) => { if (n >= s.min) idx = i; });
-    return idx;
-  }
-
-  // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
-  function pokeFallback(stage, tint) {
-    const crown = stage.crown
-      ? '<path d="M100 16 l9 15 17 3 -12 12 3 17 -17 -8 -17 8 3 -17 -12 -12 17 -3z" fill="#ffd166" stroke="#e0a92b" stroke-width="3" stroke-linejoin="round"/>'
-      : '';
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
-      + '<circle cx="100" cy="106" r="78" fill="' + tint + '" opacity=".16"/>'
-      + crown
-      + '<path d="M54 100 q-12 -36 6 -50 q15 11 14 32z" fill="' + tint + '" opacity=".92"/>'
-      + '<path d="M146 100 q12 -36 -6 -50 q-15 11 -14 32z" fill="' + tint + '" opacity=".92"/>'
-      + '<ellipse cx="100" cy="142" rx="46" ry="37" fill="' + tint + '"/>'
-      + '<ellipse cx="100" cy="150" rx="27" ry="21" fill="#fffdf8" opacity=".6"/>'
-      + '<circle cx="100" cy="94" r="42" fill="' + tint + '"/>'
-      + '<circle cx="84" cy="92" r="7" fill="#22304a"/><circle cx="116" cy="92" r="7" fill="#22304a"/>'
-      + '<circle cx="86.4" cy="89" r="2.6" fill="#fff"/><circle cx="118.4" cy="89" r="2.6" fill="#fff"/>'
-      + '<path d="M90 110 q10 9 20 0" fill="none" stroke="#22304a" stroke-width="4" stroke-linecap="round"/>'
-      + '<ellipse cx="68" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
-      + '<ellipse cx="132" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
-      + '</svg>';
-    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  }
-
-  function pokeImg(stage, cls, tint) {
-    return `<img class="${cls}" src="${POKE_ART(stage.id)}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}" data-fallback="${esc(pokeFallback(stage, tint))}" loading="eager" decoding="async" draggable="false">`;
-  }
-
-  // 그림 로딩 실패 → 로컬 SVG로 교체
-  document.addEventListener('error', (e) => {
-    const img = e.target;
-    if (img && img.tagName === 'IMG' && img.dataset && img.dataset.fallback && !img.dataset.fb) {
-      img.dataset.fb = '1';
-      img.src = img.dataset.fallback;
-    }
-  }, true);
-
-  function checkPokeImages() {
-    $$('img[data-poke]').forEach((img) => {
-      if (!img.dataset.fb && img.complete && img.naturalWidth === 0) {
-        img.dataset.fb = '1';
-        img.src = img.dataset.fallback;
-      }
-    });
-  }
-
   /* ---- 시간 계산 ---- */
   const hhmm = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const minOf = (hm) => {
@@ -1286,12 +1531,13 @@
   function registerDex(bump = false, key = S.pokemon.key) {
     const p = partnerOf(key);
     const fin = finalStageOf(p);
-    const ex = dexEntryOf(key);
+    const k = resolvePartnerKey(key);
+    const ex = dexEntryOf(k);
     if (ex) {
       if (bump) { ex.at = todayStr(); ex.times = Math.max(1, Math.round(+ex.times || 1)) + 1; }
       return false;
     }
-    S.pokemon.dex.push({ key, label: p.label, finalName: fin.name, finalId: fin.id, tint: p.tint, at: todayStr(), times: 1 });
+    S.pokemon.dex.push({ key: k, label: p.label, finalName: p.finalBase || fin.name, finalId: fin.id, tint: p.tint, at: todayStr(), times: 1 });
     return true;
   }
   // 이미 최종 진화 상태(예: 형식 2에서 옮겨 온 데이터)라면 도감에 빠지지 않게 한 번 채워 넣습니다.
@@ -1611,8 +1857,14 @@
     const bal = balancePts();
     const done = xp >= FINAL_P;
 
-    $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint) + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '');
+    if (syncCaught()) save();     // 지나온 단계는 도감에 '만난 종'으로 남깁니다
+    $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint, { eager: true })
+      + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '')
+      + (stage.shiny ? '<span class="poke-shiny" aria-hidden="true">✨</span>' : '')
+      + '<span class="poke-say" id="charSay" aria-live="polite"></span>';
+    $('#charStage').title = `${stage.name} · 톡톡 누르면 반응해요`;
     $('#charLevel').textContent = stage.name;
+    if ($('#charLevel')) $('#charLevel').classList.toggle('shiny', !!stage.shiny);
     if ($('#tChores')) $('#tChores').textContent = `${kidLabel()} 미션`;   // 집집마다 아이 이름으로 바뀝니다 (기본값 '아이 미션')
 
     const doneList = visibleMissions().filter((x) => x.doneOn === t);
@@ -1728,22 +1980,24 @@
     renderPointUses();
     renderWish();
     checkPokeImages();
+    if (standbyOn) renderStandby();
     if ($('#historyModal') && !$('#historyModal').hidden) renderHistory();
   }
 
-  /* ---- 포켓몬 도감(수집 완료) ---- */
+  /* ---- 포켓몬 도감: 카드 안의 완성 트로피 + 151종 전체 도감 모달 ---- */
   function renderDex() {
     const box = $('#dexRow');
+    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/151`;
     if (!box) return;
     const dex = S.pokemon.dex || [];
-    if ($('#dexCount')) $('#dexCount').textContent = `${dex.length}마리`;
+    if ($('#dexTrophyCount')) $('#dexTrophyCount').textContent = dex.length ? `${dex.length}계열 완성` : '아직 없어요';
     box.innerHTML = dex.length
       ? dex.map((d) => {
           const p = partnerOf(d.key);
           const fin = finalStageOf(p);
-          return `<button type="button" class="dex-card" data-act="dex-open" data-key="${esc(d.key)}" title="${esc(d.label)} 계열 · ${esc(d.at || '')} 완성">
-            <span class="dex-img-frame">${pokeImg(fin, 'dex-art', p.tint)}</span>
-            <span class="dex-name">${esc(d.finalName || fin.name)}</span>
+          return `<button type="button" class="dex-card" data-act="dex-open" data-id="${Math.max(0, d.finalId || fin.id)}" title="${esc(d.label)} 계열 · ${esc(d.at || '')} 완성">
+            <span class="dex-img-frame">${pokeImg(fin, 'dex-art', p.tint, { mini: true })}</span>
+            <span class="dex-name">${esc(d.label || d.finalName)}</span>
             <span class="dex-when">${esc(fmtMD(d.at))} 완성${d.times > 1 ? ` · ${d.times}회` : ''}</span>
           </button>`;
         }).join('')
@@ -1751,18 +2005,132 @@
     checkPokeImages();
   }
 
-  function openDexEntry(key) {
-    const d = dexEntryOf(key);
-    if (!d) return;
-    const p = partnerOf(d.key);
-    const fin = finalStageOf(p);
-    $('#dexTitle').textContent = `🏆 ${p.label} 계열`;
-    $('#dexMeta').textContent = `${d.finalName || fin.name} · ${d.at || ''} 완성${d.times > 1 ? ` · ${d.times}회 완성` : ''}`;
-    $('#dexDetail').innerHTML = `<div class="dex-detail-img">${pokeImg(fin, 'poke-img', p.tint)}</div>
-      <div class="dex-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', p.tint)}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
-      <div class="dex-legend">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>`;
-    $('#dexModal').hidden = false;
+  /* ---- 🏆 151 도감 모달: 획득 상태·실루엣·진화 단계 탐색 ---- */
+  const DEXUI = { q: '', filter: 'all', sel: 25 };
+  const DEX_FILTERS = [
+    { key: 'all', label: '전체' },
+    { key: 'got', label: '획득' },
+    { key: 'miss', label: '미획득' },
+  ];
+
+  function dexFilteredIds() {
+    const q = DEXUI.q.trim();
+    return POKE_NOS.filter((id) => {
+      const got = !!caughtOf(id);
+      if (DEXUI.filter === 'got' && !got) return false;
+      if (DEXUI.filter === 'miss' && got) return false;
+      if (!q) return true;
+      const info = pokeInfo(id);
+      return info.name.indexOf(q) >= 0 || String(id) === q || pad(id) === q || (`no${id}` === q.toLowerCase());
+    });
+  }
+
+  function renderDexFilters() {
+    const box = $('#dexFilter');
+    if (!box) return;
+    box.innerHTML = DEX_FILTERS.map((f) => {
+      const n = f.key === 'got' ? caughtCount() : f.key === 'miss' ? (POKE_NOS.length - caughtCount()) : POKE_NOS.length;
+      return `<button type="button" class="dex-fchip${DEXUI.filter === f.key ? ' on' : ''}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`;
+    }).join('');
+  }
+
+  function renderDexGrid() {
+    const box = $('#dexGrid');
+    if (!box) return;
+    const ids = dexFilteredIds();
+    if (!ids.length) {
+      box.innerHTML = '<div class="shop-empty" style="padding:16px 6px">찾는 포켓몬이 없어요</div>';
+      return;
+    }
+    const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
+    box.innerHTML = ids.map((id) => {
+      const info = pokeInfo(id);
+      const got = !!caughtOf(id);
+      return `<button type="button" class="dex-cell ${got ? 'got' : 'miss'}${DEXUI.sel === id ? ' sel' : ''}${curId === id ? ' cur' : ''}" data-dexid="${id}" aria-pressed="${DEXUI.sel === id}" aria-label="${esc(info.name)} ${got ? '획득' : '미획득'}" title="${esc(info.name)}${got ? ` · ${esc(caughtOf(id))} 만남` : ' · 아직 만나지 못했어요'}">
+        <span class="dex-no">${pad(id)}</span>
+        <img class="dex-mini" src="${POKE_MINI(id)}" alt="" loading="lazy" decoding="async" draggable="false"
+          data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({ id, name: info.name }, pokeTint(id)))}">
+        <span class="dex-nm">${got ? esc(info.name) : '???'}</span>
+        ${curId === id ? '<span class="dex-cur" aria-hidden="true">★</span>' : ''}
+      </button>`;
+    }).join('');
     checkPokeImages();
+  }
+
+  function dexChainHtml(line) {
+    const curLine = resolvePartnerKey(S.pokemon.key) === line.key;
+    const stages = line.stages.map((s) => {
+      const on = s.id === DEXUI.sel;
+      const has = !!caughtOf(s.id);
+      return `<span class="dx-stage${on ? ' on' : ''}${has ? '' : ' miss'}${curLine ? ' mine' : ''}">
+        ${pokeImg(s, 'dx-stage-img', s.tint || line.tint, { mini: true, shiny: !!s.shiny })}
+        <em>${esc(s.name)}</em>
+        <b>${s.min}P</b>
+      </span>`;
+    }).join('<i class="pstage-arrow">›</i>');
+    return `<div class="dx-chain${curLine ? ' cur' : ''}">
+      <div class="dx-chain-row">${stages}</div>
+      <div class="dx-chain-foot">
+        <span class="dx-chain-note">${curLine ? '🐾 지금 함께 자라는 계열' : ''}</span>
+        ${curLine ? '' : `<button type="button" class="btn sm ghost" data-dexpick="${esc(line.key)}">🐾 이 계열 기르기</button>`}
+      </div>
+    </div>`;
+  }
+
+  function renderDexSide() {
+    const box = $('#dexSide');
+    if (!box) return;
+    const id = DEXUI.sel;
+    const info = pokeInfo(id);
+    const tint = pokeTint(id);
+    const got = caughtOf(id);
+    const chains = linesForSpecies(id);
+    const stageLike = { id, name: info.name, tint };
+    box.innerHTML = `
+      <div class="dx-hero${got ? '' : ' miss'}">${pokeImg(stageLike, 'dx-hero-img', tint, { eager: true })}</div>
+      <div class="dx-title">
+        <span class="dx-no">${id <= 151 ? 'No.' + pad(id) : '특별한 친구'}</span>
+        <b class="dx-name">${esc(info.name)}</b>
+      </div>
+      <div class="dx-types">${(info.types.length ? info.types : ['???']).map((t) => `<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t] || '#9aa4bd')}">${esc(t)}</span>`).join('')}</div>
+      <div class="dx-state ${got ? 'got' : 'miss'}">
+        ${got ? `✅ ${esc(got)}에 만났어요` : '❔ 아직 만나지 못했어요'}
+      </div>
+      ${got ? '' : '<p class="dx-tip">이 계열을 파트너로 기르면 도감에 차곡차곡 남아요. 미션을 끝낼 때마다 경험치가 쌓여요!</p>'}
+      <div class="dx-chains">${chains.length ? chains.map(dexChainHtml).join('') : '<p class="dx-tip">이 친구는 진화하지 않아요. 파트너로 기르면 200P에 이로치로 반짝여요!</p>'}</div>
+    `;
+    checkPokeImages();
+  }
+
+  function openDex(id) {
+    const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
+    DEXUI.sel = (+id > 0 && POKE_INFO[+id]) ? +id : (curId || 1);
+    if (DEXUI.sel > 151 && !POKE_INFO[DEXUI.sel + '']) DEXUI.sel = 1;
+    if (!POKE_INFO[DEXUI.sel]) DEXUI.sel = 1;
+    DEXUI.q = '';
+    DEXUI.filter = 'all';
+    if ($('#dexSearch')) $('#dexSearch').value = '';
+    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · 지금까지 ${caughtCount()}마리를 만났어요. 칸을 누르면 진화 계열과 자라는 모습을 볼 수 있어요.`;
+    renderDexFilters();
+    renderDexGrid();
+    renderDexSide();
+    $('#dexModal').hidden = false;
+  }
+
+  function selectDex(id) {
+    DEXUI.sel = +id;
+    $$('#dexGrid .dex-cell').forEach((el) => {
+      const on = +el.dataset.dexid === DEXUI.sel;
+      el.classList.toggle('sel', on);
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    renderDexSide();
+  }
+
+  function setDexFilter(key) {
+    DEXUI.filter = DEX_FILTERS.some((f) => f.key === key) ? key : 'all';
+    renderDexFilters();
+    renderDexGrid();
   }
 
   /* ---- 포인트 사용 내역 ---- */
@@ -1980,18 +2348,31 @@
     });
   }
 
+  let partnerQuery = '';
   function renderPartnerGrid() {
     const grid = $('#partnerGrid');
     if (!grid) return;
-    grid.innerHTML = PARTNERS.map((p) => {
-      const on = p.key === S.pokemon.key;
+    const q = partnerQuery.trim();
+    const hit = (l) => !q
+      || l.label.indexOf(q) >= 0
+      || l.members.some((id) => pokeName(id).indexOf(q) >= 0)
+      || String(l.members[0]) === q;
+    const gen1 = LINES.filter((l) => !l.members.some((id) => id > 151) && l.key.charAt(0) === 'L' && hit(l));
+    const extra = EXTRA_LINES.filter(hit);
+    const card = (p) => {
+      const on = resolvePartnerKey(S.pokemon.key) === p.key;
       const got = !!dexEntryOf(p.key);
       return `<button type="button" class="partner-card${on ? ' on' : ''}" data-partner="${p.key}" aria-pressed="${on}">
-        <div class="partner-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', p.tint)}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
-        <div class="partner-name">${esc(p.label)} 계열${on ? ' <b>사용 중</b>' : ''}${got ? ' <b class="got">🏆 도감</b>' : ''}</div>
+        <div class="partner-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', s.tint || p.tint, { mini: true, shiny: !!s.shiny })}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
+        <div class="partner-name">${esc(p.label)}${on ? ' <b>사용 중</b>' : ''}${got ? ' <b class="got">🏆 도감</b>' : ''}</div>
         <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
       </button>`;
-    }).join('');
+    };
+    const total = gen1.length + extra.length;
+    grid.innerHTML = (total ? '' : '<div class="shop-empty" style="grid-column:1/-1">찾는 포켓몬이 없어요</div>')
+      + (gen1.length ? `<div class="partner-group-label">1세대 151 · ${gen1.length}계열</div>${gen1.map(card).join('')}` : '')
+      + (extra.length ? `<div class="partner-group-label">다른 세대 친구 · ${extra.length}계열</div>${extra.map(card).join('')}` : '');
+    if ($('#partnerCount')) $('#partnerCount').textContent = `${total}계열`;
     checkPokeImages();
   }
 
@@ -2003,11 +2384,13 @@
     if (partnerMode === 'adopt') {
       return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
     }
-    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 아이 미션으로만 경험치가 쌓이고, 언제든 바꿀 수 있습니다.`;
+    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
   }
 
   function openPartnerPicker(mode = 'change') {
     partnerMode = mode === 'adopt' ? 'adopt' : 'change';
+    partnerQuery = '';
+    if ($('#partnerSearch')) $('#partnerSearch').value = '';
     $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
     $('#partnerHint').textContent = partnerHintText();
     renderPartnerGrid();
@@ -2238,9 +2621,11 @@
             : (need <= 0
               ? '🪙 필요한 포인트를 적어 주면 얼마나 더 모아야 하는지 알려 줘요'
               : (can ? '✅ 지금 살 수 있어요!' : `🪙 ${left}P 더 모아야 해요`));
+          const cat = wishCatOf(w.cat);
           return `<div class="wish-item${can ? ' now' : ''}${bought ? ' bought' : ''}" data-id="${w.id}">
             <div class="wish-main">
               <div class="wish-top">
+                <span class="wish-tag ${esc(cat.key)}" title="분류: ${esc(cat.label)}">${cat.ico} ${esc(cat.label)}</span>
                 <span class="wish-title">${esc(w.title)}</span>
                 <span class="wish-need">${need > 0 ? need + 'P' : '—'}</span>
               </div>
@@ -2260,9 +2645,10 @@
   async function addWish() {
     const r = await askModal({
       title: '🎁 사고 싶은 것 적기',
-      hint: '갖고 싶은 물건을 적어 두면 지금 선물 코인으로 살 수 있는지 알려 줘요. 필요한 포인트는 비워 두어도 됩니다.',
+      hint: '갖고 싶은 물건을 적어 두면 지금 선물 코인으로 살 수 있는지 알려 줘요. 분류를 골라 두면 카드에 태그로 붙습니다.',
       fields: [
         { name: 'title', label: '갖고 싶은 것', placeholder: '예: 포켓몬 카드' },
+        { name: 'cat', label: '분류', type: 'select', value: 'etc', options: WISH_CATS.map((c) => ({ value: c.key, label: `${c.ico} ${c.label}` })) },
         { name: 'need', label: '필요한 포인트 (P · 비워도 됨)', type: 'number', value: '' },
       ],
       okText: '적기',
@@ -2270,7 +2656,11 @@
     if (!r) return;
     const title = String(r.title || '').trim();
     if (!title) { toast('무엇을 갖고 싶은지 적어 주세요', 'coral', 2600); return; }
-    S.wishlist.unshift({ id: uid(), title: title.slice(0, 40), need: Math.max(0, Math.round(+r.need || 0)), at: todayStr(), by: KID_ID, boughtAt: '' });
+    S.wishlist.unshift({
+      id: uid(), title: title.slice(0, 40), need: Math.max(0, Math.round(+r.need || 0)),
+      cat: WISH_CAT_KEYS.indexOf(String(r.cat || '')) >= 0 ? String(r.cat) : 'etc',
+      at: todayStr(), by: KID_ID, boughtAt: '',
+    });
     save(); renderWish();
     toast('사고 싶은 것에 적었어요 🎁', 'mint');
   }
@@ -2280,9 +2670,10 @@
     if (!w) return;
     const r = await askModal({
       title: '사고 싶은 것 수정',
-      hint: '필요한 포인트를 정해 두면 그만큼 모았을 때 "지금 살 수 있어요!"로 바뀝니다.',
+      hint: '필요한 포인트를 정해 두면 그만큼 모았을 때 "지금 살 수 있어요!"로 바뀝니다. 분류 태그도 여기서 바꿀 수 있어요.',
       fields: [
         { name: 'title', label: '갖고 싶은 것', value: w.title },
+        { name: 'cat', label: '분류', type: 'select', value: wishCatOf(w.cat).key, options: WISH_CATS.map((c) => ({ value: c.key, label: `${c.ico} ${c.label}` })) },
         { name: 'need', label: '필요한 포인트 (P)', type: 'number', value: w.need || '' },
       ],
       okText: '저장',
@@ -2296,6 +2687,7 @@
     if (!r || !String(r.title || '').trim()) return;
     w.title = String(r.title).trim().slice(0, 40);
     w.need = Math.max(0, Math.round(+r.need || 0));
+    w.cat = WISH_CAT_KEYS.indexOf(String(r.cat || '')) >= 0 ? String(r.cat) : 'etc';
     save(); renderWish(); toast('저장했어요', 'mint');
   }
 
@@ -2921,6 +3313,207 @@
     reader.readAsText(file);
   }
 
+  /* ---------------------------------------------- 파트너 포켓몬 터치 반응
+     포켓몬을 누르면 점프 + 하트·반짝이 + 귀여운 말풍선이 나옵니다. */
+  const POKE_LINES = [
+    '히히, 간지러워!',
+    '{n}, 오늘도 같이 놀자!',
+    '미션 하나 끝내 볼까?',
+    '한 번 더 불러 줘!',
+    '같이 있으니까 신나!',
+    '으라차! 힘내자!',
+    '오늘도 최고야!',
+    '뽀뽀~ 쪽!',
+    '내가 응원할게!',
+    '{n} 냠냠, 배고파!',
+  ];
+  let lastPokeLine = -1;
+  function pokeLine(name) {
+    let i = Math.floor(Math.random() * POKE_LINES.length);
+    if (i === lastPokeLine) i = (i + 1) % POKE_LINES.length;
+    lastPokeLine = i;
+    return POKE_LINES[i].replace('{n}', name || '친구');
+  }
+  // 짧고 작은 소리 (절전 모드에서는 조용히)
+  let pokeAudio = null;
+  function pokeChirp() {
+    if (S.quiet) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!pokeAudio) pokeAudio = new Ctx();
+      if (pokeAudio.state === 'suspended') pokeAudio.resume();
+      [1046, 1568].forEach((f, i) => {
+        const o = pokeAudio.createOscillator();
+        const g = pokeAudio.createGain();
+        o.type = 'sine';
+        o.frequency.value = f;
+        const t = pokeAudio.currentTime + i * 0.08;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.1, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(g).connect(pokeAudio.destination);
+        o.start(t);
+        o.stop(t + 0.18);
+      });
+    } catch (e) { /* 소리는 없어도 괜찮아요 */ }
+  }
+
+  /* host: 포켓몬 그림을 감싼 칸, say: 말풍선 요소 */
+  function pokeReact(host, say, name) {
+    if (!host) return;
+    const img = host.querySelector('img');
+    if (img) {
+      img.classList.remove('poke-jump');
+      void img.offsetWidth;
+      img.classList.add('poke-jump');
+      setTimeout(() => img.classList.remove('poke-jump'), 900);
+    }
+    const fx = document.createElement('div');
+    fx.className = 'poke-fx';
+    fx.setAttribute('aria-hidden', 'true');
+    const kinds = ['💛', '💖', '✨', '⭐', '💫', '💕', '🌟'];
+    for (let i = 0; i < 8; i++) {
+      const s = document.createElement('span');
+      s.textContent = kinds[i % kinds.length];
+      s.style.setProperty('--x', (Math.random() * 150 - 75).toFixed(0) + 'px');
+      s.style.setProperty('--d', (i * 0.05).toFixed(2) + 's');
+      s.style.setProperty('--r', (Math.random() * 70 - 35).toFixed(0) + 'deg');
+      fx.appendChild(s);
+    }
+    host.appendChild(fx);
+    setTimeout(() => fx.remove(), 1700);
+    if (say) {
+      say.textContent = pokeLine(name);
+      say.classList.remove('on');
+      void say.offsetWidth;
+      say.classList.add('on');
+      clearTimeout(say._hideTimer);
+      say._hideTimer = setTimeout(() => say.classList.remove('on'), 2400);
+    }
+    pokeChirp();
+  }
+
+  /* ------------------------------------------- 🖼️ 대기화면 (거실 디지털 액자) */
+  let standbyOn = false;
+  let standbyTimer = null;
+  let sbPokeKey = '';
+  let sbWxSig = '';
+  let sbMissionSig = '';
+
+  function standbyPartnerStage() {
+    const p = partnerOf(S.pokemon.key);
+    return { p, stage: p.stages[stageIndex(S.pokemon.xp)] };
+  }
+
+  function renderStandby() {
+    if (!standbyOn) return;
+    const now = new Date();
+    if ($('#sbTime')) $('#sbTime').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    if ($('#sbSec')) $('#sbSec').textContent = pad(now.getSeconds());
+    if ($('#sbDate')) {
+      $('#sbDate').innerHTML = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 <b>${DAYS[now.getDay()]}요일</b>`;
+    }
+
+    // 오늘 날씨 · 미세먼지
+    const loc = currentLoc();
+    let wx = `<div class="sb-wx-now"><span class="sb-wx-ico">🌤️</span><b>—</b><span class="sb-wx-desc">날씨 불러오는 중</span></div>
+      <div class="sb-wx-chips"><span class="sb-wx-place">📍 ${esc(W && W.locName ? W.locName : (loc.name || '우리 동네'))}</span></div>`;
+    if (W && W.now) {
+      const [icon, desc] = wmo(W.now.weather_code);
+      const d0 = W.daily && W.daily[0];
+      const chips = [];
+      if (d0) chips.push(`<span>최고 <b>${Math.round(d0.max)}°</b> · 최저 <b>${Math.round(d0.min)}°</b></span>`);
+      if (d0 && d0.pop != null) chips.push(`<span>☔ ${Math.round(d0.pop)}%</span>`);
+      if (W.air) {
+        const g1 = pm10Grade(W.air.pm10);
+        const g2 = pm25Grade(W.air.pm25);
+        if (g1) chips.push(`<span class="g ${g1[1]}">미세먼지 <b>${g1[0]}</b></span>`);
+        if (g2) chips.push(`<span class="g ${g2[1]}">초미세 <b>${g2[0]}</b></span>`);
+      }
+      chips.push(`<span class="sb-wx-place">📍 ${esc(W.locName || loc.name || '우리 동네')}</span>`);
+      wx = `<div class="sb-wx-now"><span class="sb-wx-ico">${icon}</span><b>${Math.round(W.now.temperature_2m)}°</b><span class="sb-wx-desc">${esc(desc)}</span></div>
+        <div class="sb-wx-chips">${chips.join('')}</div>`;
+    }
+    if ($('#sbWeather')) {
+      const wxSig = JSON.stringify([W && W.now && W.now.temperature_2m, W && W.now && W.now.weather_code, W && W.air, W && W.daily && W.daily[0], W && W.locName]);
+      if (wxSig !== sbWxSig) { sbWxSig = wxSig; $('#sbWeather').innerHTML = wx; }
+    }
+
+    // 오늘 아이 미션 달성률 · 선물 코인
+    const dow = now.getDay();
+    const tg = kidTodayGoal(dow);
+    const pct = tg.goal ? clamp(Math.round((tg.got / tg.goal) * 100), 0, 100) : 0;
+    const doneCount = S.missions.filter((m) => m.member === KID_ID && m.doneOn === todayStr() && missionOnDay(m, dow)).length;
+    const totalToday = S.missions.filter((m) => m.member === KID_ID && missionOnDay(m, dow)).length;
+    if ($('#sbMission')) {
+      const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
+      if (sig === sbMissionSig) return sbSyncPartner();
+      sbMissionSig = sig;
+      $('#sbMission').innerHTML = `
+        <div class="sb-m-head"><span>🎯 오늘 미션</span><b>${doneCount} / ${totalToday} 완료</b></div>
+        <div class="sb-ring" style="--p:${pct}">
+          <div class="sb-ring-face">
+            <b>${pct}%</b>
+            <span>${tg.got}P / ${tg.goal}P</span>
+          </div>
+        </div>
+        <div class="sb-stats">
+          <div class="sb-stat coin"><span>🪙 선물 코인</span><b>${balancePts()}P</b></div>
+          <div class="sb-stat xp"><span>⚡ 진화 경험치</span><b>${Math.round(S.pokemon.xp)}P</b></div>
+        </div>
+        <div class="sb-hint-line">${tg.goal && tg.got >= tg.goal ? '🎉 오늘 목표 달성! 최고예요' : tg.left ? `${tg.left}P 더 모으면 오늘 목표 달성!` : '오늘은 쉬어 가는 날이에요 🌴'}</div>`;
+    }
+
+    // 크게 살아 움직이는 파트너
+    sbSyncPartner();
+  }
+
+  function sbSyncPartner() {
+    const { p, stage } = standbyPartnerStage();
+    const key = `${p.key}:${stage.id}:${stage.min}`;
+    if (key !== sbPokeKey) {
+      sbPokeKey = key;
+      if ($('#sbStage')) {
+        $('#sbStage').innerHTML = pokeImg(stage, 'sb-poke-img', p.tint, { eager: true })
+          + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '')
+          + (stage.shiny ? '<span class="poke-shiny" aria-hidden="true">✨</span>' : '');
+      }
+    }
+    if ($('#sbName')) $('#sbName').textContent = stage.name;
+    const nxt = p.stages[stageIndex(S.pokemon.xp) + 1];
+    if ($('#sbSub')) {
+      $('#sbSub').innerHTML = nxt
+        ? `다음 진화 <b>${esc(nxt.name)}</b>까지 <b>${Math.max(0, nxt.min - Math.round(S.pokemon.xp))}P</b> 남았어요`
+        : '최종 진화 완료! 🏆 도감에 저장됐어요';
+    }
+  }
+
+  function enterStandby() {
+    if (standbyOn) return;
+    standbyOn = true;
+    sbPokeKey = '';
+    sbWxSig = '';
+    sbMissionSig = '';
+    const el = $('#standby');
+    if (el) el.hidden = false;
+    document.body.classList.add('standby-on');
+    if ($('#sbTitle')) $('#sbTitle').textContent = appTitle();
+    renderStandby();
+    clearInterval(standbyTimer);
+    standbyTimer = setInterval(renderStandby, 1000);
+  }
+
+  function exitStandby() {
+    if (!standbyOn) return;
+    standbyOn = false;
+    clearInterval(standbyTimer);
+    standbyTimer = null;
+    const el = $('#standby');
+    if (el) el.hidden = true;
+    document.body.classList.remove('standby-on');
+  }
+
   /* --------------------------------------------------------------------- theme */
   function applyTheme() {
     document.documentElement.dataset.theme = S.theme === 'dark' ? 'dark' : 'light';
@@ -2984,7 +3577,7 @@
           S.missions = S.missions.filter((x) => x.id !== id); save(); renderMissions();
         });
       } else if (act === 'dex-open') {
-        openDexEntry(t.dataset.key);
+        openDex(+t.dataset.id || 0);
       } else if (act === 'use-del') {
         asParent('포인트 사용 내역은 보호자만 되돌릴 수 있어요.', () => deletePointUse(id));
       } else if (act === 'shop-toggle') {
@@ -3037,7 +3630,41 @@
     openPartnerPicker('adopt');
   });
   $('#dexClose').addEventListener('click', () => { $('#dexModal').hidden = true; });
+  if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
   $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
+  if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {
+    const cell = e.target.closest('[data-dexid]');
+    if (cell) selectDex(cell.dataset.dexid);
+  });
+  if ($('#dexSide')) $('#dexSide').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dexpick]');
+    if (!b) return;
+    partnerMode = 'change';
+    pickPartner(b.dataset.dexpick);
+    renderDexSide();
+  });
+  if ($('#dexSearch')) $('#dexSearch').addEventListener('input', (e) => {
+    DEXUI.q = e.target.value || '';
+    renderDexGrid();
+  });
+  if ($('#dexFilter')) $('#dexFilter').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dexfilter]');
+    if (b) setDexFilter(b.dataset.dexfilter);
+  });
+  // 도감 열기 (카드 안의 작은 도감 제목도 버튼)
+  if ($('#dexOpenBtn')) $('#dexOpenBtn').addEventListener('click', () => openDex(0));
+  // 파트너 포켓몬 톡톡
+  if ($('#charStage')) $('#charStage').addEventListener('click', () => {
+    const st = stagesOf()[stageIndex(S.pokemon.xp)];
+    pokeReact($('#charStage'), $('#charSay'), st ? st.name : '');
+  });
+  if ($('#sbStage')) $('#sbStage').addEventListener('click', () => {
+    const { stage } = standbyPartnerStage();
+    pokeReact($('#sbStage'), $('#sbSay'), stage ? stage.name : '');
+  });
+  // 🖼️ 대기화면 ↔ 홈
+  if ($('#standbyBtn')) $('#standbyBtn').addEventListener('click', enterStandby);
+  if ($('#standbyExit')) $('#standbyExit').addEventListener('click', exitStandby);
 
   // 월간·연간 달성 현황
   $('#histOpenBtn').addEventListener('click', openHistory);
@@ -3190,6 +3817,10 @@
   $('#partnerBtn').addEventListener('click', () => openPartnerPicker('change'));
   $('#partnerBtn2').addEventListener('click', () => openPartnerPicker('change'));
   $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
+  if ($('#partnerSearch')) $('#partnerSearch').addEventListener('input', (e) => {
+    partnerQuery = e.target.value || '';
+    renderPartnerGrid();
+  });
   $('#partnerModal').addEventListener('click', (e) => { if (e.target.id === 'partnerModal') $('#partnerModal').hidden = true; });
   $('#partnerGrid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-partner]');
@@ -3315,6 +3946,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (standbyOn) { exitStandby(); return; }
     ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal', '#dexModal', '#historyModal'].forEach((sel) => {
       const m = $(sel);
       if (m && !m.hidden) {
@@ -3391,17 +4023,23 @@
       parentUnlocked: parentUnlocked(),
       hasPin: /^\d{4,12}$/.test(String(S.parentPin || '')),
     }),
-    wishlist: () => (S.wishlist || []).map((w) => ({ id: w.id, title: w.title, need: w.need, boughtAt: w.boughtAt })),
+    wishlist: () => (S.wishlist || []).map((w) => ({ id: w.id, title: w.title, need: w.need, cat: w.cat || 'etc', boughtAt: w.boughtAt })),
+    wishCats: () => WISH_CATS.map((c) => ({ key: c.key, label: c.label })),
     parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentAt)) : 0 }),
     pokemon: () => ({
       key: S.pokemon.key,
+      label: partnerOf(S.pokemon.key).label,
       xp: Math.round(S.pokemon.xp),
       stage: stagesOf()[stageIndex(S.pokemon.xp)].name,
       totalXp: kidTotalPts(),
       balance: balancePts(),
       spent: spentPts(),
       dex: (S.pokemon.dex || []).map((d) => ({ key: d.key, finalName: d.finalName, at: d.at, times: d.times })),
+      dexCount: caughtCount(),
+      caught: Object.keys(S.pokemon.caught || {}).map(Number).sort((a, b) => a - b),
     }),
+    lines: () => ({ gen1: GEN1_LINES.length, extra: EXTRA_LINES.length, total: LINES.length, species: POKE_NOS.length }),
+    standby: () => ({ on: standbyOn, text: standbyOn ? ($('#sbTime') || {}).textContent : '' }),
     pokemonStatus: () => $$('img[data-poke]').map((i) => ({
       name: i.dataset.pokeName || i.alt, id: i.dataset.poke,
       ok: i.naturalWidth > 0, width: i.naturalWidth,
