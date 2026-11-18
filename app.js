@@ -25,9 +25,10 @@
   const WKEY = 'family-dashboard:weather';
 
   const DEFAULT_STATE = () => ({
-    v: 1,
+    v: 2,
     theme: 'light',
     quiet: false,
+    partner: 'pikachu',        // 파트너 포켓몬 진화 라인 키(pikachu/charmander/squirtle/bulbasaur)
     location: null,             // { lat, lon, name } — 사용자가 정한 경우에만 저장
     members: [
       { id: 'm1', name: '성인 1', color: '#ff7a6b' },
@@ -42,13 +43,14 @@
       { id: uid(), date: fmtDate(addDays(new Date(), 3)), time: '10:00', title: '주말 나들이', member: '', done: false },
     ],
     missions: [
-      { id: uid(), title: '아침 먹기', points: 5, member: 'm3', doneOn: null },
-      { id: uid(), title: '씻기 · 양치하기', points: 3, member: 'm3', doneOn: null },
-      { id: uid(), title: '옷 입기', points: 3, member: 'm3', doneOn: null },
-      { id: uid(), title: '가방 챙기기', points: 4, member: 'm3', doneOn: null },
-      { id: uid(), title: '분리수거 내놓기', points: 3, member: 'm1', doneOn: null },
-      { id: uid(), title: '설거지하기', points: 3, member: 'm2', doneOn: null },
+      { id: uid(), title: '아침 먹기', points: 5, due: '08:00', bonus: 3, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '씻기 · 양치하기', points: 3, due: '08:10', bonus: 2, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '옷 입기', points: 3, due: '07:50', bonus: 2, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '가방 챙기기', points: 4, due: '08:20', bonus: 3, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '분리수거 내놓기', points: 3, due: '21:00', bonus: 2, member: 'm1', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '설거지하기', points: 3, due: '', bonus: 0, member: 'm2', doneOn: null, doneAt: '', earned: 0, goalMet: false },
     ],
+    logs: [],
     points: { total: 0, byMember: {} },
     letters: [],
     shopping: [
@@ -89,21 +91,39 @@
     if (!raw || typeof raw !== 'object') return base;
     const out = Object.assign({}, base, raw);
     // 배열/객체 타입 보정
-    ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links'].forEach((k) => {
+    ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs'].forEach((k) => {
       if (!Array.isArray(out[k])) out[k] = base[k];
     });
+    out.v = 2;                     // 데이터 형식 2: 포켓몬 파트너 + 목표 시간/보너스
+    if (!['pikachu', 'charmander', 'squirtle', 'bulbasaur'].includes(out.partner)) out.partner = 'pikachu';
     if (!out.points || typeof out.points !== 'object') out.points = { total: 0, byMember: {} };
     out.points.total = Math.max(0, Math.round(+out.points.total || 0));
     if (!out.points.byMember || typeof out.points.byMember !== 'object') out.points.byMember = {};
     // 예전 데이터(할 일 · 스티커)가 있으면 한 번만 미션/포인트로 옮김
     if (Array.isArray(raw.chores) && !Array.isArray(raw.missions)) {
-      out.missions = raw.chores.map((c) => ({ id: c.id || 'x' + Math.random().toString(36).slice(2, 9), title: c.title || '', points: 3, member: '', doneOn: c.doneOn || null }));
+      out.missions = raw.chores.map((c) => ({ id: c.id || 'x' + Math.random().toString(36).slice(2, 9), title: c.title || '', points: 3, due: '', bonus: 0, member: '', doneOn: c.doneOn || null }));
       const legacyPts = Math.max(0, Math.round(+raw.stickers || 0)) * 3;
       out.points = { total: legacyPts, byMember: legacyPts ? { '': legacyPts } : {} };
     }
+    // 미션 형식 보정: 목표 시간·보너스·오늘 완료 시각/획득 포인트
     out.missions.forEach((m) => {
       m.points = Math.max(0, Math.round(+m.points || 0));
       m.member = m.member || '';
+      m.due = /^\d{1,2}:\d{2}$/.test(String(m.due || '')) ? pad(+String(m.due).split(':')[0]) + ':' + String(m.due).split(':')[1] : '';
+      m.bonus = m.due ? Math.max(0, Math.round(+m.bonus || 0)) : 0;
+      m.doneOn = m.doneOn || null;
+      m.doneAt = typeof m.doneAt === 'string' ? m.doneAt : '';
+      if (m.doneOn && typeof m.earned !== 'number') m.earned = m.points;   // 예전 기록은 기본 포인트만 받은 것으로 본다
+      m.earned = Math.max(0, Math.round(+m.earned || 0));
+      m.goalMet = !!m.goalMet;
+    });
+    out.logs = out.logs.filter((l) => l && typeof l === 'object' && l.date && l.at);
+    out.logs.forEach((l) => {
+      ['base', 'bonus', 'earned'].forEach((k) => { l[k] = Math.max(0, Math.round(+l[k] || 0)); });
+      l.member = l.member || '';
+      l.title = l.title || '';
+      l.due = l.due || '';
+      l.goalMet = !!l.goalMet;
     });
     if (!out.budget || typeof out.budget !== 'object') out.budget = base.budget;
     if (!Array.isArray(out.budget.fixed)) out.budget.fixed = [];
@@ -491,143 +511,226 @@
   }
 
   /* ------------------------------------------------------ missions/character */
-  const LEVELS = [
-    { min: 0, name: '알', next: '아기 공룡' },
-    { min: 30, name: '아기 공룡', next: '씩씩한 어린이' },
-    { min: 90, name: '씩씩한 어린이', next: '히어로 공룡' },
-    { min: 200, name: '히어로 공룡', next: '전설의 용' },
-    { min: 400, name: '전설의 용', next: null },
-  ];
-  const levelIndex = (n) => {
-    let idx = 0;
-    LEVELS.forEach((l, i) => { if (n >= l.min) idx = i; });
-    return idx;
-  };
+  /* 파트너 포켓몬 진화 라인
+     - 그림은 PokeAPI 공식 일러스트(official-artwork) CDN에서 받아 옵니다.
+     - CDN이 느리거나 막히면 로컬에서 만든 SVG로 자동 대체되어 깨진 그림이 남지 않습니다. */
+  const POKE_ART = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
-  function charSVG(level) {
-    const shadow = '<ellipse cx="100" cy="176" rx="52" ry="11" fill="#5b6ba8" opacity=".13"/>';
-    if (level === 0) {
-      return `<svg viewBox="0 0 200 200" role="img" aria-label="알">
-      ${shadow}
-      <g class="char-bob">
-        <ellipse cx="100" cy="114" rx="46" ry="56" fill="#fffdf6" stroke="#f1dcc4" stroke-width="2.5"/>
-        <ellipse cx="100" cy="114" rx="46" ry="56" fill="url(#eggShade)"/>
-        <path d="M86 58 l7 11 l-9 8 l9 9" fill="none" stroke="#f1dcc4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="85" cy="112" r="5" fill="#463a33"/><circle cx="115" cy="112" r="5" fill="#463a33"/>
-        <path d="M92 128 q8 7 16 0" fill="none" stroke="#463a33" stroke-width="3.5" stroke-linecap="round"/>
-        <circle cx="72" cy="124" r="7" fill="#ffb3b3" opacity=".7"/>
-        <circle cx="128" cy="124" r="7" fill="#ffb3b3" opacity=".7"/>
-      </g>
-      <defs><linearGradient id="eggShade" x1="0" y1="0" x2="0.4" y2="1">
-        <stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#ffe6cf" stop-opacity=".55"/>
-      </linearGradient></defs>
-      </svg>`;
+  const PARTNERS = [
+    {
+      key: 'pikachu', label: '피카츄', tint: '#f2c53d',
+      stages: [
+        { id: 172, name: '피츄', min: 0 },
+        { id: 25, name: '피카츄', min: 30 },
+        { id: 26, name: '라이츄', min: 90 },
+        { id: 25, name: '캡틴 피카츄', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'charmander', label: '파이리', tint: '#f0803c',
+      stages: [
+        { id: 4, name: '파이리', min: 0 },
+        { id: 5, name: '리자드', min: 30 },
+        { id: 6, name: '리자몽', min: 90 },
+        { id: 10034, name: '메가리자몽 X', min: 200 },
+      ],
+    },
+    {
+      key: 'squirtle', label: '꼬부기', tint: '#5aa9e6',
+      stages: [
+        { id: 7, name: '꼬부기', min: 0 },
+        { id: 8, name: '어니부기', min: 30 },
+        { id: 9, name: '거북왕', min: 90 },
+        { id: 10036, name: '메가거북왕', min: 200 },
+      ],
+    },
+    {
+      key: 'bulbasaur', label: '이상해씨', tint: '#63b489',
+      stages: [
+        { id: 1, name: '이상해씨', min: 0 },
+        { id: 2, name: '이상해풀', min: 30 },
+        { id: 3, name: '이상해꽃', min: 90 },
+        { id: 10033, name: '메가이상해꽃', min: 200 },
+      ],
+    },
+  ];
+
+  const partnerOf = (key) => PARTNERS.find((p) => p.key === key) || PARTNERS[0];
+  const stagesOf = () => partnerOf(S.partner).stages;
+  function stageIndex(n) {
+    const st = stagesOf();
+    let idx = 0;
+    st.forEach((s, i) => { if (n >= s.min) idx = i; });
+    return idx;
+  }
+
+  // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
+  function pokeFallback(stage, tint) {
+    const crown = stage.crown
+      ? '<path d="M100 16 l9 15 17 3 -12 12 3 17 -17 -8 -17 8 3 -17 -12 -12 17 -3z" fill="#ffd166" stroke="#e0a92b" stroke-width="3" stroke-linejoin="round"/>'
+      : '';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+      + '<circle cx="100" cy="106" r="78" fill="' + tint + '" opacity=".16"/>'
+      + crown
+      + '<path d="M54 100 q-12 -36 6 -50 q15 11 14 32z" fill="' + tint + '" opacity=".92"/>'
+      + '<path d="M146 100 q12 -36 -6 -50 q-15 11 -14 32z" fill="' + tint + '" opacity=".92"/>'
+      + '<ellipse cx="100" cy="142" rx="46" ry="37" fill="' + tint + '"/>'
+      + '<ellipse cx="100" cy="150" rx="27" ry="21" fill="#fffdf8" opacity=".6"/>'
+      + '<circle cx="100" cy="94" r="42" fill="' + tint + '"/>'
+      + '<circle cx="84" cy="92" r="7" fill="#22304a"/><circle cx="116" cy="92" r="7" fill="#22304a"/>'
+      + '<circle cx="86.4" cy="89" r="2.6" fill="#fff"/><circle cx="118.4" cy="89" r="2.6" fill="#fff"/>'
+      + '<path d="M90 110 q10 9 20 0" fill="none" stroke="#22304a" stroke-width="4" stroke-linecap="round"/>'
+      + '<ellipse cx="68" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
+      + '<ellipse cx="132" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'
+      + '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  function pokeImg(stage, cls, tint) {
+    return `<img class="${cls}" src="${POKE_ART(stage.id)}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}" data-fallback="${esc(pokeFallback(stage, tint))}" loading="eager" decoding="async" draggable="false">`;
+  }
+
+  // 그림 로딩 실패 → 로컬 SVG로 교체
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (img && img.tagName === 'IMG' && img.dataset && img.dataset.fallback && !img.dataset.fb) {
+      img.dataset.fb = '1';
+      img.src = img.dataset.fallback;
     }
-    if (level === 1) {
-      return `<svg viewBox="0 0 200 200" role="img" aria-label="아기 공룡">
-      ${shadow}
-      <g class="char-bob">
-        <path d="M58 152 q-28 8 -34 -12 q24 6 36 -6z" fill="#6fd0ac"/>
-        <ellipse cx="100" cy="140" rx="41" ry="33" fill="#9fe8cc"/>
-        <ellipse cx="100" cy="148" rx="23" ry="18" fill="#eafbf4" opacity=".9"/>
-        <circle cx="100" cy="94" r="39" fill="#9fe8cc"/>
-        <path d="M72 62 l7 -16 l8 13 l8 -18 l8 16 l9 -13 l6 19z" fill="#4fc39c"/>
-        <circle cx="87" cy="93" r="6.4" fill="#2f3b4d"/><circle cx="113" cy="93" r="6.4" fill="#2f3b4d"/>
-        <circle cx="89" cy="90" r="2.1" fill="#fff"/><circle cx="115" cy="90" r="2.1" fill="#fff"/>
-        <path d="M92 109 q8 8 16 0" fill="none" stroke="#2f3b4d" stroke-width="3.4" stroke-linecap="round"/>
-        <ellipse cx="73" cy="104" rx="6" ry="4.4" fill="#ffb3b3" opacity=".8"/>
-        <ellipse cx="127" cy="104" rx="6" ry="4.4" fill="#ffb3b3" opacity=".8"/>
-        <ellipse cx="80" cy="172" rx="10" ry="5" fill="#6fd0ac"/><ellipse cx="120" cy="172" rx="10" ry="5" fill="#6fd0ac"/>
-      </g></svg>`;
-    }
-    if (level === 2) {
-      return `<svg viewBox="0 0 200 200" role="img" aria-label="씩씩한 어린이 공룡">
-      ${shadow}
-      <g class="char-bob">
-        <path d="M52 148 q-30 10 -36 -10 q22 4 34 -8z" fill="#3bbd94"/>
-        <ellipse cx="100" cy="136" rx="44" ry="39" fill="#63ddb4"/>
-        <ellipse cx="100" cy="144" rx="25" ry="22" fill="#e9fbf4" opacity=".92"/>
-        <ellipse cx="56" cy="128" rx="9" ry="13" fill="#4ccfa4" transform="rotate(-20 56 128)"/>
-        <ellipse cx="144" cy="128" rx="9" ry="13" fill="#4ccfa4" transform="rotate(20 144 128)"/>
-        <circle cx="100" cy="86" r="37" fill="#63ddb4"/>
-        <path d="M74 56 l6 -15 l8 12 l8 -17 l8 15 l9 -12 l5 18z" fill="#33b18a"/>
-        <circle cx="87" cy="85" r="7.5" fill="#243044"/><circle cx="113" cy="85" r="7.5" fill="#243044"/>
-        <circle cx="89.4" cy="82" r="2.6" fill="#fff"/><circle cx="115.4" cy="82" r="2.6" fill="#fff"/>
-        <path d="M90 102 q10 9 20 0" fill="none" stroke="#243044" stroke-width="3.6" stroke-linecap="round"/>
-        <ellipse cx="70" cy="97" rx="6.5" ry="4.6" fill="#ffb3b3" opacity=".85"/>
-        <ellipse cx="130" cy="97" rx="6.5" ry="4.6" fill="#ffb3b3" opacity=".85"/>
-        <path d="M100 133 l3.6 7.6 8.4 1.1 -6.1 5.9 1.5 8.4 -7.4 -4 -7.4 4 1.5 -8.4 -6.1 -5.9 8.4 -1.1z" fill="#ffc14d"/>
-        <ellipse cx="78" cy="170" rx="11" ry="5.4" fill="#3bbd94"/><ellipse cx="122" cy="170" rx="11" ry="5.4" fill="#3bbd94"/>
-      </g></svg>`;
-    }
-    if (level === 3) {
-      return `<svg viewBox="0 0 200 200" role="img" aria-label="히어로 공룡">
-      ${shadow}
-      <g class="char-bob">
-        <path d="M64 108 q-46 4 -50 44 q26 -18 56 -14z" fill="#ff7a6b"/>
-        <path d="M60 146 q-24 12 -40 32 q30 -10 48 -12z" fill="#ff9d7f"/>
-        <path d="M52 148 q-30 10 -36 -10 q22 4 34 -8z" fill="#2f9e8e"/>
-        <ellipse cx="100" cy="136" rx="44" ry="39" fill="#5bb8ff"/>
-        <ellipse cx="100" cy="144" rx="26" ry="23" fill="#eaf4ff" opacity=".95"/>
-        <ellipse cx="56" cy="126" rx="9" ry="13" fill="#3f9fe8" transform="rotate(-25 56 126)"/>
-        <ellipse cx="144" cy="126" rx="9" ry="13" fill="#3f9fe8" transform="rotate(25 144 126)"/>
-        <circle cx="100" cy="86" r="37" fill="#5bb8ff"/>
-        <path d="M74 56 l6 -15 l8 12 l8 -17 l8 15 l9 -12 l5 18z" fill="#2e8fd6"/>
-        <path d="M66 78 q34 -14 68 0 l0 10 q-34 -12 -68 0z" fill="#22304a"/>
-        <circle cx="87" cy="88" r="6.6" fill="#fff"/><circle cx="113" cy="88" r="6.6" fill="#fff"/>
-        <circle cx="87.6" cy="89" r="3.4" fill="#22304a"/><circle cx="113.6" cy="89" r="3.4" fill="#22304a"/>
-        <path d="M90 105 q10 9 20 0" fill="none" stroke="#22304a" stroke-width="3.6" stroke-linecap="round"/>
-        <path d="M100 130 l4.2 8.8 9.8 1.3 -7.1 6.9 1.7 9.8 -8.6 -4.7 -8.6 4.7 1.7 -9.8 -7.1 -6.9 9.8 -1.3z" fill="#ffd166" stroke="#f0b429" stroke-width="1.2"/>
-        <ellipse cx="78" cy="170" rx="11" ry="5.4" fill="#2f9e8e"/><ellipse cx="122" cy="170" rx="11" ry="5.4" fill="#2f9e8e"/>
-      </g></svg>`;
-    }
-    return `<svg viewBox="0 0 200 200" role="img" aria-label="전설의 용">
-      ${shadow}
-      <g class="char-bob">
-        <path d="M150 60 q34 -34 30 6 q-2 30 -34 26z" fill="#b79bff" opacity=".85"/>
-        <path d="M50 60 q-34 -34 -30 6 q2 30 34 26z" fill="#b79bff" opacity=".85"/>
-        <path d="M64 112 q-50 2 -56 44 q28 -16 60 -12z" fill="#9b7bf0"/>
-        <path d="M52 150 q-30 10 -36 -10 q22 4 34 -8z" fill="#6c4fd0"/>
-        <ellipse cx="100" cy="138" rx="46" ry="40" fill="#c0a6ff"/>
-        <ellipse cx="100" cy="146" rx="27" ry="24" fill="#f6f1ff" opacity=".95"/>
-        <ellipse cx="55" cy="126" rx="9" ry="13" fill="#a98af5" transform="rotate(-25 55 126)"/>
-        <ellipse cx="145" cy="126" rx="9" ry="13" fill="#a98af5" transform="rotate(25 145 126)"/>
-        <circle cx="100" cy="86" r="38" fill="#c0a6ff"/>
-        <path d="M74 56 l6 -15 l8 12 l8 -17 l8 15 l9 -12 l5 18z" fill="#9b7bf0"/>
-        <path d="M82 44 l-6 -20 l12 8 l4 -16 l8 14 l10 -12 l2 20z" fill="#ffd166" stroke="#f0b429" stroke-width="1.4" stroke-linejoin="round"/>
-        <circle cx="87" cy="86" r="7" fill="#fff"/><circle cx="113" cy="86" r="7" fill="#fff"/>
-        <circle cx="88" cy="87" r="3.7" fill="#2b2150"/><circle cx="114" cy="87" r="3.7" fill="#2b2150"/>
-        <path d="M90 104 q10 9 20 0" fill="none" stroke="#2b2150" stroke-width="3.6" stroke-linecap="round"/>
-        <ellipse cx="70" cy="98" rx="6.6" ry="4.8" fill="#ffb3b3" opacity=".9"/>
-        <ellipse cx="130" cy="98" rx="6.6" ry="4.8" fill="#ffb3b3" opacity=".9"/>
-        <path d="M100 132 l4.6 9.6 10.6 1.4 -7.7 7.5 1.8 10.6 -9.3 -5.1 -9.3 5.1 1.8 -10.6 -7.7 -7.5 10.6 -1.4z" fill="#ffe08a" stroke="#f0b429" stroke-width="1.2"/>
-        <ellipse cx="78" cy="172" rx="11" ry="5.4" fill="#8f6fe0"/><ellipse cx="122" cy="172" rx="11" ry="5.4" fill="#8f6fe0"/>
-        <g fill="#ffe08a"><path d="M158 96 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/><path d="M44 88 l2.4 6.4 6.4 2.4 -6.4 2.4 -2.4 6.4 -2.4 -6.4 -6.4 -2.4 6.4 -2.4z"/></g>
-      </g></svg>`;
+  }, true);
+
+  function checkPokeImages() {
+    $$('img[data-poke]').forEach((img) => {
+      if (!img.dataset.fb && img.complete && img.naturalWidth === 0) {
+        img.dataset.fb = '1';
+        img.src = img.dataset.fallback;
+      }
+    });
+  }
+
+  /* ---- 시간 계산 ---- */
+  const hhmm = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const minOf = (hm) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || ''));
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  };
+  function durText(mins) {
+    const m = Math.max(0, Math.round(mins));
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    if (!h) return `${mm}분`;
+    return mm ? `${h}시간 ${mm}분` : `${h}시간`;
+  }
+  function dueInfo(due, nowMin) {
+    const d = minOf(due);
+    const n = nowMin == null ? minOf(hhmm()) : nowMin;
+    if (d == null || n == null) return null;
+    const left = d - n;
+    if (left > 0) return { cls: left <= 15 ? 'soon' : 'ok', text: `${due}까지 · ${durText(left)} 남음` };
+    if (left === 0) return { cls: 'soon', text: `${due}까지 · 지금 마감!` };
+    return { cls: 'late', text: `${due} 마감 · ${durText(-left)} 지났어요` };
+  }
+
+  /* ---- 포인트 ---- */
+  function ptsInit() {
+    if (!S.points || typeof S.points !== 'object') S.points = { total: 0, byMember: {} };
+    if (!S.points.byMember || typeof S.points.byMember !== 'object') S.points.byMember = {};
+  }
+  function addPoints(key, delta) {
+    if (!delta) return;
+    ptsInit();
+    const k = key || '';
+    S.points.total = Math.max(0, Math.round((+S.points.total || 0) + delta));
+    S.points.byMember[k] = Math.max(0, Math.round((+S.points.byMember[k] || 0) + delta));
+  }
+  const basePtsOf = (c) => Math.max(0, Math.round(+c.points || 0));
+  const bonusPtsOf = (c) => (c.due ? Math.max(0, Math.round(+c.bonus || 0)) : 0);
+  const earnOf = (c) => Math.max(0, Math.round(typeof c.earned === 'number' ? c.earned : basePtsOf(c)));
+  function missionEarn(c, atHM) {
+    const base = basePtsOf(c);
+    const bonus = bonusPtsOf(c);
+    const a = minOf(atHM);
+    const d = minOf(c.due);
+    const goalMet = !!(c.due && a != null && d != null && a <= d);
+    return { base, bonus, goalMet, earned: base + (goalMet ? bonus : 0) };
+  }
+
+  /* ---- 오늘 완료 이력 ---- */
+  function addLog(c, r, at) {
+    if (!Array.isArray(S.logs)) S.logs = [];
+    const t = todayStr();
+    S.logs = S.logs.filter((l) => !(l.mid === c.id && l.date === t));
+    S.logs.unshift({
+      id: uid(), date: t, at: at || hhmm(), mid: c.id, title: c.title, member: c.member || '',
+      base: r.base || 0, bonus: r.goalMet ? (r.bonus || 0) : 0, earned: r.earned || 0,
+      due: c.due || '', goalMet: !!r.goalMet,
+    });
+    if (S.logs.length > 200) S.logs.length = 200;
+  }
+  function dropLog(mid) {
+    const t = todayStr();
+    S.logs = (S.logs || []).filter((l) => !(l.mid === mid && l.date === t));
+  }
+
+  function doneBadge(c) {
+    const at = esc(c.doneAt || '');
+    if (!c.due) return `<span class="done-badge plain">${at ? at + ' 완료' : '완료'}</span>`;
+    if (c.goalMet) return `<span class="done-badge goal">${at} 완료 · ⏰ 목표 시간 달성!</span>`;
+    return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
+  }
+
+  function renderLog() {
+    const box = $('#todayLog');
+    if (!box) return { count: 0, met: 0 };
+    const t = todayStr();
+    const rows = (S.logs || []).filter((l) => l.date === t)
+      .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    const met = rows.filter((r) => r.goalMet).length;
+    if ($('#logCount')) $('#logCount').textContent = rows.length ? `${rows.length}건 · 목표 달성 ${met}` : '아직 없어요';
+    box.innerHTML = rows.length
+      ? rows.map((l) => `<div class="log-row">
+          <span class="log-time">${esc(l.at)}</span>
+          <span class="log-title">${esc(l.title)}</span>
+          ${l.goalMet ? '<span class="log-badge goal">⏰ 목표 달성</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>')}
+          <b class="log-pts">+${Math.max(0, Math.round(+l.earned || 0))}P</b>
+        </div>`).join('')
+      : '<div class="shop-empty" style="padding:8px 4px">오늘 끝낸 미션이 완료 시각과 함께 이곳에 쌓여요</div>';
+    return { count: rows.length, met };
   }
 
   function renderMissions() {
     const t = todayStr();
     const total = Math.max(0, Math.round((S.points && S.points.total) || 0));
-    const lv = levelIndex(total);
-    $('#charStage').innerHTML = charSVG(lv);
-    $('#charLevel').textContent = LEVELS[lv].name;
+    const p = partnerOf(S.partner);
+    const st = stagesOf();
+    const lv = stageIndex(total);
+    const stage = st[lv];
+
+    $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint) + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '');
+    $('#charLevel').textContent = stage.name;
+
     const doneList = S.missions.filter((x) => x.doneOn === t);
-    const ptsToday = doneList.reduce((s, x) => s + (+x.points || 0), 0);
+    const ptsToday = doneList.reduce((s, x) => s + earnOf(x), 0);
     $('#charCount').innerHTML = `누적 <b>${total}P</b>`;
     $('#charToday').textContent = `오늘 +${ptsToday}P`;
-    $('#choreSub').textContent = `오늘 ${doneList.length}개 완료 · 미션 ${S.missions.length}개`;
-    const cur = LEVELS[lv];
-    const nxt = LEVELS[lv + 1];
+    const log = renderLog();
+    $('#choreSub').textContent = `오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met} · 미션 ${S.missions.length}개`;
+
+    const nxt = st[lv + 1];
     if (nxt) {
-      const span = nxt.min - cur.min;
-      const got = total - cur.min;
+      const span = nxt.min - stage.min;
+      const got = total - stage.min;
       $('#charBar').style.width = clamp((got / span) * 100, 0, 100) + '%';
-      $('#charNext').textContent = `${cur.next}까지 ${Math.max(0, nxt.min - total)}P 남았어요`;
+      $('#charNext').textContent = `${nxt.name}까지 ${Math.max(0, nxt.min - total)}P 남았어요`;
     } else {
       $('#charBar').style.width = '100%';
-      $('#charNext').textContent = '최고 단계예요! 대단해요 🎉';
+      $('#charNext').textContent = '최종 진화 완료! 정말 대단해요 🎉';
     }
+
+    $('#charEvo').innerHTML = st.map((s, i) =>
+      `<span class="evo${i === lv ? ' on' : ''}${i > lv ? ' lock' : ''}" title="${esc(s.name)} · ${s.min}P">${pokeImg(s, 'evo-img', p.tint)}</span>`
+    ).join('');
+    if ($('#partnerPill')) $('#partnerPill').textContent = `${p.label} 계열`;
 
     // 구성원별 오늘 완료·오늘 포인트·누적 포인트
     const stats = memberStats();
@@ -643,18 +746,29 @@
     const order = {};
     S.members.forEach((m, i) => { order[m.id] = i; });
     order[''] = 99;
+    const nowMin = minOf(hhmm());
     const list = S.missions.slice().sort((a, b) => (order[a.member] ?? 50) - (order[b.member] ?? 50));
     $('#choreList').innerHTML = list.length
       ? list.map((c) => {
           const done = c.doneOn === t;
           const m = memberById(c.member);
-          return `<div class="chore ${done ? 'done' : ''}">
+          const base = basePtsOf(c);
+          const bonus = bonusPtsOf(c);
+          const di = done ? null : dueInfo(c.due, nowMin);
+          const chip = done
+            ? doneBadge(c)
+            : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.text)}</span>` : '');
+          const pts = done ? earnOf(c) : base;
+          return `<div class="chore ${done ? 'done' : ''}" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <div class="chore-main">
               <div class="chore-title">${esc(c.title)}</div>
-              <div class="chore-meta"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</div>
+              <div class="chore-meta">
+                <span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}
+                ${chip}
+              </div>
             </div>
-            <span class="pts">+${Math.max(0, Math.round(+c.points || 0))}P</span>
+            <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
             <div class="chore-tools">
               <button class="btn icon sm ghost" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
               <button class="btn icon sm ghost" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
@@ -670,6 +784,8 @@
     if (total >= 10 && total > stars * 10) row += `<span style="font-size:11px;font-weight:800;color:var(--text-3);align-self:center">${total - stars * 10}P</span>`;
     if (!stars) row = '<span style="font-size:11.5px;font-weight:700;color:var(--text-3)">미션을 끝내면 10P마다 ⭐ 하나씩 쌓여요</span>';
     $('#stickerRow').innerHTML = row;
+
+    checkPokeImages();
   }
 
   function memberStats() {
@@ -681,7 +797,7 @@
       return {
         m,
         today: done.length,
-        ptsToday: done.reduce((s, x) => s + (+x.points || 0), 0),
+        ptsToday: done.reduce((s, x) => s + earnOf(x), 0),
         total: Math.max(0, Math.round(+bym[m.id] || 0)),
       };
     });
@@ -691,7 +807,7 @@
       rows.push({
         m: { id: '', name: '공용', color: '#9aa4bd' },
         today: done.length,
-        ptsToday: done.reduce((s, x) => s + (+x.points || 0), 0),
+        ptsToday: done.reduce((s, x) => s + earnOf(x), 0),
         total: Math.max(0, Math.round(+bym[''] || 0)),
       });
     }
@@ -702,45 +818,102 @@
     const c = S.missions.find((x) => x.id === id);
     if (!c) return;
     const t = todayStr();
-    const p = Math.max(0, Math.round(+c.points || 0));
-    if (!S.points) S.points = { total: 0, byMember: {} };
-    if (!S.points.byMember) S.points.byMember = {};
+    ptsInit();
     const key = c.member || '';
-    const before = levelIndex(Math.max(0, Math.round(S.points.total || 0)));
-    const wasDone = c.doneOn === t;
-    if (wasDone) {
-      c.doneOn = null;
-      S.points.total = Math.max(0, (S.points.total || 0) - p);
-      S.points.byMember[key] = Math.max(0, (S.points.byMember[key] || 0) - p);
-    } else {
-      c.doneOn = t;
-      S.points.total = (S.points.total || 0) + p;
-      S.points.byMember[key] = (S.points.byMember[key] || 0) + p;
+    const before = stageIndex(Math.max(0, Math.round(S.points.total || 0)));
+
+    if (c.doneOn === t) {
+      addPoints(key, -earnOf(c));
+      c.doneOn = null; c.doneAt = ''; c.earned = 0; c.goalMet = false;
+      dropLog(c.id);
+      save(); renderMissions();
+      toast('완료를 취소했어요', '', 1400);
+      return;
     }
-    const after = levelIndex(Math.max(0, Math.round(S.points.total || 0)));
+
+    const at = hhmm();
+    const r = missionEarn(c, at);
+    c.doneOn = t;
+    c.doneAt = at;
+    c.earned = r.earned;
+    c.goalMet = r.goalMet;
+    addPoints(key, r.earned);
+    addLog(c, r, at);
+    const after = stageIndex(Math.max(0, Math.round(S.points.total || 0)));
     save();
     renderMissions();
+
     if (after > before) {
       confetti(90);
       beep('up');
       showLevelUp(after);
-    } else if (wasDone) {
-      toast('완료를 취소했어요', '', 1400);
+    } else if (r.goalMet && r.bonus) {
+      confetti(40);
+      beep('up');
+      toast(`+${r.earned}P · ⏰ 목표 시간 달성! (보너스 +${r.bonus}P)`, 'mint', 2600);
+    } else if (c.due) {
+      toast(`+${r.earned}P · ⏱️ 목표 시간은 지났지만 끝냈어요`, '', 2600);
     } else {
-      toast(`+${p}P ⭐ 잘했어요!`, 'mint', 1500);
+      toast(`+${r.earned}P ⭐ 잘했어요!`, 'mint', 1600);
     }
   }
 
   function showLevelUp(lv) {
     const el = $('#levelup');
+    const st = stagesOf();
+    const p = partnerOf(S.partner);
+    const stage = st[lv] || st[st.length - 1];
     el.innerHTML = `<div class="levelup-card">
       <div class="lv-emoji">🎉</div>
-      <h4>${esc(LEVELS[lv].name)} 로 성장했어요!</h4>
+      <h4>${esc(stage.name)} 진화 완료!</h4>
       <p>누적 ${Math.round(S.points.total)}P · 정말 대단해요</p>
-      <div style="width:130px;height:130px;margin:6px auto 0">${charSVG(lv)}</div>
+      <div class="levelup-poke">${pokeImg(stage, 'poke-img', p.tint)}</div>
     </div>`;
     el.hidden = false;
-    setTimeout(() => { el.hidden = true; el.innerHTML = ''; }, 2600);
+    checkPokeImages();
+    setTimeout(() => { el.hidden = true; el.innerHTML = ''; }, 2800);
+  }
+
+  /* ---- 파트너 고르기 ---- */
+  function updateDueChips() {
+    const nowMin = minOf(hhmm());
+    $$('[data-duechip]').forEach((el) => {
+      const di = dueInfo(el.dataset.due, nowMin);
+      if (!di) return;
+      el.className = 'due-chip ' + di.cls;
+      el.textContent = '⏰ ' + di.text;
+    });
+  }
+
+  function renderPartnerGrid() {
+    const grid = $('#partnerGrid');
+    if (!grid) return;
+    grid.innerHTML = PARTNERS.map((p) => {
+      const on = p.key === S.partner;
+      return `<button type="button" class="partner-card${on ? ' on' : ''}" data-partner="${p.key}" aria-pressed="${on}">
+        <div class="partner-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', p.tint)}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
+        <div class="partner-name">${esc(p.label)} 계열${on ? ' <b>사용 중</b>' : ''}</div>
+        <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
+      </button>`;
+    }).join('');
+    checkPokeImages();
+  }
+
+  function openPartnerPicker() {
+    renderPartnerGrid();
+    $('#partnerModal').hidden = false;
+  }
+
+  function setPartner(key) {
+    if (!PARTNERS.some((p) => p.key === key)) return;
+    if (S.partner === key) { $('#partnerModal').hidden = true; return; }
+    S.partner = key;
+    save();
+    renderMissions();
+    renderSettings();
+    checkPokeImages();
+    toast(`파트너를 ${partnerOf(key).label} 계열로 바꿨어요`, 'mint', 2200);
+    $('#partnerModal').hidden = true;
   }
 
   function missionMemberOptions() {
@@ -750,17 +923,28 @@
   async function addMission() {
     const r = await askModal({
       title: '미션 추가',
-      hint: '끝내면 정한 만큼 포인트가 쌓입니다. 아이든 어른이든 같은 방식으로 쓸 수 있어요.',
+      hint: '목표 시간을 비워 두면 시간 보너스 없이 기본 포인트만 쌓여요.',
       fields: [
         { name: 'title', label: '미션', placeholder: '예: 신발 정리하기' },
-        { name: 'points', label: '포인트 (P)', type: 'number', value: 3 },
+        { name: 'points', label: '기본 포인트 (P)', type: 'number', value: 3 },
+        { name: 'due', label: '목표 시간 (마감 시각, 비우면 없음)', type: 'time', value: '' },
+        { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: 3 },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: (S.members[S.members.length - 1] || {}).id || '' },
       ],
       okText: '추가',
     });
     if (!r || !r.title.trim()) return;
-    S.missions.push({ id: uid(), title: r.title.trim(), points: Math.max(0, Math.round(+r.points || 0)), member: r.member || '', doneOn: null });
-    save(); renderMissions(); toast('미션을 추가했어요', 'mint');
+    S.missions.push({
+      id: uid(),
+      title: r.title.trim(),
+      points: Math.max(0, Math.round(+r.points || 0)),
+      due: r.due || '',
+      bonus: r.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0,
+      member: r.member || '',
+      doneOn: null, doneAt: '', earned: 0, goalMet: false,
+    });
+    save(); renderMissions();
+    toast(r.due ? `미션을 추가했어요 · ${r.due}까지 +${Math.max(0, Math.round(+r.bonus || 0))}P 보너스` : '미션을 추가했어요', 'mint');
   }
 
   async function editMission(id) {
@@ -768,36 +952,58 @@
     if (!c) return;
     const r = await askModal({
       title: '미션 수정',
+      hint: '목표 시간과 보너스 포인트를 바꾸면 오늘 완료 기록도 새 기준으로 다시 계산됩니다.',
       fields: [
         { name: 'title', label: '미션', value: c.title },
-        { name: 'points', label: '포인트 (P)', type: 'number', value: Math.max(0, Math.round(+c.points || 0)) },
+        { name: 'points', label: '기본 포인트 (P)', type: 'number', value: basePtsOf(c) },
+        { name: 'due', label: '목표 시간 (마감 시각, 비우면 없음)', type: 'time', value: c.due || '' },
+        { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: bonusPtsOf(c) || 3 },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: c.member || '' },
       ],
       okText: '저장',
       extraAction: { label: '삭제', act: 'del' },
     });
-    if (r === 'del') { S.missions = S.missions.filter((x) => x.id !== id); save(); renderMissions(); return; }
-    if (!r || !r.title.trim()) return;
-    const oldPts = Math.max(0, Math.round(+c.points || 0));
-    const newPts = Math.max(0, Math.round(+r.points || 0));
-    // 오늘 이미 완료한 미션의 포인트를 바꾸면 누적 포인트도 차이만큼 맞춰 준다
-    if (c.doneOn === todayStr() && newPts !== oldPts) {
-      const delta = newPts - oldPts;
-      if (!S.points.byMember) S.points.byMember = {};
-      const key = c.member || '';
-      S.points.total = Math.max(0, (S.points.total || 0) + delta);
-      S.points.byMember[key] = Math.max(0, (S.points.byMember[key] || 0) + delta);
+    if (r === 'del') {
+      if (c.doneOn === todayStr()) { addPoints(c.member || '', -earnOf(c)); dropLog(c.id); }
+      S.missions = S.missions.filter((x) => x.id !== id);
+      save(); renderMissions();
+      return;
     }
+    if (!r || !r.title.trim()) return;
+
+    const t = todayStr();
+    const wasDone = c.doneOn === t;
+    const oldKey = c.member || '';
+    const oldEarned = earnOf(c);
+
     c.title = r.title.trim();
-    c.points = newPts;
+    c.points = Math.max(0, Math.round(+r.points || 0));
+    c.due = r.due || '';
+    c.bonus = c.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0;
     c.member = r.member || '';
-    save(); renderMissions(); toast('미션을 저장했어요', 'mint');
+
+    // 오늘 이미 끝낸 미션이면 실제 완료 시각을 새 목표 시간과 다시 비교해 포인트를 맞춰 준다
+    if (wasDone) {
+      const rr = missionEarn(c, c.doneAt || hhmm());
+      const delta = rr.earned - oldEarned;
+      if (oldKey !== c.member) {
+        addPoints(oldKey, -oldEarned);
+        addPoints(c.member, rr.earned);
+      } else if (delta) {
+        addPoints(c.member, delta);
+      }
+      c.earned = rr.earned;
+      c.goalMet = rr.goalMet;
+      addLog(c, rr, c.doneAt || hhmm());
+    }
+    save(); renderMissions();
+    toast('미션을 저장했어요', 'mint');
   }
 
   async function resetPoints() {
     const r = await askModal({
       title: '포인트 초기화',
-      hint: '누적 포인트와 오늘 완료 표시를 0으로 되돌립니다. 미션 목록은 그대로 남습니다.',
+      hint: '누적 포인트·오늘 완료 표시·오늘 완료 이력을 0으로 되돌립니다. 미션 목록은 그대로 남습니다.',
       fields: [{ name: 'ok', label: '계속하려면 "초기화"를 입력하세요', placeholder: '초기화' }],
       okText: '초기화',
     });
@@ -805,7 +1011,10 @@
     if ((r.ok || '').trim() !== '초기화') { toast('입력이 맞지 않아 취소했어요'); return; }
     const t = todayStr();
     S.points = { total: 0, byMember: {} };
-    S.missions.forEach((m) => { if (m.doneOn === t) m.doneOn = null; });
+    S.missions.forEach((m) => {
+      if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; }
+    });
+    S.logs = (S.logs || []).filter((l) => l.date !== t);
     save(); renderMissions(); toast('포인트를 0으로 되돌렸어요');
   }
 
@@ -1320,6 +1529,7 @@
         <button class="btn icon sm ghost" data-act="member-edit" data-id="${m.id}" aria-label="이름 변경">✎</button>
       </span>`).join('');
     $('#quietToggle').checked = !!S.quiet;
+    if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.partner).label} 계열`;
     try {
       const bytes = new Blob([JSON.stringify(S)]).size;
       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
@@ -1571,6 +1781,16 @@
   $('#helpClose').addEventListener('click', () => { $('#helpModal').hidden = true; });
   $('#helpModal').addEventListener('click', (e) => { if (e.target.id === 'helpModal') $('#helpModal').hidden = true; });
 
+  // 파트너 포켓몬 고르기
+  $('#partnerBtn').addEventListener('click', openPartnerPicker);
+  $('#partnerBtn2').addEventListener('click', openPartnerPicker);
+  $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
+  $('#partnerModal').addEventListener('click', (e) => { if (e.target.id === 'partnerModal') $('#partnerModal').hidden = true; });
+  $('#partnerGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-partner]');
+    if (b) setPartner(b.dataset.partner);
+  });
+
   $('#geoBtn').addEventListener('click', async () => {
     $('#locPill').textContent = '위치 확인 중…';
     const got = await requestGeo();
@@ -1621,7 +1841,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    ['#modal', '#letterModal', '#settingsModal', '#helpModal'].forEach((sel) => {
+    ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal'].forEach((sel) => {
       const m = $(sel);
       if (m && !m.hidden) {
         if (sel === '#modal' && modalResolve) { modalResolve(null); return; }
@@ -1656,7 +1876,17 @@
   // 위치가 아직 없으면 한 번만 물어봄
   setTimeout(() => { bootstrapLocation(); }, 1400);
   setInterval(() => { if (!weatherBusy) refreshWeather(); }, 15 * 60 * 1000);
+  // 목표 시간까지 남은 시간 표시를 20초마다 갱신
+  setInterval(() => { if (!document.hidden) updateDueChips(); }, 20000);
 
-  // 테스트·디버그용 (개인정보 없음)
-  window.FamilyDashboard = { get state() { return S; }, version: '1.0.0' };
+  window.FamilyDashboard = {
+    get state() { return S; },
+    version: '2.0.0',
+    now: () => hhmm(),
+    pokemonStatus: () => $$('img[data-poke]').map((i) => ({
+      name: i.dataset.pokeName || i.alt, id: i.dataset.poke,
+      ok: i.naturalWidth > 0, width: i.naturalWidth,
+      fallbackUsed: i.dataset.fb === '1',
+    })),
+  };
 })();

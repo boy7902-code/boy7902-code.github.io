@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·할 일·편지함·장보기·가계부를 한 화면에." />
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·포켓몬 미션 포인트·목표 시간·편지함·장보기·가계부를 한 화면에." />
 <meta name="theme-color" content="#f4f7ff" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -91,16 +91,22 @@
           <div class="char-panel">
             <div class="char-stage" id="charStage"></div>
             <div class="char-info" id="charInfo">
-              <div class="char-level" id="charLevel">알</div>
+              <div class="char-level" id="charLevel">피츄</div>
               <div class="char-count" id="charCount">누적 <b>0P</b></div>
               <div class="char-today" id="charToday">오늘 +0P</div>
               <div class="char-bar"><i id="charBar" style="width:0%"></i></div>
-              <div class="char-next" id="charNext">아기 공룡까지 30P</div>
+              <div class="char-next" id="charNext">피카츄까지 30P 남았어요</div>
             </div>
+            <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
+            <button class="btn sm ghost char-partner-btn" id="partnerBtn" title="파트너 포켓몬 바꾸기">🐾 파트너</button>
           </div>
           <div class="mission-area">
             <div class="member-stats" id="memberStats"></div>
             <div class="chore-list" id="choreList"></div>
+            <details class="log-box" id="logBox" open>
+              <summary>🕒 오늘 완료 이력 <span class="pill" id="logCount">아직 없어요</span></summary>
+              <div class="log-list" id="todayLog"></div>
+            </details>
           </div>
         </div>
         <div class="row" style="margin-top:2px">
@@ -230,7 +236,7 @@
   <footer class="footer">
     <span class="grow">
       <b>이 대시보드의 모든 내용은 이 기기 브라우저에만 저장됩니다.</b> 서버로 보내지 않고, 인터넷이 끊겨도 그대로 남아요.
-      날씨만 무료 날씨 서비스(Open-Meteo)에서 실시간으로 받아옵니다.
+      날씨만 무료 날씨 서비스(Open-Meteo)에서, 포켓몬 그림만 PokeAPI 이미지 저장소에서 받아옵니다.
     </span>
     <button class="btn sm" id="exportBtn">⬇︎ 백업 내보내기</button>
     <button class="btn sm" id="importBtn">⬆︎ 백업 불러오기</button>
@@ -294,6 +300,15 @@
     </div>
 
     <div class="settings-section">
+      <h4>🐾 파트너 포켓몬</h4>
+      <div class="row wrap">
+        <button class="btn sm" id="partnerBtn2">파트너 바꾸기</button>
+        <span class="pill" id="partnerPill">피카츄 계열</span>
+      </div>
+      <p class="settings-note">아이가 좋아하는 진화 라인을 고르면 누적 포인트에 따라 그 포켓몬이 함께 자랍니다. (피카츄 · 파이리 · 꼬부기 · 이상해씨)</p>
+    </div>
+
+    <div class="settings-section">
       <h4>👨‍👩‍👧 가족 구성원</h4>
       <div class="row wrap" id="memberList"></div>
       <button class="btn sm ghost" id="memberAddBtn" style="margin-top:8px">＋ 구성원 추가</button>
@@ -327,6 +342,18 @@
   </div>
 </div>
 
+<!-- ======================= 모달: 파트너 포켓몬 ======================= -->
+<div class="modal" id="partnerModal" hidden>
+  <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="partnerTitle">
+    <h3 id="partnerTitle">🐾 파트너 포켓몬 고르기</h3>
+    <p class="hint">누적 포인트가 쌓이면 고른 진화 라인을 따라 함께 자라요. 언제든 바꿀 수 있습니다.</p>
+    <div class="partner-grid" id="partnerGrid"></div>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="partnerClose">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ======================= 모달: 사용 안내 ======================= -->
 <div class="modal" id="helpModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
@@ -355,9 +382,11 @@
     <div class="settings-section">
       <h4>4. 미션 &amp; 포인트</h4>
       <p class="settings-note">
-        가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 포인트(+P)가 그 사람 몫으로 쌓입니다.
-        카드 위쪽에는 구성원별 <b>오늘 완료 수·오늘 포인트·누적 포인트</b>가 표시되고,
-        미션은 <b>＋</b>로 추가하거나 ✎로 포인트를 바꿀 수 있어요. 누적 포인트가 쌓이면 캐릭터가 자랍니다.
+        가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 기본 포인트(+P)가 그 사람 몫으로 쌓입니다.
+        미션마다 <b>목표 시간</b>(예: 08:00)과 <b>시간 내 완료 보너스</b>(예: +3P)를 정할 수 있고,
+        목표 시간 안에 체크하면 기본 포인트에 보너스까지 더해지며 <b>⏰ 목표 시간 달성!</b> 배지가 붙습니다.
+        시간이 지나 체크하면 기본 포인트만 쌓이고 실제 완료 시각과 함께 <b>⏱️ 목표 시간 초과</b>로 표시됩니다.
+        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있고, 누적 포인트가 쌓이면 고른 포켓몬 파트너가 진화합니다.
       </p>
     </div>
     <div class="settings-section">
