@@ -642,6 +642,23 @@
     $('#clockDate').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${DAYS[now.getDay()]}요일`;
     const h = now.getHours();
     $('#brandSub').textContent = h < 6 ? '늦은 밤이에요 🌙' : h < 11 ? '좋은 아침이에요 ☀️' : h < 17 ? '좋은 오후예요 🌤️' : h < 21 ? '좋은 저녁이에요 🌆' : '편안한 밤 되세요 🌙';
+    renderFreeDay(now);
+  }
+
+  /* ---- 일요일은 아이의 '자유의 날' (숙제 없음) — 미션·일정 카드 위에 자동 배너 ----
+     이름은 코드에 박지 않고 구성원(id m3) 이름을 그대로 읽어 씁니다(기본값 '아이'). */
+  function renderFreeDay(now = new Date()) {
+    const isFreeDay = now.getDay() === 0;
+    const kid = kidMember();
+    const name = (kid && String(kid.name || '').trim()) || '아이';
+    $$('.free-day-banner').forEach((el) => {
+      el.hidden = !isFreeDay;
+      if (!isFreeDay) return;
+      const t = el.querySelector('.fd-title');
+      if (t) t.textContent = `오늘은 ${name} 자유의 날!`;
+      el.title = `${name} 미션은 일요일에 쉬어요`;
+    });
+    $$('[data-freeday-kid]').forEach((el) => { el.textContent = name; });
   }
 
   /* ------------------------------------------------------------------ weather */
@@ -1146,6 +1163,13 @@
     const t = todayStr();
     return S.missions.filter((x) => x.member === KID_ID && x.doneOn === t).reduce((s, x) => s + earnOf(x), 0);
   }
+  // 오늘 요일에 해당하는 '아이' 미션으로 오늘 하루 모을 수 있는 최대 포인트(기본 + 목표 시간 보너스)
+  function kidTodayGoal(dow = new Date().getDay()) {
+    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
+    const goal = list.reduce((s, m) => s + basePtsOf(m) + bonusPtsOf(m), 0);
+    const got = kidTodayPts();
+    return { count: list.length, goal, got, left: Math.max(0, goal - got) };
+  }
 
   /* ---- 도감 ---- */
   const dexEntryOf = (key) => (S.pokemon.dex || []).find((d) => d.key === key) || null;
@@ -1482,24 +1506,50 @@
     const todayCount = S.missions.filter((x) => missionOnDay(x, dowToday)).length;
     $('#charCount').innerHTML = `누적 경험치 <b>${totalXp}P</b>`;
     $('#charToday').textContent = `아이 오늘 +${kidTodayPts()}P`;
-    if ($('#charBalance')) $('#charBalance').innerHTML = `사용 가능 <b>${bal}P</b>`;
-    const tick = $('#charTick');
-    if (tick) tick.textContent = `현재 파트너 ${xp}P / ${FINAL_P}P`;
     const log = renderLog();
     $('#choreSub').textContent = `오늘 할 미션 ${todayCount}개 · 오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met}`;
     const thisMonth = todayStr().slice(0, 7);
     const monthCount = histAllLogs().filter((l) => l.date.slice(0, 7) === thisMonth).length;
     if ($('#histBtnPill')) $('#histBtnPill').textContent = monthCount ? `이번 달 ${monthCount}건` : '이번 달 기록 없음';
 
+    // ① 진화 게이지 — 다음 진화까지 남은 P를 굵은 바·퍼센트·큰 안내로
     const nxt = st[lv + 1];
+    let evoPct = 100;
     if (nxt) {
       const span = Math.max(1, nxt.min - stage.min);
       const got = xp - stage.min;
-      $('#charBar').style.width = clamp((got / span) * 100, 0, 100) + '%';
-      $('#charNext').textContent = `${nxt.name}까지 ${Math.max(0, nxt.min - xp)}P 남았어요`;
+      evoPct = clamp(Math.round((got / span) * 100), 0, 100);
+      $('#charBar').style.width = evoPct + '%';
+      $('#charNext').classList.remove('done');
+      $('#charNext').innerHTML = `다음 진화 <b>${esc(nxt.name)}</b>까지 딱 <b>${Math.max(0, nxt.min - xp)}P</b> 남음!`;
     } else {
       $('#charBar').style.width = '100%';
-      $('#charNext').textContent = done ? '최종 진화 완료! 🏆 도감에 저장됐어요' : '최종 단계예요';
+      $('#charNext').classList.add('done');
+      $('#charNext').innerHTML = done ? '최종 진화 완료! 🏆 도감에 저장됐어요' : '최종 단계예요';
+    }
+    if ($('#evoPct')) $('#evoPct').textContent = evoPct + '%';
+    if ($('#evoBar')) $('#evoBar').setAttribute('aria-valuenow', String(evoPct));
+
+    // ② 진화 경험치(⚡) vs 선물 코인(🪙) 스탯 카드
+    if ($('#statXp')) $('#statXp').textContent = xp;
+    if ($('#statXpMax')) $('#statXpMax').textContent = `/${FINAL_P}P`;
+    if ($('#statCoin')) $('#statCoin').textContent = bal;
+
+    // ③ 오늘 달성 바 — 오늘 모은 P / 오늘 목표(오늘 요일 아이 미션 최대 획득) 합계
+    const tg = kidTodayGoal(dowToday);
+    const todayPct = tg.goal ? clamp(Math.round((tg.got / tg.goal) * 100), 0, 100) : 0;
+    if ($('#todayGot')) $('#todayGot').textContent = `${tg.got}P`;
+    if ($('#todayGoal')) $('#todayGoal').textContent = `${tg.goal}P`;
+    if ($('#todayPct')) $('#todayPct').textContent = todayPct + '%';
+    if ($('#todayBar')) $('#todayBar').style.width = todayPct + '%';
+    const todayMeter = $('#todayMeter');
+    if (todayMeter) todayMeter.classList.toggle('done', tg.goal > 0 && tg.got >= tg.goal);
+    if ($('#todayHint')) {
+      $('#todayHint').textContent = !tg.count
+        ? '오늘은 아이 미션이 없어요 🌴'
+        : tg.got >= tg.goal
+          ? '🎉 오늘 목표 달성! 최고예요'
+          : `${tg.left}P 더 모으면 오늘 목표 달성!`;
     }
 
     $('#charEvo').innerHTML = st.map((s, i) =>
@@ -1703,7 +1753,7 @@
       dropLog(c.id);
       save(); renderMissions();
       toast(isKid ? `완료를 취소했어요 · 파트너 경험치 -${undo}P` : '완료를 취소했어요', '', 1600);
-      return;
+      return { earned: undo, isKid, checked: false };
     }
 
     const at = hhmm();
@@ -1742,6 +1792,34 @@
     } else {
       toast(`+${r.earned}P ⭐ 잘했어요!`, 'mint', 1600);
     }
+    return { earned: r.earned, isKid, checked: true };
+  }
+
+  /* ---- 미션 체크 순간: 누른 자리에서 '+NP ⚡'가 둥실 떠오름 ---- */
+  function floatEarn(rect, pts, isKid) {
+    if (!rect || !(pts > 0)) return;
+    const el = document.createElement('div');
+    el.className = 'earn-float' + (isKid ? '' : ' adult');
+    el.textContent = `+${pts}P ⚡`;
+    el.style.left = `${rect.left + rect.width / 2}px`;
+    el.style.top = `${rect.top + rect.height / 2}px`;
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+
+  // 포인트가 오를 때 게이지·스탯 카드를 한 번 톡 쳐서 눈에 띄게
+  function pulseGauges() {
+    [$('#evoBar'), $('#todayBarWrap')].forEach((el) => {
+      if (!el) return;
+      el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+      setTimeout(() => el.classList.remove('bump'), 900);
+    });
+    [$('#statXpCard'), $('#statCoinCard')].forEach((el) => {
+      if (!el) return;
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 700);
+    });
   }
 
   function showLevelUp(lv) {
@@ -2604,6 +2682,7 @@
 
   /* -------------------------------------------------------------------- render */
   function renderAll() {
+    renderFreeDay();
     renderSchedule();
     renderMissions();
     renderShopping();
@@ -2630,7 +2709,12 @@
       } else if (act === 'wd-click' && !t.closest('[data-act="wd-click"]').dataset.ignore) {
         addEvent({ date: t.dataset.date });
       } else if (act === 'chore-toggle') {
-        toggleMission(id);
+        const rect = t.getBoundingClientRect();
+        const res = toggleMission(id);
+        if (res && res.checked && res.earned > 0) {
+          floatEarn(rect, res.earned, res.isKid);
+          if (res.isKid) pulseGauges();
+        }
       } else if (act === 'chore-edit') {
         editMission(id);
       } else if (act === 'chore-del') {
