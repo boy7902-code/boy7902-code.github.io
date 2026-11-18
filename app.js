@@ -72,6 +72,10 @@
     v: 3,
     theme: 'light',
     quiet: false,
+    dashboardTitle: '',          // 헤더·탭 제목 — 비우면 '우리 가족 대시보드'
+    showAdultMissions: false,    // false = 아이(KID_ID) 미션만 보기 (성인 미션은 지우지 않고 숨김)
+    parentPin: '0000',           // 부모 모드 기본 PIN — 실제 PIN은 비공개 동기화 DB에서만 내려옵니다
+    wishlist: [],                // 사고 싶은 것 { id, title, need, at, by, boughtAt }
     pokemon: { key: 'pikachu', xp: 0, dex: [] },   // 현재 파트너 라인 · 현재 파트너 경험치 · 수집 완료 도감
     location: null,             // { lat, lon, name } — 사용자가 정한 경우에만 저장
     members: [
@@ -201,6 +205,23 @@
 
     if (typeof out.stickers !== 'number' || !isFinite(out.stickers)) out.stickers = 0;
 
+    // ---- 제목 · 아이 전용 미션 보기 · 부모 PIN · 사고 싶은 것(위시리스트) ----
+    out.dashboardTitle = String(out.dashboardTitle == null ? '' : out.dashboardTitle).trim().slice(0, 40);
+    out.showAdultMissions = out.showAdultMissions === true || out.showAdultMissions === 'true';
+    out.parentPin = /^\d{4,12}$/.test(String(out.parentPin == null ? '' : out.parentPin)) ? String(out.parentPin) : base.parentPin;
+    out.wishlist = (Array.isArray(out.wishlist) ? out.wishlist : [])
+      .filter((w) => w && typeof w === 'object')
+      .slice(0, 60)
+      .map((w) => ({
+        id: w.id || 'w' + Math.random().toString(36).slice(2, 9),
+        title: String(w.title || '').slice(0, 40),
+        need: Math.max(0, Math.round(+w.need || 0)),
+        at: isDateStr(w.at) ? w.at : '',
+        by: String(w.by || KID_ID),
+        boughtAt: isDateStr(w.boughtAt) ? w.boughtAt : '',
+      }))
+      .filter((w) => w.title);
+
     if (!out.members.length) out.members = base.members;
     return out;
   }
@@ -271,8 +292,9 @@
      저장되고, 공개 저장소 코드에는 들어가지 않습니다. */
   const SYNCKEY = 'family-dashboard:sync';
   const SYNC_POLL_MS = 30000;          // 화면이 보이는 동안 30초마다 확인
-  const SYNC_ARRAYS = ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses'];
-  const SYNC_VALUES = ['v', 'theme', 'quiet', 'location', 'pokemon', 'points', 'stickers'];
+  const SYNC_ARRAYS = ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses', 'wishlist'];
+  const SYNC_VALUES = ['v', 'theme', 'quiet', 'location', 'pokemon', 'points', 'stickers',
+    'dashboardTitle', 'showAdultMissions', 'parentPin'];   // 제목·미션 보기·부모 PIN도 가족끼리 함께 씁니다
 
   const SY = {
     cfg: null,        // { url, pin, device, rev, lastAt, id }
@@ -660,6 +682,87 @@
     });
     $$('[data-freeday-kid]').forEach((el) => { el.textContent = name; });
   }
+
+  /* -------------------------------------------- 대시보드 이름 (집마다 바꿔 쓰는 제목) */
+  const DEFAULT_TITLE = '우리 가족 대시보드';
+  const appTitle = () => String(S.dashboardTitle || '').trim() || DEFAULT_TITLE;
+
+  function applyTitle() {
+    const t = appTitle();
+    $$('.brand-title').forEach((el) => { if (el.textContent !== t) el.textContent = t; });
+    if (document.title !== t) document.title = t;
+  }
+
+  /* ---------------------------------------------- 🔒 부모 모드 잠금 (4자리 PIN)
+     잠금이 기본입니다. 아이는 미션 체크·도감·편지 쓰기·사고 싶은 것 적기·타이머·달성 현황을 그대로 쓰고,
+     보호자 일(미션/일정/장보기/위키 고치기, 포인트 사용, 설정)은 PIN을 넣어야 열립니다.
+     PIN은 코드에 박지 않고 상태(state.parentPin)에서만 읽습니다 — 기본값 '0000'. */
+  const PARENT_MS = 5 * 60 * 1000;      // 부모 모드 유지 시간 — 5분 뒤 자동 잠금
+  let parentAt = 0;
+
+  const parentPinOf = () => (/^\d{4,12}$/.test(String(S.parentPin || '')) ? String(S.parentPin) : '0000');
+  const parentUnlocked = () => !!parentAt && (Date.now() - parentAt) < PARENT_MS;
+  const parentLeftText = () => `${Math.max(1, Math.ceil((PARENT_MS - (Date.now() - parentAt)) / 60000))}분`;
+
+  function renderParentBtn() {
+    const b = $('#parentBtn');
+    const on = parentUnlocked();
+    document.body.dataset.parent = on ? 'on' : 'off';
+    if (!b) return;
+    b.dataset.state = on ? 'on' : 'off';
+    b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">부모 모드</span>`;
+    b.title = on ? `부모 모드 열림 · ${parentLeftText()} 뒤 자동 잠금 (누르면 바로 잠금)` : '부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요';
+    b.setAttribute('aria-label', on ? '부모 모드 열림 — 눌러서 잠그기' : '부모 모드 잠김 — 눌러서 열기');
+  }
+
+  function lockParent(quiet) {
+    if (!parentUnlocked()) return;
+    parentAt = 0;
+    renderParentBtn();
+    if (!quiet) toast('🔒 부모 모드로 잠갔어요', '', 1800);
+  }
+
+  // 4자리 PIN 확인 — 맞으면 true (3번까지 다시 넣을 수 있음)
+  async function askParentPin(reason) {
+    let msg = reason || '보호자만 바꿀 수 있어요. 4자리 PIN을 넣어 주세요.';
+    for (let i = 0; i < 3; i++) {
+      const r = await askModal({
+        title: '🔒 부모 모드',
+        hint: msg,
+        fields: [{ name: 'pin', label: 'PIN (4자리)', type: 'password', inputmode: 'numeric', autocomplete: 'off', placeholder: '숫자 4자리' }],
+        okText: '열기',
+      });
+      if (!r) return false;
+      const got = String(r.pin || '').replace(/\D/g, '');
+      if (!got) { msg = 'PIN을 넣어 주세요.'; continue; }
+      if (got === parentPinOf()) return true;
+      msg = 'PIN이 맞지 않아요. 다시 넣어 주세요.';
+    }
+    toast('PIN을 3번 틀렸어요. 잠시 뒤 다시 해 보세요.', 'coral', 3400);
+    return false;
+  }
+
+  // 부모 전용 동작 감싸개 — 잠겨 있으면 PIN을 받고, 맞으면 이어서 실행
+  async function asParent(reason, run) {
+    if (parentUnlocked()) {
+      parentAt = Date.now();          // 부모 모드가 열려 있으면 5분을 새로 셉니다
+      renderParentBtn();
+      await run();
+      return;
+    }
+    const ok = await askParentPin(reason);
+    if (!ok) return;
+    parentAt = Date.now();
+    renderParentBtn();
+    toast('🔓 부모 모드 열림 · 5분 뒤 자동으로 잠겨요', 'mint', 2800);
+    await run();
+  }
+
+  // 부모 모드 자동 잠금 감시
+  setInterval(() => {
+    if (parentUnlocked()) { renderParentBtn(); return; }
+    if (parentAt) { parentAt = 0; renderParentBtn(); toast('🔒 5분이 지나 부모 모드가 자동으로 잠겼어요', '', 2400); }
+  }, 15000);
 
   /* ------------------------------------------------------------------ weather */
   const WMO = {
@@ -1151,6 +1254,13 @@
 
   /* ---- 아이 포인트: 누적 경험치 · 사용 가능 포인트(잔액) · 사용 내역 ---- */
   const kidMember = () => S.members.find((m) => m.id === KID_ID) || null;
+  const kidLabel = () => String((kidMember() || {}).name || '').trim() || '아이';
+  // 화면에 보여 줄 미션 — '어른 미션도 같이 보기'가 꺼져 있으면 아이(와 공용) 미션만 보입니다. 데이터는 지우지 않아요.
+  function visibleMissions() {
+    const all = S.missions.slice();
+    if (S.showAdultMissions) return all;
+    return all.filter((m) => !m.member || m.member === KID_ID);
+  }
   // 아이가 지금까지 모은 포인트 총합 = 총 누적 경험치. 포인트를 써도 줄지 않습니다.
   function kidTotalPts() { ptsInit(); return Math.max(0, Math.round(+S.points.byMember[KID_ID] || 0)); }
   function spentPts() {
@@ -1238,7 +1348,9 @@
   const HIST = { view: 'month', y: 0, m: 0, member: 'all', day: '' };
 
   function histAllLogs() {
-    return (S.logs || []).filter((l) => l && isDateStr(l.date));
+    // '어른 미션도 같이 보기'가 꺼져 있으면 성인 완료 기록도 통계에서 숨깁니다 (기록은 그대로 보관)
+    return (S.logs || []).filter((l) => l && isDateStr(l.date)
+      && (S.showAdultMissions || !l.member || l.member === KID_ID));
   }
   function histMemberOk(l) {
     return HIST.member === 'all' || String(l.member || '') === HIST.member;
@@ -1288,7 +1400,8 @@
   function renderHistFilter() {
     const box = $('#histFilter');
     if (!box) return;
-    const opts = [{ id: 'all', name: '전체', color: '' }].concat(S.members.map((m) => ({ id: m.id, name: m.name, color: m.color })));
+    const members = S.showAdultMissions ? S.members : S.members.filter((m) => m.id === KID_ID);
+    const opts = [{ id: 'all', name: '전체', color: '' }].concat(members.map((m) => ({ id: m.id, name: m.name, color: m.color })));
     if (histAllLogs().some((l) => !l.member)) opts.push({ id: '', name: '공용', color: '#9aa4bd' });
     box.innerHTML = opts.map((o) => `<button type="button" class="hist-chip ${HIST.member === o.id ? 'on' : ''}" data-histmember="${esc(o.id)}">
         ${o.color ? `<i class="mdot" style="background:${esc(o.color)}"></i>` : ''}${esc(o.name)}${o.id === KID_ID ? ' 🧒' : ''}
@@ -1500,14 +1613,16 @@
 
     $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint) + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '');
     $('#charLevel').textContent = stage.name;
+    if ($('#tChores')) $('#tChores').textContent = `${kidLabel()} 미션`;   // 집집마다 아이 이름으로 바뀝니다 (기본값 '아이 미션')
 
-    const doneList = S.missions.filter((x) => x.doneOn === t);
+    const doneList = visibleMissions().filter((x) => x.doneOn === t);
     const dowToday = new Date().getDay();
-    const todayCount = S.missions.filter((x) => missionOnDay(x, dowToday)).length;
+    const todayCount = visibleMissions().filter((x) => missionOnDay(x, dowToday)).length;
     $('#charCount').innerHTML = `누적 경험치 <b>${totalXp}P</b>`;
-    $('#charToday').textContent = `아이 오늘 +${kidTodayPts()}P`;
+    $('#charToday').textContent = `${kidLabel()} 오늘 +${kidTodayPts()}P`;
     const log = renderLog();
-    $('#choreSub').textContent = `오늘 할 미션 ${todayCount}개 · 오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met}`;
+    $('#choreSub').textContent = `오늘 할 미션 ${todayCount}개 · 오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met}`
+      + (S.showAdultMissions ? ' · 어른 미션 포함' : '');
     const thisMonth = todayStr().slice(0, 7);
     const monthCount = histAllLogs().filter((l) => l.date.slice(0, 7) === thisMonth).length;
     if ($('#histBtnPill')) $('#histBtnPill').textContent = monthCount ? `이번 달 ${monthCount}건` : '이번 달 기록 없음';
@@ -1567,8 +1682,8 @@
         : `현재 파트너가 ${FINAL_P}P에 도달하면 새 포켓몬을 입양할 수 있어요`;
     }
 
-    // 구성원별 오늘 완료·오늘 포인트·누적 포인트
-    const stats = memberStats();
+    // 구성원별 오늘 완료·오늘 포인트·누적 포인트 (성인 미션 숨김 모드에서는 아이·공용만)
+    const stats = memberStats().filter((s) => S.showAdultMissions || s.m.id === KID_ID || s.m.id === '');
     $('#memberStats').innerHTML = stats.map((s) => `<div class="mstat" style="--c:${esc(s.m.color)}">
         <span class="mdot" style="background:${esc(s.m.color)}"></span>
         <span class="mstat-name">${esc(s.m.name)}${s.m.id === KID_ID ? ' 🧒' : ''}</span>
@@ -1583,7 +1698,7 @@
     order[''] = 99;
     const nowMin = minOf(hhmm());
     const dow = new Date().getDay();
-    const list = S.missions.slice().sort((a, b) => (order[a.member] ?? 50) - (order[b.member] ?? 50));
+    const list = visibleMissions().sort((a, b) => (order[a.member] ?? 50) - (order[b.member] ?? 50));
     if (!list.length) {
       $('#choreList').innerHTML = `<div class="shop-empty">미션을 추가해 보세요</div>`;
     } else {
@@ -1611,6 +1726,7 @@
 
     renderDex();
     renderPointUses();
+    renderWish();
     checkPokeImages();
     if ($('#historyModal') && !$('#historyModal').hidden) renderHistory();
   }
@@ -2095,6 +2211,131 @@
     save(); renderShopping();
   }
 
+  /* ------------------------------------------------- 사고 싶은 것(위시리스트) */
+  const wishItems = () => (S.wishlist || []);
+
+  function renderWish() {
+    const box = $('#wishList');
+    if (!box) return;
+    const bal = balancePts();
+    // 아직 안 산 것을 위로, 선물 받은 것은 아래로
+    const items = wishItems().slice().sort((a, b) => (a.boughtAt ? 1 : 0) - (b.boughtAt ? 1 : 0));
+    const waiting = items.filter((w) => !w.boughtAt);
+    const canCount = waiting.filter((w) => w.need > 0 && bal >= w.need).length;
+    if ($('#wishBalance')) {
+      $('#wishBalance').innerHTML = `<span>🪙 선물 코인 <b>${bal}P</b></span>
+        <span class="wb-side">${waiting.length ? `사고 싶은 것 ${waiting.length}개${canCount ? ` · 지금 살 수 있는 것 ${canCount}개` : ''}` : '갖고 싶은 걸 적어 보세요'}</span>`;
+    }
+    box.innerHTML = items.length
+      ? items.map((w) => {
+          const need = Math.max(0, Math.round(+w.need || 0));
+          const bought = !!w.boughtAt;
+          const can = !bought && need > 0 && bal >= need;
+          const left = Math.max(0, need - bal);
+          const pct = need > 0 ? clamp(Math.round((bal / need) * 100), 0, 100) : 0;
+          const state = bought
+            ? `🎉 ${esc(fmtMD(w.boughtAt))} 선물 받았어요`
+            : (need <= 0
+              ? '🪙 필요한 포인트를 적어 주면 얼마나 더 모아야 하는지 알려 줘요'
+              : (can ? '✅ 지금 살 수 있어요!' : `🪙 ${left}P 더 모아야 해요`));
+          return `<div class="wish-item${can ? ' now' : ''}${bought ? ' bought' : ''}" data-id="${w.id}">
+            <div class="wish-main">
+              <div class="wish-top">
+                <span class="wish-title">${esc(w.title)}</span>
+                <span class="wish-need">${need > 0 ? need + 'P' : '—'}</span>
+              </div>
+              <div class="wish-state">${state}</div>
+              <div class="wish-bar"><i style="width:${pct}%"></i></div>
+            </div>
+            <div class="wish-tools">
+              ${bought ? '' : `<button class="btn sm ghost wish-gift" data-act="wish-buy" data-id="${w.id}" title="포인트를 써서 선물로 사 주기" aria-label="선물 사주기">🎁</button>`}
+              <button class="btn icon sm ghost" data-act="wish-edit" data-id="${w.id}" aria-label="수정">✎</button>
+              <button class="btn icon sm ghost" data-act="wish-del" data-id="${w.id}" aria-label="목록에서 지우기">✕</button>
+            </div>
+          </div>`;
+        }).join('')
+      : '<div class="shop-empty" style="padding:12px 4px">갖고 싶은 물건을 <b>＋</b> 로 적어 보세요</div>';
+  }
+
+  async function addWish() {
+    const r = await askModal({
+      title: '🎁 사고 싶은 것 적기',
+      hint: '갖고 싶은 물건을 적어 두면 지금 선물 코인으로 살 수 있는지 알려 줘요. 필요한 포인트는 비워 두어도 됩니다.',
+      fields: [
+        { name: 'title', label: '갖고 싶은 것', placeholder: '예: 포켓몬 카드' },
+        { name: 'need', label: '필요한 포인트 (P · 비워도 됨)', type: 'number', value: '' },
+      ],
+      okText: '적기',
+    });
+    if (!r) return;
+    const title = String(r.title || '').trim();
+    if (!title) { toast('무엇을 갖고 싶은지 적어 주세요', 'coral', 2600); return; }
+    S.wishlist.unshift({ id: uid(), title: title.slice(0, 40), need: Math.max(0, Math.round(+r.need || 0)), at: todayStr(), by: KID_ID, boughtAt: '' });
+    save(); renderWish();
+    toast('사고 싶은 것에 적었어요 🎁', 'mint');
+  }
+
+  async function editWish(id) {
+    const w = wishItems().find((x) => x.id === id);
+    if (!w) return;
+    const r = await askModal({
+      title: '사고 싶은 것 수정',
+      hint: '필요한 포인트를 정해 두면 그만큼 모았을 때 "지금 살 수 있어요!"로 바뀝니다.',
+      fields: [
+        { name: 'title', label: '갖고 싶은 것', value: w.title },
+        { name: 'need', label: '필요한 포인트 (P)', type: 'number', value: w.need || '' },
+      ],
+      okText: '저장',
+      extraAction: { label: '삭제', act: 'del' },
+    });
+    if (r === 'del') {
+      S.wishlist = S.wishlist.filter((x) => x.id !== id);
+      save(); renderWish(); toast('목록에서 지웠어요');
+      return;
+    }
+    if (!r || !String(r.title || '').trim()) return;
+    w.title = String(r.title).trim().slice(0, 40);
+    w.need = Math.max(0, Math.round(+r.need || 0));
+    save(); renderWish(); toast('저장했어요', 'mint');
+  }
+
+  async function deleteWish(id) {
+    const w = wishItems().find((x) => x.id === id);
+    if (!w) return;
+    const r = await askModal({ title: '목록에서 지우기', hint: `'${w.title}' 항목을 사고 싶은 것 목록에서 지웁니다.`, okText: '지우기' });
+    if (!r) return;
+    S.wishlist = S.wishlist.filter((x) => x.id !== id);
+    save(); renderWish(); toast('목록에서 지웠어요');
+  }
+
+  // 🎁 선물 사주기 — 포인트 사용으로 기록하고 선물 코인을 줄입니다 (경험치·진화는 그대로)
+  async function buyWish(id) {
+    const w = wishItems().find((x) => x.id === id);
+    if (!w) return;
+    const bal = balancePts();
+    if (bal <= 0) { toast(`사용할 선물 코인이 없어요 (지금 ${bal}P)`, '', 2800); return; }
+    const need = Math.max(0, Math.round(+w.need || 0));
+    const r = await askModal({
+      title: '🎁 선물 사주기',
+      hint: `'${w.title}'을(를) 선물해요. 쓴 포인트만큼 선물 코인이 줄고, 포켓몬 경험치와 진화 단계는 그대로예요.`,
+      fields: [
+        { name: 'title', label: '산 물건 (포인트 사용 내역에 남겨요)', value: w.title },
+        { name: 'amount', label: `사용 포인트 (지금 ${bal}P)`, type: 'number', value: need > 0 ? Math.min(bal, need) : bal },
+      ],
+      okText: '선물하기',
+    });
+    if (!r) return;
+    const amount = Math.round(+r.amount || 0);
+    const title = String(r.title || '').trim() || w.title;
+    if (!(amount > 0)) { toast('사용 포인트를 1P 이상 적어 주세요', 'coral', 2800); return; }
+    if (amount > balancePts()) { toast(`선물 코인이 ${balancePts()}P뿐이에요`, 'coral', 3000); return; }
+    S.pointUses.unshift({ id: uid(), date: todayStr(), at: hhmm(), title: `${title} (선물)`, amount });
+    w.boughtAt = todayStr();
+    save(); renderWish(); renderMissions();
+    confetti(60);
+    toast(`🎁 선물했어요 · 남은 선물 코인 ${balancePts()}P`, 'mint', 3400);
+  }
+
   /* ------------------------------------------------------------------ letters */
   const LETTER_MAX = 30;
   const LETTER_W = 1000;
@@ -2465,7 +2706,7 @@
             </span>
           </div>`;
         }
-        return `<label class="field">${esc(f.label)}<input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.type === 'number' ? ' inputmode="numeric"' : ''}>${f.quick && f.quick.length
+        return `<label class="field">${esc(f.label)}<input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.inputmode ? ` inputmode="${esc(f.inputmode)}"` : (f.type === 'number' ? ' inputmode="numeric"' : '')}${f.maxlength ? ` maxlength="${Math.round(+f.maxlength)}"` : ''}${f.autocomplete ? ` autocomplete="${esc(f.autocomplete)}"` : ''}>${f.quick && f.quick.length
           ? `<span class="quick-row">${f.quick.map((v) => `<button type="button" class="qchip" data-quick="${esc(f.name)}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</span>`
           : ''}</label>`;
       }).join('');
@@ -2564,6 +2805,9 @@
   const MEMBER_COLORS = ['#ff7a6b', '#21c39a', '#4f95ff', '#9b7bf0', '#f5a623', '#ff7fb2'];
 
   function renderSettings() {
+    if ($('#titleInput')) $('#titleInput').value = S.dashboardTitle || '';
+    if ($('#adultToggle')) $('#adultToggle').checked = !!S.showAdultMissions;
+    if ($('#pinInput')) $('#pinInput').value = '';
     $('#locPill').textContent = S.location ? `📍 ${S.location.name}` : '기본 위치(서울)';
     $('#latInput').value = S.location ? S.location.lat : '';
     $('#lonInput').value = S.location ? S.location.lon : '';
@@ -2578,6 +2822,13 @@
       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
     } catch (e) { $('#storageNote').textContent = ''; }
     renderSyncBadge();
+  }
+
+  // 설정은 보호자만 — 부모 모드가 잠겨 있으면 PIN을 먼저 받습니다
+  function openSettings() {
+    renderSettings();
+    fillSyncInputs();
+    $('#settingsModal').hidden = false;
   }
 
   async function addMember() {
@@ -2682,9 +2933,12 @@
 
   /* -------------------------------------------------------------------- render */
   function renderAll() {
+    applyTitle();
+    renderParentBtn();
     renderFreeDay();
     renderSchedule();
     renderMissions();
+    renderWish();
     renderShopping();
     renderLetters();
     renderWiki();
@@ -2703,11 +2957,13 @@
         const ev = S.events.find((x) => x.id === id);
         if (ev) { ev.done = !ev.done; save(); renderSchedule(); }
       } else if (act === 'ev-del') {
-        S.events = S.events.filter((x) => x.id !== id); save(); renderSchedule(); toast('일정을 삭제했어요');
+        asParent('일정 삭제는 보호자만 할 수 있어요.', () => {
+          S.events = S.events.filter((x) => x.id !== id); save(); renderSchedule(); toast('일정을 삭제했어요');
+        });
       } else if (act === 'ev-edit') {
-        editEvent(id);
+        asParent('일정 수정은 보호자만 할 수 있어요.', () => editEvent(id));
       } else if (act === 'wd-click' && !t.closest('[data-act="wd-click"]').dataset.ignore) {
-        addEvent({ date: t.dataset.date });
+        asParent('일정 추가는 보호자만 할 수 있어요.', () => addEvent({ date: t.dataset.date }));
       } else if (act === 'chore-toggle') {
         const rect = t.getBoundingClientRect();
         const res = toggleMission(id);
@@ -2716,38 +2972,54 @@
           if (res.isKid) pulseGauges();
         }
       } else if (act === 'chore-edit') {
-        editMission(id);
+        asParent('미션 수정은 보호자만 할 수 있어요.', () => editMission(id));
       } else if (act === 'chore-del') {
-        const m = S.missions.find((x) => x.id === id);
-        if (m && m.doneOn === todayStr()) {
-          addPoints(m.member || '', -earnOf(m));
-          if ((m.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(m), 0, FINAL_P);
-          dropLog(m.id);
-        }
-        S.missions = S.missions.filter((x) => x.id !== id); save(); renderMissions();
+        asParent('미션 삭제는 보호자만 할 수 있어요.', () => {
+          const m = S.missions.find((x) => x.id === id);
+          if (m && m.doneOn === todayStr()) {
+            addPoints(m.member || '', -earnOf(m));
+            if ((m.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(m), 0, FINAL_P);
+            dropLog(m.id);
+          }
+          S.missions = S.missions.filter((x) => x.id !== id); save(); renderMissions();
+        });
       } else if (act === 'dex-open') {
         openDexEntry(t.dataset.key);
       } else if (act === 'use-del') {
-        deletePointUse(id);
+        asParent('포인트 사용 내역은 보호자만 되돌릴 수 있어요.', () => deletePointUse(id));
       } else if (act === 'shop-toggle') {
-        const it = S.shopping.find((x) => x.id === id);
-        if (it) { it.done = !it.done; save(); renderShopping(); }
+        asParent('장보기 목록은 보호자만 바꿀 수 있어요.', () => {
+          const it = S.shopping.find((x) => x.id === id);
+          if (it) { it.done = !it.done; save(); renderShopping(); }
+        });
       } else if (act === 'shop-del') {
-        S.shopping = S.shopping.filter((x) => x.id !== id); save(); renderShopping();
+        asParent('장보기 목록은 보호자만 바꿀 수 있어요.', () => {
+          S.shopping = S.shopping.filter((x) => x.id !== id); save(); renderShopping();
+        });
       } else if (act === 'letter-open') {
         openLetter(id);
       } else if (act === 'letter-del') {
-        S.letters = S.letters.filter((x) => x.id !== id); save(); renderLetters();
+        asParent('편지 삭제는 보호자만 할 수 있어요.', () => {
+          S.letters = S.letters.filter((x) => x.id !== id); save(); renderLetters();
+        });
       } else if (act === 'wiki-edit') {
-        editWiki(id);
+        asParent('우리 집 위키는 보호자만 고칠 수 있어요.', () => editWiki(id));
       } else if (act === 'wiki-del') {
-        S.wiki = S.wiki.filter((x) => x.id !== id); save(); renderWiki();
+        asParent('우리 집 위키는 보호자만 고칠 수 있어요.', () => {
+          S.wiki = S.wiki.filter((x) => x.id !== id); save(); renderWiki();
+        });
       } else if (act === 'link-edit') {
         editLink(id);
       } else if (act === 'link-del') {
         S.links = S.links.filter((x) => x.id !== id); save(); renderLinks();
       } else if (act === 'member-edit') {
         editMember(id);
+      } else if (act === 'wish-buy') {
+        asParent('선물 사주기는 보호자만 할 수 있어요.', () => buyWish(id));
+      } else if (act === 'wish-edit') {
+        asParent('필요한 포인트와 이름은 보호자만 고칠 수 있어요.', () => editWish(id));
+      } else if (act === 'wish-del') {
+        asParent('사고 싶은 것 지우기는 보호자만 할 수 있어요.', () => deleteWish(id));
       }
       return;
     }
@@ -2755,10 +3027,11 @@
     if (e.target.closest('#weather')) refreshWeather(true);
   });
 
-  $('#eventAddBtn').addEventListener('click', () => addEvent());
-  $('#choreAddBtn').addEventListener('click', addMission);
-  $('#stickerResetBtn').addEventListener('click', resetPoints);
-  $('#pointUseBtn').addEventListener('click', usePoints);
+  $('#eventAddBtn').addEventListener('click', () => asParent('일정 추가는 보호자만 할 수 있어요.', () => addEvent()));
+  $('#choreAddBtn').addEventListener('click', () => asParent('미션 추가는 보호자만 할 수 있어요.', addMission));
+  $('#stickerResetBtn').addEventListener('click', () => asParent('포인트 초기화는 보호자만 할 수 있어요.', resetPoints));
+  $('#pointUseBtn').addEventListener('click', () => asParent('포인트 사용은 보호자만 할 수 있어요.', usePoints));
+  $('#wishAddBtn').addEventListener('click', addWish);      // 사고 싶은 것 적기는 아이도 자유롭게
   $('#adoptBtn').addEventListener('click', () => {
     if (S.pokemon.xp < FINAL_P) { toast(`최종 진화(${FINAL_P}P)를 마치면 새 포켓몬을 입양할 수 있어요`, '', 2600); return; }
     openPartnerPicker('adopt');
@@ -2797,11 +3070,11 @@
       renderHistory();
     }
   });
-  $('#wikiAddBtn').addEventListener('click', () => editWiki(null));
+  $('#wikiAddBtn').addEventListener('click', () => asParent('우리 집 위키는 보호자만 고칠 수 있어요.', () => editWiki(null)));
   $('#linkAddBtn').addEventListener('click', () => editLink(null));
 
-  $('#shopAddBtn').addEventListener('click', addShopItem);
-  $('#shopInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addShopItem(); } });
+  $('#shopAddBtn').addEventListener('click', () => asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem));
+  $('#shopInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem); } });
   $$('[data-shoptab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.shoptab; renderShopping(); }));
 
   $('#swatches').addEventListener('click', (e) => {
@@ -2833,8 +3106,10 @@
   $('#letterModal').addEventListener('click', (e) => { if (e.target.id === 'letterModal') $('#letterModal').hidden = true; });
   $('#letterModalDelete').addEventListener('click', () => {
     const id = $('#letterModal').dataset.id;
-    S.letters = S.letters.filter((x) => x.id !== id);
-    save(); renderLetters(); $('#letterModal').hidden = true; toast('편지를 삭제했어요');
+    asParent('편지 삭제는 보호자만 할 수 있어요.', () => {
+      S.letters = S.letters.filter((x) => x.id !== id);
+      save(); renderLetters(); $('#letterModal').hidden = true; toast('편지를 삭제했어요');
+    });
   });
   $('#letterModalDownload').addEventListener('click', () => {
     const id = $('#letterModal').dataset.id;
@@ -2858,15 +3133,53 @@
   $('#timerStartBtn').addEventListener('click', startPauseTimer);
   $('#timerResetBtn').addEventListener('click', resetTimer);
 
-  $('#exportBtn').addEventListener('click', exportJSON);
-  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#exportBtn').addEventListener('click', () => asParent('백업 내보내기는 보호자만 할 수 있어요.', exportJSON));
+  $('#importBtn').addEventListener('click', () => asParent('백업 불러오기는 보호자만 할 수 있어요.', () => $('#importFile').click()));
   $('#importFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     if (f) importJSON(f);
     e.target.value = '';
   });
 
-  $('#settingsBtn').addEventListener('click', () => { renderSettings(); $('#settingsModal').hidden = false; });
+  $('#settingsBtn').addEventListener('click', () => asParent('설정은 보호자만 바꿀 수 있어요.', openSettings));
+
+  // 🔒 부모 모드 버튼 — 잠겨 있으면 PIN을 받아 열고, 열려 있으면 누르는 즉시 잠급니다
+  if ($('#parentBtn')) {
+    $('#parentBtn').addEventListener('click', async () => {
+      if (parentUnlocked()) { lockParent(false); return; }
+      const ok = await askParentPin('보호자가 쓰는 기능이에요. 4자리 PIN을 넣으면 부모 모드가 열립니다.');
+      if (!ok) return;
+      parentAt = Date.now();
+      renderParentBtn();
+      toast('🔓 부모 모드 열림 · 5분 뒤 자동으로 잠겨요', 'mint', 2800);
+    });
+  }
+
+  // 대시보드 이름 · 어른 미션 보기 · 부모 PIN (설정 안 — 이미 보호자 확인을 거쳤습니다)
+  if ($('#titleSaveBtn')) $('#titleSaveBtn').addEventListener('click', () => {
+    const v = String($('#titleInput').value || '').trim().slice(0, 40);
+    S.dashboardTitle = v;
+    save(); applyTitle();
+    toast(v ? `이름을 '${v}'(으)로 바꿨어요` : '기본 이름으로 돌려놨어요', 'mint', 2600);
+  });
+  if ($('#titleInput')) $('#titleInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('#titleSaveBtn').click(); }
+  });
+  if ($('#adultToggle')) $('#adultToggle').addEventListener('change', (e) => {
+    S.showAdultMissions = !!e.target.checked;
+    save(); renderMissions(); renderSettings();
+    toast(S.showAdultMissions ? '어른 미션도 함께 보여요' : '아이 미션만 보여요', 'mint', 2400);
+  });
+  if ($('#pinSaveBtn')) $('#pinSaveBtn').addEventListener('click', () => {
+    const v = String($('#pinInput').value || '').replace(/\D/g, '');
+    if (!/^\d{4}$/.test(v)) { toast('PIN은 숫자 4자리로 정해 주세요', 'coral', 2800); return; }
+    S.parentPin = v;
+    save();
+    parentAt = 0;                 // PIN을 바꾸면 부모 모드는 바로 잠깁니다
+    renderParentBtn();
+    $('#pinInput').value = '';
+    toast('부모 모드 PIN을 바꿨어요 🔒', 'mint', 2600);
+  });
   $('#settingsClose').addEventListener('click', () => { $('#settingsModal').hidden = true; });
   $('#settingsModal').addEventListener('click', (e) => { if (e.target.id === 'settingsModal') $('#settingsModal').hidden = true; });
   $('#helpBtn').addEventListener('click', () => { $('#helpModal').hidden = false; });
@@ -2974,13 +3287,11 @@
   }
 
   if ($('#syncBadge')) {
-    $('#syncBadge').addEventListener('click', () => {
-      renderSettings();
-      $('#settingsModal').hidden = false;
-      fillSyncInputs();
+    $('#syncBadge').addEventListener('click', () => asParent('동기화 설정은 보호자만 바꿀 수 있어요.', () => {
+      openSettings();
       const sec = $('#syncSection');
       if (sec && sec.scrollIntoView) setTimeout(() => sec.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
-    });
+    }));
   }
   if ($('#syncConnectBtn')) $('#syncConnectBtn').addEventListener('click', syncConnectFlow);
   if ($('#syncNowBtn')) $('#syncNowBtn').addEventListener('click', async () => {
@@ -3071,9 +3382,17 @@
 
   window.FamilyDashboard = {
     get state() { return S; },
-    version: '3.0.0',
+    version: '3.1.0',
     now: () => hhmm(),
-    kid: () => ({ id: KID_ID, name: (kidMember() || {}).name || '' }),
+    kid: () => ({ id: KID_ID, name: kidLabel() }),
+    settings: () => ({
+      title: appTitle(),
+      showAdultMissions: !!S.showAdultMissions,
+      parentUnlocked: parentUnlocked(),
+      hasPin: /^\d{4,12}$/.test(String(S.parentPin || '')),
+    }),
+    wishlist: () => (S.wishlist || []).map((w) => ({ id: w.id, title: w.title, need: w.need, boughtAt: w.boughtAt })),
+    parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentAt)) : 0 }),
     pokemon: () => ({
       key: S.pokemon.key,
       xp: Math.round(S.pokemon.xp),

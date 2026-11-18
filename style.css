@@ -131,6 +131,22 @@ html[data-quiet="1"] * { animation-duration: .001s !important; animation-iterati
 
 .top-actions { display: flex; gap: 8px; align-items: center; }
 
+/* 🔒 부모 모드 상태 버튼 */
+.parent-badge {
+  gap: 6px; padding: 0 12px; min-height: 38px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; white-space: nowrap;
+  background: var(--surface-2); color: var(--text-3); border-color: var(--border-strong);
+}
+.parent-badge .parent-word { line-height: 1; }
+.parent-badge[data-state="off"] { color: #6b5a2a; background: var(--amber-soft); border-color: transparent; }
+.parent-badge[data-state="on"] { color: #0f8a66; background: var(--mint-soft); border-color: transparent; }
+html[data-theme="dark"] .parent-badge[data-state="off"] { color: #ffd489; }
+html[data-theme="dark"] .parent-badge[data-state="on"] { color: #6fe3c0; }
+.parent-badge[data-state="off"] .parent-word::after { content: " (잠김)"; font-weight: 700; opacity: .8; }
+@media (max-width: 860px) {
+  .parent-badge { min-height: 34px; padding: 0 10px; font-size: 11.5px; }
+}
+
 /* ☁️ 동기화 상태 배지 */
 .sync-badge {
   gap: 6px; padding: 0 12px; min-height: 38px; border-radius: 999px;
@@ -210,7 +226,8 @@ html[data-theme="dark"] .wchip.worst { color: #ff9c8f; }
 .card.shopping { grid-column: span 3; }
 .card.letters { grid-column: span 8; }
 .card.timer { grid-column: span 4; }
-.card.wiki { grid-column: span 12; }
+.card.wish { grid-column: span 4; }
+.card.wiki { grid-column: span 8; }
 .card.span-6 { grid-column: span 6; }
 .card.span-8 { grid-column: span 8; }
 .card.tall { min-height: 420px; }
@@ -225,6 +242,7 @@ html[data-theme="dark"] .wchip.worst { color: #ff9c8f; }
 .card-ico.sky { background: var(--sky-soft); }
 .card-ico.lilac { background: var(--lilac-soft); }
 .card-ico.amber { background: var(--amber-soft); }
+.card-ico.pink { background: rgba(255, 127, 178, .18); }
 .card-title { font-size: 15.5px; font-weight: 800; letter-spacing: -.015em; }
 .card-sub { font-size: 11.5px; color: var(--text-3); margin-top: 1px; font-weight: 600; }
 .card-tools { margin-left: auto; display: flex; gap: 5px; align-items: center; }
@@ -720,6 +738,44 @@ html[data-theme="dark"] .log-pts { color: #ffcf7a; }
 .shop-text { flex: 1 1 auto; font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shop-empty { text-align: center; color: var(--text-3); font-size: 12.5px; padding: 18px 6px; font-weight: 600; }
 
+/* ============================ 사고 싶은 것(위시리스트) ============================ */
+.wish-balance {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 9px 12px; border-radius: var(--r-md);
+  background: linear-gradient(120deg, var(--amber-soft), rgba(255,127,178,.14));
+  border: 1px solid rgba(245,166,35,.35);
+  font-size: 12px; font-weight: 800; color: #8f5500;
+}
+.wish-balance b { font-size: 17px; font-weight: 900; letter-spacing: -.03em; color: #b06a00; font-variant-numeric: tabular-nums; }
+.wish-balance .wb-side { font-size: 11px; font-weight: 800; color: #a5611e; }
+html[data-theme="dark"] .wish-balance { color: #ffd88f; border-color: rgba(245,166,35,.4); }
+html[data-theme="dark"] .wish-balance b, html[data-theme="dark"] .wish-balance .wb-side { color: #ffcf7a; }
+
+.wish-list { display: flex; flex-direction: column; gap: 7px; overflow: auto; }
+.wish-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 9px; border-radius: var(--r-md);
+  background: var(--surface-solid); border: 1px solid var(--border);
+}
+.wish-item.now { background: linear-gradient(120deg, var(--mint-soft), rgba(255,255,255,.7)); border-color: rgba(33,195,154,.45); }
+.wish-item.bought { opacity: .72; }
+.wish-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wish-top { display: flex; align-items: baseline; gap: 6px; justify-content: space-between; }
+.wish-title { font-size: 13.5px; font-weight: 800; letter-spacing: -.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wish-item.bought .wish-title { text-decoration: line-through; color: var(--text-2); }
+.wish-need { flex: 0 0 auto; font-size: 11.5px; font-weight: 900; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.wish-state { font-size: 11.5px; font-weight: 800; color: var(--text-3); letter-spacing: -.02em; }
+.wish-item.now .wish-state { color: #0f8a66; }
+.wish-item.bought .wish-state { color: var(--lilac); }
+html[data-theme="dark"] .wish-item.now .wish-state { color: #6ee7c2; }
+html[data-theme="dark"] .wish-item.bought .wish-state { color: #c3aaff; }
+.wish-bar { height: 7px; border-radius: 999px; background: rgba(120,130,160,.18); overflow: hidden; }
+.wish-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--amber), #ffd166); transition: width .6s cubic-bezier(.22,1,.36,1); }
+.wish-item.now .wish-bar > i { background: linear-gradient(90deg, var(--mint), #7ee6c6); }
+.wish-tools { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
+.wish-tools .btn { min-height: 26px; padding: 0 6px; font-size: 11px; }
+.wish-gift { white-space: nowrap; }
+
 /* ============================ 편지함 ============================ */
 .canvas-shell {
   border-radius: var(--r-lg); overflow: hidden;
@@ -903,7 +959,8 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .card.shopping { grid-column: span 6; }
   .card.letters { grid-column: span 4; }
   .card.timer { grid-column: span 2; }
-  .card.wiki { grid-column: span 6; }
+  .card.wish { grid-column: span 3; }
+  .card.wiki { grid-column: span 3; }
   .card.span-6 { grid-column: span 6; }
   .card.timer .timer-shell { flex-direction: column; align-items: stretch; }
   .card.timer .timer-ring { align-self: center; }
@@ -915,6 +972,8 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
 @media (max-width: 980px) {
   .card.letters { grid-column: span 6; }
   .card.timer { grid-column: span 6; }
+  .card.wish { grid-column: span 6; }
+  .card.wiki { grid-column: span 6; }
   .card.schedule { grid-column: span 3; }
   .card.chores { grid-column: span 3; }
   .card.wiki { grid-column: span 6; }
@@ -922,7 +981,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
 @media (max-width: 860px) {
   .grid { grid-template-columns: 1fr; }
   .card, .card.span-6, .card.span-8, .card.schedule, .card.chores, .card.shopping,
-  .card.letters, .card.timer, .card.wiki { grid-column: span 1; }
+  .card.letters, .card.timer, .card.wish, .card.wiki { grid-column: span 1; }
   .chore-wrap { flex-direction: column; }
   .char-panel { flex-direction: row; gap: 14px; padding: 12px; align-items: center; flex-wrap: wrap; }
   .char-stage { width: 96px; height: 96px; flex: 0 0 96px; }

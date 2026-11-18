@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=9" />
+<link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
 <div class="app">
@@ -47,6 +47,7 @@
     </div>
 
     <div class="top-actions">
+      <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 모드 잠김 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 모드</span></button>
       <button class="btn sync-badge" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
       <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
       <button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button>
@@ -87,7 +88,7 @@
       <div class="card-head">
         <div class="card-ico mint" aria-hidden="true">⭐</div>
         <div>
-          <div class="card-title" id="tChores">가족 미션 &amp; 칭찬 포인트</div>
+          <div class="card-title" id="tChores">아이 미션</div>
           <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
         </div>
         <div class="card-tools">
@@ -277,7 +278,25 @@
       </div>
     </section>
 
-    <!-- ======================= 6. 위키 ======================= -->
+    <!-- ======================= 6. 사고 싶은 것(위시리스트) ======================= -->
+    <section class="card wish" id="cardWish" aria-labelledby="tWish">
+      <div class="card-head">
+        <div class="card-ico pink" aria-hidden="true">🎁</div>
+        <div>
+          <div class="card-title" id="tWish">사고 싶은 것</div>
+          <div class="card-sub" id="wishSub">갖고 싶은 걸 적어 두면 얼마나 더 모아야 하는지 알려 줘요</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="wish-balance" id="wishBalance"></div>
+        <div class="wish-list" id="wishList"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 7. 위키 ======================= -->
     <section class="card wiki" id="cardWiki" aria-labelledby="tWiki">
       <div class="card-head">
         <div class="card-ico mint" aria-hidden="true">📗</div>
@@ -374,6 +393,32 @@
       <div class="row wrap" id="memberList"></div>
       <button class="btn sm ghost" id="memberAddBtn" style="margin-top:8px">＋ 구성원 추가</button>
       <p class="settings-note">일정에 표시될 이름입니다. 여기 적은 이름도 이 기기에만 저장됩니다.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>🏡 대시보드 이름</h4>
+      <div class="row">
+        <input type="text" id="titleInput" class="grow" maxlength="40" placeholder="우리 가족 대시보드" autocomplete="off" />
+        <button class="btn sm primary" id="titleSaveBtn">저장</button>
+      </div>
+      <p class="settings-note">위쪽 큰 제목과 브라우저 탭 이름에 함께 쓰입니다. 비우면 기본 이름으로 돌아가요.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>🧒 미션 화면</h4>
+      <label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
+        <input type="checkbox" id="adultToggle" style="width:18px;height:18px;min-height:0" /> 어른 미션도 같이 보기
+      </label>
+      <p class="settings-note">끄면 미션 목록과 통계에서 아이 미션만 보입니다. 어른 미션과 포인트는 지우지 않고 그대로 보관해, 다시 켜면 바로 나타납니다.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>🔒 부모 모드 PIN</h4>
+      <div class="row">
+        <input type="password" id="pinInput" class="grow" inputmode="numeric" maxlength="4" placeholder="새 PIN 숫자 4자리" autocomplete="off" />
+        <button class="btn sm" id="pinSaveBtn">변경</button>
+      </div>
+      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 모드</b>를 다시 누르면 바로 잠깁니다. PIN은 공개 앱 코드가 아니라 비공개 동기화 DB에만 저장됩니다.</p>
     </div>
 
     <div class="settings-section">
@@ -534,6 +579,16 @@
         <b>편지함에 보내기</b>를 누르면 아래 갤러리에 그림으로 저장됩니다.
       </p>
     </div>
+    <div class="settings-section">
+      <h4>7. 🎁 사고 싶은 것 &amp; 🔒 부모 모드</h4>
+      <p class="settings-note">
+        <b>사고 싶은 것</b> 카드에 갖고 싶은 물건을 적으면, 지금 선물 코인으로 <b>✅ 지금 살 수 있어요!</b> 인지
+        <b>🪙 몇 P 더 모아야 하는지</b> 바로 보여 줍니다. 적는 것은 아이도 자유롭게 할 수 있어요.<br />
+        상단 <b>🔒 부모 모드</b>는 기본이 잠금입니다. 잠긴 동안 아이는 <b>미션 체크·포켓몬 도감·편지 쓰기·사고 싶은 것 적기·타이머·월간 달성 보기</b>를 그대로 쓸 수 있고,
+        <b>미션 추가·수정·삭제, 포인트 사용(선물 사주기), 일정·장보기·위키 편집, 편지 삭제, 설정</b>처럼 보호자가 해야 하는 일은 4자리 PIN을 넣어야 열립니다.
+        부모 모드는 5분 뒤 자동으로 잠기고, <b>🔓 부모 모드</b>를 누르면 바로 잠급니다.
+      </p>
+    </div>
     <div class="modal-actions">
       <button class="btn primary" type="button" id="helpClose">알겠어요</button>
     </div>
@@ -544,6 +599,6 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
