@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFamilySync } from '../firebase-sync.js';
+import { createFamilySync, reconcileMissionCompletions } from '../firebase-sync.js';
 
 function fakeSdk() {
   const listeners = [];
@@ -39,6 +39,95 @@ function fakeSdk() {
 const userWithRole = (uid, role) => ({
   uid,
   getIdTokenResult: async () => ({ claims: { role } }),
+});
+
+test('today mission completion is restored from the matching member log', () => {
+  const missions = [
+    { id: 'adult-1', member: 'm1', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+    { id: 'adult-2', member: 'm2', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+    { id: 'kid-1', member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+    { id: 'shared-1', member: '', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+    { id: 'missed', member: 'm1', doneOn: '2026-11-18', doneAt: '08:00', earned: 9, goalMet: true },
+  ];
+  const logs = [
+    { mid: 'adult-1', date: '2026-11-18', member: 'm1', at: '07:30', earned: 8, goalMet: true },
+    { mid: 'adult-2', date: '2026-11-18', member: 'm2', at: '08:10', earned: 4, goalMet: false },
+    { mid: 'kid-1', date: '2026-11-18', member: 'm3', at: '07:50', earned: 6, goalMet: true },
+    { mid: 'shared-1', date: '2026-11-18', member: '', at: '09:00', earned: 3, goalMet: false },
+  ];
+
+  reconcileMissionCompletions(missions, logs, '2026-11-18');
+
+  assert.deepEqual(missions.slice(0, 4).map((mission) => [mission.doneOn, mission.doneAt, mission.earned, mission.goalMet]), [
+    ['2026-11-18', '07:30', 8, true],
+    ['2026-11-18', '08:10', 4, false],
+    ['2026-11-18', '07:50', 6, true],
+    ['2026-11-18', '09:00', 3, false],
+  ]);
+  assert.deepEqual([missions[4].doneOn, missions[4].doneAt, missions[4].earned, missions[4].goalMet], [null, '', 0, false]);
+});
+
+test('child can create wishlist, shopping, and letter documents using child-safe fields', async () => {
+  const { sdk, writes } = fakeSdk();
+  const auth = { currentUser: userWithRole('child-user', 'child') };
+  const sync = createFamilySync({ sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+
+  const result = await sync.pushPatch({
+    prev: { wishlist: [], shopping: [], letters: [] },
+    next: {
+      wishlist: [{ id: 'wish-1', title: '그림책', need: 0, cat: 'book', at: '2026-11-18', by: 'm3', boughtAt: '' }],
+      shopping: [{ id: 'shop-1', cat: 'buy', text: '우유', done: false }],
+      letters: [{ id: 'letter-1', img: 'data:image/png;base64,abcdefghijklmnopqrstuvwxyz', author: '아이', when: '오늘' }],
+    },
+    by: 'child-user', r: 'child', skipLogs: true,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.denied, []);
+  assert.equal(result.written.length, 3);
+  const wish = writes.find((entry) => entry.path.endsWith('/wishlist/wish-1'));
+  assert.equal(wish.data.by, 'm3');
+  assert.equal(wish.data.boughtAt, '');
+  assert.equal(wish.data.createdBy, 'child-user');
+  assert.equal(wish.data.createdAt, 'server-time');
+  assert.equal(writes.find((entry) => entry.path.endsWith('/shopping/shop-1')).data.createdBy, 'child-user');
+  assert.equal(writes.find((entry) => entry.path.endsWith('/letters/letter-1')).data.createdBy, 'child-user');
+});
+
+test('child updates only own shopping/letters and cannot edit wishlist or another author\'s letter', async () => {
+  const { sdk, writes } = fakeSdk();
+  const auth = { currentUser: userWithRole('child-user', 'child') };
+  const sync = createFamilySync({ sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+  const prev = {
+    wishlist: [{ id: 'wish-1', title: '책', need: 0, cat: 'book', at: '', by: 'm3', boughtAt: '', createdBy: 'child-user' }],
+    shopping: [{ id: 'shop-1', cat: 'buy', text: '우유', done: false, createdBy: 'child-user', createdAt: 'old-time' }],
+    letters: [
+      { id: 'letter-own', img: 'data:image/png;base64,abcdefghijklmnopqrstuvwxyz', author: '아이', when: '오늘', createdBy: 'child-user', createdAt: 'old-time' },
+      { id: 'letter-other', img: 'data:image/png;base64,abcdefghijklmnopqrstuvwxyz', author: '부모', when: '오늘', createdBy: 'parent-user', createdAt: 'old-time' },
+    ],
+  };
+  const next = {
+    wishlist: [{ ...prev.wishlist[0], title: '바꾼 책' }],
+    shopping: [],
+    letters: [
+      { ...prev.letters[0], author: '아이 수정' },
+      { ...prev.letters[1], author: '위조 시도' },
+    ],
+  };
+
+  const result = await sync.pushPatch({ prev, next, by: 'child-user', r: 'child', skipLogs: true });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(writes.map((entry) => [entry.path.split('/').slice(-2).join('/'), entry.op || 'create']), [
+    ['shopping/shop-1', 'delete'],
+    ['letters/letter-own', 'update'],
+  ]);
+  assert.deepEqual(result.denied.map((entry) => [entry.collection, entry.id]), [
+    ['wishlist', 'wish-1'],
+    ['letters', 'letter-other'],
+  ]);
 });
 
 test('an older role lookup cannot overwrite the current auth session', async () => {

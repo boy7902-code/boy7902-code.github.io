@@ -3677,10 +3677,12 @@
     if (lock && !lock.released) lock.release().catch(() => {});
   }
 
+  const standbyWakeClickGuard = window.FamilyStandbyGuard.createWakeClickGuard();
   function handleStandbyActivity(event) {
     if (standbyOn) {
       // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
       if (event.type === 'keydown' && event.key === 'Escape') return;
+      if (event.type === 'pointerdown' || event.type === 'touchstart') standbyWakeClickGuard.arm();
       exitStandby();
     } else {
       resetStandbyIdleTimer();
@@ -3692,6 +3694,7 @@
     document.addEventListener(type, handleStandbyActivity, { passive: true, capture: true });
   });
   document.addEventListener('scroll', handleStandbyActivity, { passive: true, capture: true });
+  document.addEventListener('click', (event) => { standbyWakeClickGuard.handleClick(event); }, true);
 
   /* --------------------------------------------------------------------- theme */
   function applyTheme() {
@@ -4230,7 +4233,7 @@
     }
   }
 
-  function fbResetSession() {
+  function fbResetSession({ dropPin = true } = {}) {
     FB.session += 1;
     clearTimeout(FB.timer); FB.timer = null;
     if (FB.sync && FB.sync.stopAll) FB.sync.stopAll();
@@ -4240,7 +4243,7 @@
     FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
     FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = [];
     FB.deleted.clear();
-    window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY });
+    window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
     renderParentBtn();
     if (FB.gate) fbGate(false);
     return FB.session;
@@ -4432,13 +4435,9 @@
       partner: FB.partner || {},
       stageCount: (S.pokemon && stagesOf().length) || 4,
     });
-    // 오늘 완료 표시는 '오늘 로그'가 정답 — 미션 문서에는 완료 상태를 저장하지 않습니다
+    // 모든 구성원의 오늘 완료 표시는 로그에서 복원합니다. 미션 문서에는 완료 상태를 저장하지 않습니다.
     const t = todayStr();
-    (S.missions || []).forEach((m) => {
-      const l = logs.find((x) => x.mid === m.id && x.date === t && (x.member === KID_ID || !x.member));
-      if (l) { m.doneOn = t; m.doneAt = l.at; m.earned = Math.max(0, Math.round(+l.earned || 0)); m.goalMet = !!l.goalMet; }
-      else if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; }
-    });
+    FB.core.reconcileMissionCompletions(S.missions || [], logs, t);
     S.points = { total: Object.values(stats.byMember || {}).reduce((a, b) => a + Math.max(0, Math.round(+b || 0)), 0), byMember: stats.byMember };
     S.pokemon.xp = Math.min(FINAL_P, Math.round(stats.partnerXp));
     // 서버에서 받은 값은 다시 보내지 않습니다(에코 방지) — localStorage 에만 조용히 반영
@@ -4545,10 +4544,10 @@
   }
 
   /* ---- Firebase 시작 ---- */
-  async function fbHandleAuthUser(boot, user) {
+  async function fbHandleAuthUser(boot, user, { initial = false } = {}) {
     if (!user) {
       if (FB.blocked) return;
-      fbResetSession();
+      fbResetSession({ dropPin: !initial });
       fbStatus('로그인 전 · 눌러서 로그인', 'off');
       fbSyncInfo();
       return;
@@ -4581,7 +4580,12 @@
     window.addEventListener('family-sync-data', (e) => fbOnData(e.detail));
     window.addEventListener('family-sync-error', (e) => fbOnError(e.detail));
     fbStatus('로그인 확인 중…', 'busy');
-    boot.sync.watchAuthState((user) => { fbHandleAuthUser(boot, user); });
+    let authStateSeen = false;
+    boot.sync.watchAuthState((user) => {
+      const initial = !authStateSeen;
+      authStateSeen = true;
+      fbHandleAuthUser(boot, user, { initial });
+    });
     /* redirect 로 돌아온 경우: 결과를 조용히 삼키지 않고 이유를 보여 줍니다 */
     if (boot.sync.getRedirectResult) {
       boot.sync.getRedirectResult().then((r) => {
@@ -4609,13 +4613,17 @@
     const session = FB.session;
     const c = S.missions.find((x) => x.id === id);
     const wasDone = !!(c && c.doneOn === todayStr());
-    if (wasDone && FB.on) {
-      const l = (S.logs || []).find((x) => x.mid === id && x.date === todayStr());
-      if (l) FB.deleted.set(fbDocIdOf(l), Date.now());
+    const member = c ? (c.member || KID_ID) : KID_ID;
+    const completionLog = c && (S.logs || []).find((x) => x.mid === id && x.date === todayStr() && (x.member || KID_ID) === member);
+    if (wasDone && FB.on && completionLog && completionLog.settled === true) {
+      toast('이미 정산된 기록은 취소할 수 없어요', '', 3000);
+      return;
+    }
+    if (wasDone && FB.on && completionLog) {
+      FB.deleted.set(fbDocIdOf(completionLog), Date.now());
     }
     const out = fbBaseToggle(id);
     if (!FB.on || !c) return out;
-    const member = c.member || KID_ID;
     if (!wasDone) {
       FB.sync.writeLog(c, { by: FB.uid, member }).then((r) => {
         if (session !== FB.session) return;
@@ -4626,7 +4634,7 @@
         }
       });
     } else {
-      FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: false }).then((r) => {
+      FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: !!(completionLog && completionLog.settled) }).then((r) => {
         if (session !== FB.session) return;
         if (!r.ok && !r.cancelled) fbRetryCard(r.error);
       });

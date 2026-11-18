@@ -99,6 +99,27 @@ export function missionDocOf(m, { stamp } = {}) {
   return doc;
 }
 
+/** 오늘의 미션 완료 상태를 해당 구성원의 로그에서 복원합니다. */
+export function reconcileMissionCompletions(missions, logs, date, kidId = KID_ID) {
+  const entries = Array.isArray(logs) ? logs : [];
+  (missions || []).forEach((mission) => {
+    const member = ['m1', 'm2', kidId].includes(mission.member) ? mission.member : kidId;
+    const log = entries.find((item) => item.mid === mission.id && item.date === date && (item.member || kidId) === member);
+    if (log) {
+      mission.doneOn = date;
+      mission.doneAt = log.at;
+      mission.earned = Math.max(0, Math.round(+log.earned || 0));
+      mission.goalMet = !!log.goalMet;
+    } else if (mission.doneOn === date) {
+      mission.doneOn = null;
+      mission.doneAt = '';
+      mission.earned = 0;
+      mission.goalMet = false;
+    }
+  });
+  return missions;
+}
+
 /** 기존 앱 로그 1건 → Firestore 로그 문서 (이미 지난 기록이므로 settled:true) */
 export function logDocOf(l, { uid, stamp }) {
   const member = (l.member === 'm1' || l.member === 'm2' || l.member === KID_ID) ? l.member : '';
@@ -705,7 +726,8 @@ export function createFamilySync(deps = {}) {
     return { added, updated, removed };
   }
 
-  const CHILD_WRITABLE = ['logs', 'wishlist', 'shopping', 'letters'];
+  const CHILD_WRITABLE = ['wishlist', 'shopping', 'letters'];
+  const CHILD_UPDATABLE = ['shopping', 'letters'];
 
   /**
    * 로컬 상태의 변경분을 Firestore 에 반영합니다.
@@ -727,12 +749,18 @@ export function createFamilySync(deps = {}) {
       const nextArr = name === 'missions' ? (next[name] || []).map((m) => missionDocOf(m)) : next[name];
       const d = diffById(prevArr, nextArr);
       if (!d.added.length && !d.updated.length && !d.removed.length) continue;
-      if (r !== 'parent') { denied.push({ collection: name, reason: '아이 기기는 이 항목을 바꿀 수 없어요', counts: { added: d.added.length, updated: d.updated.length, removed: d.removed.length } }); continue; }
+      if (r !== 'parent' && !(r === 'child' && CHILD_WRITABLE.includes(name))) {
+        denied.push({ collection: name, reason: '아이 기기는 이 항목을 바꿀 수 없어요', counts: { added: d.added.length, updated: d.updated.length, removed: d.removed.length } });
+        continue;
+      }
 
       d.added.forEach((item) => {
         let data;
         if (name === 'missions') data = missionDocOf(item);
-        else if (name === 'wishlist') data = wishDocOf(item, { uid: by, createdAt: stamp });
+        else if (name === 'wishlist') {
+          data = wishDocOf(item, { uid: by, createdAt: stamp });
+          if (r === 'child') { data.by = kidId; data.boughtAt = ''; }
+        }
         else if (name === 'shopping') data = shoppingDocOf(item, { uid: by, createdAt: stamp });
         else if (name === 'letters') data = letterDocOf(item, { uid: by, createdAt: stamp });
         else data = { ...item };
@@ -740,7 +768,11 @@ export function createFamilySync(deps = {}) {
         pushOp(async () => sdk.setDoc(docRef(pathOf(`${name}/${item.id}`)), data));
         written.push({ collection: name, id: item.id, op: 'create' });
       });
-      d.updated.forEach(({ after }) => {
+      d.updated.forEach(({ before, after }) => {
+        if (r === 'child' && (!CHILD_UPDATABLE.includes(name) || before.createdBy !== by)) {
+          denied.push({ collection: name, id: after.id, reason: '아이 기기는 직접 만든 장보기·편지만 수정할 수 있어요' });
+          return;
+        }
         let data;
         if (name === 'missions') data = missionDocOf(after);
         else if (name === 'wishlist') { data = wishDocOf(after, { uid: by, createdAt: stamp }); delete data.createdBy; delete data.createdAt; delete data.__parent; }
@@ -751,6 +783,10 @@ export function createFamilySync(deps = {}) {
         written.push({ collection: name, id: after.id, op: 'update' });
       });
       d.removed.forEach((item) => {
+        if (r === 'child' && item.createdBy !== by) {
+          denied.push({ collection: name, id: item.id, reason: '아이 기기는 직접 만든 항목만 지울 수 있어요' });
+          return;
+        }
         pushOp(async () => sdk.deleteDoc(docRef(pathOf(`${name}/${item.id}`))));
         written.push({ collection: name, id: item.id, op: 'delete' });
       });

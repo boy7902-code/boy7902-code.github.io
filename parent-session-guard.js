@@ -7,9 +7,9 @@
     canPromptForPin({ firebaseOn = false, role = '' } = {}) {
       return !firebaseOn || role === 'parent';
     },
-    reset({ session, state, storage, key = DEFAULT_STATE_KEY } = {}) {
+    reset({ session, state, storage, key = DEFAULT_STATE_KEY, dropPin = true } = {}) {
       if (session && typeof session === 'object') session.unlockedAt = 0;
-      if (state && typeof state === 'object') delete state.parentPin;
+      if (dropPin && state && typeof state === 'object') delete state.parentPin;
       try {
         if (!state || typeof state !== 'object') return false;
         safeStorage(storage).setItem(key, JSON.stringify(state));

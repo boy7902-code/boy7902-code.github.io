@@ -117,13 +117,25 @@ service cloud.firestore {
 
     /* ───────────────────────── 완료 기록(logs) ─────────────────────────
        아이 : 오늘(KST) · 본인(m3) · 미정산 로그만 create/delete, update 금지
-       부모 : create(성인 미션 기록 포함) · update(정산) · delete 모두 가능
+       부모 : create(성인 미션 기록 포함) · 미정산→정산 update · 미정산 delete
        문서 ID 규칙: {date}_{mid}_m3 → 같은 날 같은 미션 중복 생성을 원천 차단 */
     match /households/{hh}/logs/{logId} {
       allow read: if isFamily();
       allow create: if isParent() || (isChild() && childLogCreate(hh, logId));
-      allow update: if isParent();
-      allow delete: if isParent() || (isChild() && childLogDelete());
+      allow update: if isParent() && parentLogSettlementUpdate();
+      allow delete: if (isParent() && resource.data.get('settled', false) == false)
+        || (isChild() && childLogDelete());
+    }
+
+    // 부모는 로그 내용을 덮어쓰거나 정산을 되돌릴 수 없습니다. 미정산 로그만 한 번 정산합니다.
+    function parentLogSettlementUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.get('settled', false) == false
+        && after.get('settled', false) == true
+        && after.diff(before).affectedKeys().hasOnly(['settled', 'settledAt', 'settledBy'])
+        && after.settledAt == request.time
+        && after.settledBy == request.auth.uid;
     }
 
     function childLogCreate(hh, logId) {

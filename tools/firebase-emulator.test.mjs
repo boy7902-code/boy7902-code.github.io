@@ -83,6 +83,26 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     const childRole = await sync.applyAuthUser(auth.currentUser);
     assert.equal(childRole.role, 'child');
 
+    const childCollections = await sync.pushPatch({
+      prev: { wishlist: [], shopping: [], letters: [] },
+      next: {
+        wishlist: [{ id: 'child-wish', title: '그림책', need: 0, cat: 'book', at: '', by: 'm3', boughtAt: '' }],
+        shopping: [{ id: 'child-shopping', cat: 'buy', text: '우유', done: false }],
+        letters: [{ id: 'child-letter', img: 'data:image/png;base64,abcdefghijklmnopqrstuvwxyz', author: '아이', when: '오늘' }],
+      },
+      by: child.uid, r: 'child', skipLogs: true,
+    });
+    assert.equal(childCollections.ok, true);
+    assert.deepEqual(childCollections.denied, []);
+    assert.equal(childCollections.written.length, 3);
+    const childWish = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/wishlist/child-wish`));
+    const childLetter = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/letters/child-letter`));
+    assert.equal(childWish.exists(), true, 'child wishlist create survives a fresh server read');
+    assert.equal(childWish.data().by, 'm3');
+    assert.equal(childWish.data().boughtAt, '');
+    assert.equal(childLetter.exists(), true, 'child letter create survives a fresh server read');
+    assert.equal(childLetter.data().createdBy, child.uid);
+
     const childPatch = await sync.pushPatch({
       prev: {}, next: { missions: [{ ...mission, title: '바꾸려는 이름' }] }, by: child.uid, r: 'child', skipLogs: true,
     });
@@ -136,6 +156,25 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(summary.data().settledCount, 2);
     assert.equal(summary.data().byMember.m3, 5);
     assert.equal(summary.data().byMember.m1, 7);
+
+    const adultLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${adultLogId}`);
+    const beforeRetry = summary.data();
+    const adultRetry = await sync.writeLog(
+      { id: 'emulator-adult-mission', title: '어른 미션', points: 7, due: '', bonus: 0 },
+      { by: signedInParent.uid, member: 'm1' },
+    );
+    assert.equal(adultRetry.ok, false, 'settled adult log cannot be overwritten as unsettled');
+    const adultDelete = await sync.deleteLog({ date: logResult.payload.date, mid: 'emulator-adult-mission', member: 'm1', settled: true });
+    assert.equal(adultDelete.ok, false, 'settled adult log cannot be deleted');
+    const secondSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
+    assert.equal(secondSettlement.ok, true);
+    assert.equal(secondSettlement.count, 0);
+    const afterRetryLog = await firestoreSdk.getDoc(adultLogRef);
+    const afterRetrySummary = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
+    assert.equal(afterRetryLog.data().settled, true);
+    assert.equal(afterRetrySummary.data().totalXp, beforeRetry.totalXp);
+    assert.equal(afterRetrySummary.data().settledCount, beforeRetry.settledCount);
+    assert.deepEqual(afterRetrySummary.data().byMember, beforeRetry.byMember);
 
     await clearSignedInUser();
     const { user: childAgain } = await createClaimedUser('child');
