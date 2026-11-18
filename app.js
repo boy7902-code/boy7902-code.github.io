@@ -1591,7 +1591,7 @@
     S.wiki.forEach((w) => { if (!groups.includes(w.group)) groups.push(w.group); });
     box.innerHTML = groups.map((g) => {
       const items = S.wiki.filter((w) => w.group === g);
-      return `<div class="wiki-group">${esc(g)}</div>` + items.map((w) => `
+      return `<div class="wiki-col"><div class="wiki-group">${esc(g)}</div>` + items.map((w) => `
         <div class="wiki-item">
           <div class="wiki-key">${esc(w.key)}</div>
           <div class="wiki-val">${esc(w.val)}</div>
@@ -1599,7 +1599,7 @@
             <button class="btn icon sm ghost" data-act="wiki-edit" data-id="${w.id}" aria-label="수정">✎</button>
             <button class="btn icon sm ghost" data-act="wiki-del" data-id="${w.id}" aria-label="삭제">✕</button>
           </div>
-        </div>`).join('');
+        </div>`).join('') + '</div>';
     }).join('');
   }
 

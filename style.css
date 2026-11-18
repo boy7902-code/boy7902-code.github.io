@@ -599,8 +599,8 @@ html[data-theme="dark"] .log-pts { color: #ffcf7a; }
 .letter-tools { display: flex; gap: 2px; padding: 0 4px 6px; }
 
 /* ============================ 위키 ============================ */
-#wikiList { column-count: 2; column-gap: 22px; }
-.wiki-group, .wiki-item { break-inside: avoid; }
+#wikiList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 22px; align-items: start; }
+.wiki-col { display: flex; flex-direction: column; min-width: 0; }
 .wiki-item { margin-bottom: 6px; }
 .wiki-group { font-size: 11px; font-weight: 800; color: var(--text-3); letter-spacing: .04em; margin: 6px 0 2px; }
 .wiki-item {
@@ -763,7 +763,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .brand { order: 1; }
   .top-actions { order: 3; }
   .timer-shell { flex-direction: column; }
-  #wikiList { column-count: 1; }
+  #wikiList { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001s !important; transition-duration: .001s !important; }
