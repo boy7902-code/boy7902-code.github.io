@@ -6,6 +6,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 
+/* 🔒 부모 모드가 잠겨 있으면(아이 화면 기본) 부모 전용 버튼·도구는 아예 보이지 않게 합니다.
+   부모가 PIN으로 열면 body[data-parent="on"] 이 되어 바로 다시 나타납니다. */
+body[data-parent="off"] .parent-only { display: none !important; }
+
 :root {
   --coral: #ff7a6b;
   --coral-soft: #ffe6e1;

@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const read = (name) => readFile(new URL(`../${name}`, import.meta.url), 'utf8');
+
+test('locked parent mode hides parent-only controls instead of disabling them', async () => {
+  const css = await read('style.css');
+  const html = await read('index.html');
+  assert.match(css, /body\[data-parent="off"\] \.parent-only \{ display: none !important; \}/);
+  assert.match(html, /<body data-parent="off">/);
+  for (const id of ['settingsBtn', 'syncBadge', 'eventAddBtn', 'wikiAddBtn', 'schoolEditBtn', 'choreAddBtn', 'partnerBtn', 'pointUseBtn', 'adoptBtn', 'stickerResetBtn']) {
+    const re = new RegExp(`class="[^"]*parent-only[^"]*" id="${id}"`);
+    assert.match(html, re, `${id} must be parent-only`);
+  }
+  // 수호가 쓸 수 있는 것은 그대로 보입니다
+  const shown = /class="mic-btn wish-mic" id="wishMicBtn"/.test(html) && /class="btn icon sm" id="wishAddBtn"/.test(html);
+  assert.ok(shown, 'wishlist + and mic stay available to the child');
+  assert.match(css, /\.parent-only/);
+});
+
+test('item level parent tools carry parent-only while the child check buttons do not', async () => {
+  const app = await read('app.js');
+  for (const act of ['chore-edit', 'chore-del', 'ev-del', 'use-del', 'shop-toggle', 'shop-del', 'letter-del', 'wiki-edit', 'wiki-del', 'wish-buy', 'wish-edit', 'wish-del']) {
+    const re = new RegExp(`class="[^"]*parent-only[^"]*" data-act="${act}"`);
+    assert.match(app, re, `${act} must be parent-only`);
+  }
+  assert.match(app, /data-act="chore-toggle" data-id="\$\{c\.id\}"/);
+  assert.doesNotMatch(app, /class="chore-check[^"]*parent-only/);
+  assert.match(app, /data-act="cal-add" data-date="\$\{sel\}"[\s\S]{0,40}parent-only|cal-add parent-only/);
+});
+
+test('the event center hides parent setups but keeps the child participation parts', async () => {
+  const app = await read('app.js');
+  assert.match(app, /<section class="ev-sec parent-only">\s*<h4>①🔥 3일 연속 콤보/);
+  assert.match(app, /<section class="ev-sec parent-only">\s*<h4>②⚡ 부모님 깜짝 보너스/);
+  assert.match(app, /<section class="ev-sec parent-only">\s*<h4>③🎂 2배 데이/);
+  assert.match(app, /class="btn sm ghost parent-only" data-act="ev-stamp-reset"/);
+  assert.match(app, /class="btn sm ghost parent-only" data-act="ev-gacha-edit"/);
+  // 수호가 직접 여는 비밀 상자·도장·뽑기·상장은 부모 전용이 아닙니다
+  assert.match(app, /data-act="ev-secret-open"/);
+  assert.match(app, /data-act="ev-stamp" data-id="\$\{kind\}"/);
+  assert.match(app, /data-act="ev-gacha"\$\{tickets > 0 \? '' : ' disabled'\}/);
+  assert.match(app, /data-act="ev-mvp"/);
+});

@@ -1603,7 +1603,7 @@
                 <div class="event-title ${e.done ? 'done' : ''}">${esc(e.title)}</div>
                 <div class="event-sub">${m ? `<span class="mdot" style="background:${esc(m.color)}"></span>${esc(m.name)}` : '가족 모두'}</div>
               </div>
-              <button class="btn icon sm ghost" data-act="ev-del" data-id="${e.id}" aria-label="일정 삭제">✕</button>
+              <button class="btn icon sm ghost parent-only" data-act="ev-del" data-id="${e.id}" aria-label="일정 삭제">✕</button>
             </div>`;
           }).join('')
         : `<div class="shop-empty cal-empty">${isToday ? '오늘은 일정이 없어요' : '이 날은 일정이 없어요'} · <b>＋</b> 로 추가</div>`;
@@ -1611,7 +1611,7 @@
           <b class="cal-day-date">${dayLabel}</b>
           ${isToday ? '<span class="pill cal-today-pill">오늘</span>' : ''}
           <span class="cal-day-count">${selList.length ? selList.length + '개' : ''}</span>
-          <button class="btn sm primary cal-add" data-act="cal-add" data-date="${sel}" title="${esc(dayLabel)}에 일정 추가">＋ 일정</button>
+          <button class="btn sm primary cal-add parent-only" data-act="cal-add" data-date="${sel}" title="${esc(dayLabel)}에 일정 추가">＋ 일정</button>
         </div>
         ${selMarks.length ? `<button type="button" class="cal-wiki-row" data-act="sched-wiki" title="우리 집 위키에서 보기">🎂 ${esc(selMarks.join(' · '))}<span class="cwr-go">📗</span></button>` : ''}
         <div class="cal-day-list">${rows}</div>`;
@@ -2195,8 +2195,8 @@
               </div>
             </div>
             <div class="chore-tools">
-              <button class="btn icon sm ghost" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
-              <button class="btn icon sm ghost" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
+              <button class="btn icon sm ghost parent-only" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
+              <button class="btn icon sm ghost parent-only" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
             </div>
           </div>`;
   }
@@ -2589,7 +2589,7 @@
           <span class="use-date" title="${esc(u.date || '')} ${esc(u.at || '')}">${esc(fmtMD(u.date))}</span>
           <span class="use-title">${esc(u.title || '포인트 사용')}</span>
           <b class="use-amt">-${Math.max(0, Math.round(+u.amount || 0))}P</b>
-          <button class="btn icon sm ghost" data-act="use-del" data-id="${u.id}" aria-label="사용 내역 되돌리기">✕</button>
+          <button class="btn icon sm ghost parent-only" data-act="use-del" data-id="${u.id}" aria-label="사용 내역 되돌리기">✕</button>
         </div>`).join('')
       : '<div class="shop-empty" style="padding:8px 4px">포인트를 사용하면 내역이 이곳에 남아요</div>';
   }
@@ -3032,9 +3032,9 @@
     if (box) {
       box.innerHTML = items.length
         ? items.map((x) => `<div class="shop-item ${x.done ? 'done' : ''}">
-          <button class="check ${x.done ? 'on' : ''}" data-act="shop-toggle" data-id="${x.id}" aria-label="구매 완료">✓</button>
+          <button class="check parent-only ${x.done ? 'on' : ''}" data-act="shop-toggle" data-id="${x.id}" aria-label="구매 완료">✓</button>
           <div class="shop-text">${esc(x.text)}</div>
-          <button class="btn icon sm ghost" data-act="shop-del" data-id="${x.id}" aria-label="삭제">✕</button>
+          <button class="btn icon sm ghost parent-only" data-act="shop-del" data-id="${x.id}" aria-label="삭제">✕</button>
         </div>`).join('')
         : `<div class="shop-empty">${shopTab === 'buy' ? '살 것이 없어요. 위에서 추가해 보세요.' : '냉장고 메모가 비어 있어요.'}</div>`;
     }
@@ -3106,9 +3106,9 @@
               <div class="wish-bar"><i style="width:${pct}%"></i></div>
             </div>
             <div class="wish-tools">
-              ${bought ? '' : `<button class="btn sm ghost wish-gift" data-act="wish-buy" data-id="${w.id}" title="포인트를 써서 선물로 사 주기" aria-label="선물 사주기">🎁</button>`}
-              <button class="btn icon sm ghost" data-act="wish-edit" data-id="${w.id}" aria-label="수정">✎</button>
-              <button class="btn icon sm ghost" data-act="wish-del" data-id="${w.id}" aria-label="목록에서 지우기">✕</button>
+              ${bought ? '' : `<button class="btn sm ghost wish-gift parent-only" data-act="wish-buy" data-id="${w.id}" title="포인트를 써서 선물로 사 주기" aria-label="선물 사주기">🎁</button>`}
+              <button class="btn icon sm ghost parent-only" data-act="wish-edit" data-id="${w.id}" aria-label="수정">✎</button>
+              <button class="btn icon sm ghost parent-only" data-act="wish-del" data-id="${w.id}" aria-label="목록에서 지우기">✕</button>
             </div>
           </div>`;
         }).join('')
@@ -3442,7 +3442,7 @@
           </div>
           <div class="letter-tools">
             <button class="btn sm ghost grow" data-act="letter-open" data-id="${l.id}">보기</button>
-            <button class="btn sm ghost" data-act="letter-del" data-id="${l.id}" aria-label="삭제">🗑️</button>
+            <button class="btn sm ghost parent-only" data-act="letter-del" data-id="${l.id}" aria-label="삭제">🗑️</button>
           </div>
         </div>`).join('')
       : `<div class="shop-empty" style="grid-column:1/-1">아직 편지가 없어요. 첫 편지를 남겨 보세요 💌</div>`;
@@ -3512,8 +3512,8 @@
           <div class="wiki-key">${esc(w.key)}</div>
           <div class="wiki-val">${esc(w.val)}</div>
           <div class="wiki-tools">
-            <button class="btn icon sm ghost" data-act="wiki-edit" data-id="${w.id}" aria-label="수정">✎</button>
-            <button class="btn icon sm ghost" data-act="wiki-del" data-id="${w.id}" aria-label="삭제">✕</button>
+            <button class="btn icon sm ghost parent-only" data-act="wiki-edit" data-id="${w.id}" aria-label="수정">✎</button>
+            <button class="btn icon sm ghost parent-only" data-act="wiki-del" data-id="${w.id}" aria-label="삭제">✕</button>
           </div>
         </div>`).join('') + '</div>';
     }).join('');
@@ -4662,7 +4662,7 @@
       <div class="stamp-cells">${cells}</div>
       <div class="sb-actions">
         <button type="button" class="btn sm primary" data-act="ev-stamp" data-id="${kind}">＋ 한 칸</button>
-        <button type="button" class="btn sm ghost" data-act="ev-stamp-reset" data-id="${kind}" title="새 도장판">↺</button>
+        <button type="button" class="btn sm ghost parent-only" data-act="ev-stamp-reset" data-id="${kind}" title="새 도장판">↺</button>
       </div>
     </div>`;
   }
@@ -4682,7 +4682,7 @@
       ? `<div class="ev-secret empty">
           <span class="es-ico">🎁</span>
           <div class="es-txt"><b>오늘 상자 없음</b><span>보호자가 놓으면 아이 화면에 반짝이며 나타나요</span></div>
-          <div class="es-acts">
+          <div class="es-acts parent-only">
             <button type="button" class="btn sm" data-act="ev-secret-random" title="랜덤 미션">🎲</button>
             <button type="button" class="btn sm" data-act="ev-secret-custom" title="직접 정하기">✍️</button>
           </div>
@@ -4696,13 +4696,13 @@
           <div class="es-acts">
             ${!s.opened && !s.done ? '<button type="button" class="btn sm primary" data-act="ev-secret-open">열기</button>' : ''}
             ${s.opened && !s.done ? '<button type="button" class="btn sm primary" data-act="ev-secret-done">완료 ✓</button>' : ''}
-            ${s.done ? `<button type="button" class="btn sm ghost" data-act="ev-secret-random" title="내일도 상자 놓기">🎲</button>` : ''}
+            ${s.done ? `<button type="button" class="btn sm ghost parent-only" data-act="ev-secret-random" title="내일도 상자 놓기">🎲</button>` : ''}
           </div>
         </div>`;
 
     const dblList = (EV().doubleDays || []).slice().sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6)
       .map((d) => `<span class="ev-chip dbl">🎂 ${esc(d.label)} <em>${esc(fmtMD(d.date))}</em>
-          <button type="button" class="chip-x" data-act="ev-dbl-del" data-id="${esc(d.id)}" aria-label="지우기">✕</button></span>`).join('');
+          <button type="button" class="chip-x parent-only" data-act="ev-dbl-del" data-id="${esc(d.id)}" aria-label="지우기">✕</button></span>`).join('');
 
     box.innerHTML = `
       <div class="ev-status">
@@ -4713,7 +4713,7 @@
         <span class="ev-chip">📚 ${stampInfo('reading').n}/10</span>
       </div>
 
-      <section class="ev-sec">
+      <section class="ev-sec parent-only">
         <h4>①🔥 3일 연속 콤보 <span class="ev-note">같은 미션 3일 연속이면 +${EV().combo.bonus}P</span></h4>
         <div class="ev-row">
           <span class="ev-state ${comboOn ? 'on' : 'off'}">${comboOn ? '켜짐' : '꺼짐'}</span>
@@ -4722,7 +4722,7 @@
         </div>
       </section>
 
-      <section class="ev-sec">
+      <section class="ev-sec parent-only">
         <h4>②⚡ 부모님 깜짝 보너스 <span class="ev-note">버튼 하나로 바로 +P</span></h4>
         <div class="ev-row">
           <button type="button" class="btn sm primary" data-act="ev-surprise">⚡ 깜짝 칭찬</button>
@@ -4730,7 +4730,7 @@
         </div>
       </section>
 
-      <section class="ev-sec">
+      <section class="ev-sec parent-only">
         <h4>③🎂 2배 데이 <span class="ev-note">생신·명절·지정일</span></h4>
         <div class="ev-row wrap">${dblList || '<span class="ev-note">아직 지정한 날이 없어요 (위키 생신일은 자동 2배)</span>'}</div>
         <div class="ev-row"><button type="button" class="btn sm" data-act="ev-dbl-add">＋ 2배 데이</button></div>
@@ -4758,7 +4758,7 @@
           <div class="gacha-side">
             <b class="gacha-left">${tickets > 0 ? `${tickets}장 남음` : '다음 50P에 1장'}</b>
             <button type="button" class="btn sm primary" data-act="ev-gacha"${tickets > 0 ? '' : ' disabled'}>${tickets > 0 ? '🎰 뽑기' : '아직 없음'}</button>
-            <button type="button" class="btn sm ghost" data-act="ev-gacha-edit" title="쿠폰 후보 편집">✎ 후보</button>
+            <button type="button" class="btn sm ghost parent-only" data-act="ev-gacha-edit" title="쿠폰 후보 편집">✎ 후보</button>
           </div>
         </div>
         <div class="ev-draws">${draws.length ? draws.map((d) => `<span class="ev-chip">🎉 ${esc(d.label)} <em>${esc(fmtMD(d.date))}</em></span>`).join('') : '<span class="ev-note">아직 뽑은 쿠폰이 없어요</span>'}</div>
