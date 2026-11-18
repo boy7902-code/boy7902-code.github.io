@@ -668,6 +668,7 @@
       syncLocalChanged();
       fbLocalChanged();          // 🔥 Firebase 연결 중이면 변경분만 Firestore 로 보냅니다 (연동 초안)
       evtSyncMaybe();            // 🎪 이벤트 설정·상태 → child_state/event_center (부모 기기만)
+      schoolSyncMaybe();         // 🏫 급식·시간표 → child_state/today_school (부모 기기만)
     }, 120);
   }
 
@@ -1396,8 +1397,17 @@
 
   /* ----------------------------------------------------------------- schedule */
   function memberById(id) { return S.members.find((m) => m.id === id) || null; }
+  /* 📅 구글 캘린더에서 읽어 온 일정 — 저장하지 않고 화면에만 합칩니다 */
+  const GCAL = { on: false, events: [], calendars: [], at: 0, busy: false };
+  function gcalEventsOn(dateStr) {
+    if (!GCAL.on || !GCAL.events.length) return [];
+    return GCAL.events.filter((e) => e.date === dateStr);
+  }
+  function allEvents() {
+    return S.events.concat(GCAL.on ? GCAL.events : []);
+  }
   function eventsOn(dateStr) {
-    return S.events.filter((e) => e.date === dateStr)
+    return allEvents().filter((e) => e.date === dateStr)
       .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   }
 
@@ -1551,6 +1561,7 @@
           evs.length ? 'has' : '',
           wm.length ? 'wiki' : ''].filter(Boolean).join(' ');
         const bars = evs.slice(0, 3).map((e) => {
+          if (e.source === 'gcal') return '<i style="background:#5b8cff"></i>';
           const m = memberById(e.member);
           return `<i style="background:${m ? esc(m.color) : 'var(--coral)'}"></i>`;
         }).join('');
@@ -1575,6 +1586,15 @@
       const selMarks = wikiMarksOn(sel);
       const rows = selList.length
         ? selList.map((e) => {
+            if (e.source === 'gcal') {
+              return `<div class="event gcal" data-id="${esc(e.id)}">
+                <div class="event-time">${esc(e.time || '종일')}</div>
+                <div class="event-main">
+                  <div class="event-title">${esc(e.title)}</div>
+                  <div class="event-sub">📅 구글 캘린더</div>
+                </div>
+              </div>`;
+            }
             const m = memberById(e.member);
             return `<div class="event" data-id="${e.id}">
               <button class="check ${e.done ? 'on' : ''}" data-act="ev-toggle" data-id="${e.id}" aria-label="완료 표시">✓</button>
@@ -1598,7 +1618,7 @@
     }
 
     // ③ 다가오는 일정 (내일 ~ 2주)
-    const upcoming = S.events
+    const upcoming = allEvents()
       .filter((e) => e.date > t && e.date <= fmtDate(addDays(new Date(), 14)))
       .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
       .slice(0, 3);
@@ -1616,6 +1636,115 @@
         : '';
     }
   }
+
+  /* ------------------------------------------------- 📅 구글 캘린더 (읽기 전용)
+     로그인한 Google 계정의 calendarList 를 읽어, 접근 가능한 캘린더(기본 캘린더·가족 캘린더 등)의
+     일정을 '가족 일정' 달력에 합쳐 보여 줍니다. 일정은 저장하지 않고 화면에만 둘며,
+     Firestore·깃허브·백업 파일에는 남기지 않습니다. 토큰은 이 탭(sessionStorage)에만 보관합니다. */
+  const GCAL_API = 'https://www.googleapis.com/calendar/v3';
+  function gcalNote(text, tone) {
+    const el = $('#gcalNote');
+    if (el) { el.textContent = text || ''; el.dataset.tone = tone || ''; }
+    const btn = $('#gcalConnectBtn');
+    if (btn) btn.textContent = GCAL.on ? '🔄 구글 캘린더 새로 고침' : '📅 구글 캘린더 연결';
+    const off = $('#gcalOffBtn');
+    if (off) off.hidden = !GCAL.on;
+  }
+  function gcalToken() {
+    const boot = window.FamilySyncBoot;
+    return (boot && boot.calendar && typeof boot.calendar.current === 'function') ? boot.calendar.current() : null;
+  }
+  async function gcalFetch(url) {
+    const cur = gcalToken();
+    if (!cur) throw Object.assign(new Error('no-token'), { code: 'gcal/no-token' });
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + cur.token } });
+    if (res.status === 401 || res.status === 403) {
+      const boot = window.FamilySyncBoot;
+      if (boot && boot.calendar) boot.calendar.clear();
+      throw Object.assign(new Error('expired'), { code: 'gcal/expired', status: res.status });
+    }
+    if (!res.ok) throw Object.assign(new Error('http-' + res.status), { code: 'gcal/http', status: res.status });
+    return res.json();
+  }
+  async function gcalLoad({ force = false } = {}) {
+    if (GCAL.busy) return false;
+    if (!gcalToken()) {
+      GCAL.on = false; GCAL.events = [];
+      gcalNote('구글 캘린더 연결이 만료됐어요 · 다시 연결해 주세요', 'warn');
+      renderSchedule();
+      return false;
+    }
+    if (!force && GCAL.at && Date.now() - GCAL.at < 4 * 60 * 1000) return true;
+    const core = window.FamilySync;
+    if (!core || typeof core.gcalEventsToApp !== 'function') { gcalNote('캘린더 도우미를 불러오지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn'); return false; }
+    GCAL.busy = true;
+    gcalNote('구글 캘린더 일정을 불러오는 중…');
+    try {
+      const win = core.gcalWindow(todayStr(), { back: 7, ahead: 40 });
+      const list = await gcalFetch(`${GCAL_API}/users/me/calendarList?minAccessRole=reader&maxResults=50`);
+      const cals = core.gcalCalendars(list.items).slice(0, 12);
+      const out = [];
+      for (const c of cals) {
+        const q = new URLSearchParams({
+          timeMin: core.gcalBoundaryIso(win.from, false),
+          timeMax: core.gcalBoundaryIso(win.to, true),
+          singleEvents: 'true', orderBy: 'startTime', maxResults: '250', showDeleted: 'false',
+        });
+        const r = await gcalFetch(`${GCAL_API}/calendars/${encodeURIComponent(c.id)}/events?${q.toString()}`);
+        out.push(...core.gcalEventsToApp(r.items || [], c.id));
+      }
+      GCAL.events = out;
+      GCAL.calendars = cals;
+      GCAL.at = Date.now();
+      GCAL.on = true;
+      gcalNote(`구글 캘린더 연결됨 · 캘린더 ${cals.length}개 · 일정 ${out.length}개 (${hhmm()} 갱신) · 읽기 전용`, 'ok');
+      renderSchedule();
+      return true;
+    } catch (e) {
+      const code = (e && e.code) || '';
+      if (code === 'gcal/expired' || code === 'gcal/no-token') {
+        GCAL.on = false; GCAL.events = [];
+        gcalNote('구글 캘린더 연결이 만료됐어요 · ‘다시 연결’을 눌러 주세요', 'warn');
+      } else {
+        gcalNote('구글 캘린더를 읽지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn');
+      }
+      renderSchedule();
+      return false;
+    } finally { GCAL.busy = false; }
+  }
+  async function gcalConnect() {
+    const boot = window.FamilySyncBoot;
+    if (!boot || !boot.calendar || typeof boot.calendar.connect !== 'function') {
+      toast('로그인 모듈을 아직 불러오지 못했어요 · 잠시 뒤 다시 눌러 주세요', 'coral', 3200);
+      return;
+    }
+    if (!boot.auth || !boot.auth.currentUser) {
+      toast('먼저 Google 계정으로 로그인해 주세요', '', 3000);
+      fbSignIn();
+      return;
+    }
+    gcalNote('Google 창에서 ‘일정 읽기’를 허용해 주세요…');
+    const r = await boot.calendar.connect().catch((e) => ({ ok: false, reason: 'error', message: String((e && e.message) || '') }));
+    if (!r || !r.ok) {
+      if (r && r.reason === 'cancelled') gcalNote('연결을 취소했어요 · 필요하면 다시 눌러 주세요');
+      else if (r && r.reason === 'redirected') gcalNote('Google 창에서 돌아오면 다시 연결해 주세요');
+      else if (r && r.reason === 'signed-out') gcalNote('먼저 Google 계정으로 로그인해 주세요', 'warn');
+      else gcalNote('구글 캘린더를 연결하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn');
+      if (r && r.reason === 'error' && r.message) toast('구글 캘린더 연결 실패 — ' + r.message.slice(0, 90), 'coral', 4400);
+      return;
+    }
+    GCAL.at = 0;
+    await gcalLoad({ force: true });
+  }
+  function gcalDisconnect(quiet) {
+    const boot = window.FamilySyncBoot;
+    if (boot && boot.calendar && typeof boot.calendar.clear === 'function') boot.calendar.clear();
+    GCAL.on = false; GCAL.events = []; GCAL.calendars = []; GCAL.at = 0;
+    gcalNote(quiet ? '로그아웃해서 구글 캘린더 연결도 함께 끊었어요' : '구글 캘린더를 끊었어요 · 다시 연결하면 일정을 읽어 옵니다');
+    renderSchedule();
+  }
+  if ($('#gcalConnectBtn')) $('#gcalConnectBtn').addEventListener('click', () => { gcalConnect(); });
+  if ($('#gcalOffBtn')) $('#gcalOffBtn').addEventListener('click', () => gcalDisconnect());
 
   async function addEvent(defaults = {}) {
     const memberOpts = [{ value: '', label: '가족 모두' }].concat(S.members.map((m) => ({ value: m.id, label: m.name })));
@@ -2105,13 +2234,12 @@
     const monthCount = histAllLogs().filter((l) => l.date.slice(0, 7) === thisMonth).length;
     if ($('#histBtnPill')) $('#histBtnPill').textContent = String(monthCount);
 
-    // ① 진화 게이지 — 다음 진화까지 남은 P를 굵은 바·퍼센트·큰 안내로
+    // ① 진화 게이지 — '다음 진화 목표'를 분모로 하는 진행률 (누적 XP 값 자체는 바꾸지 않습니다)
     const nxt = st[lv + 1];
+    const nextMin = nxt ? nxt.min : FINAL_P;
     let evoPct = 100;
     if (nxt) {
-      const span = Math.max(1, nxt.min - stage.min);
-      const got = xp - stage.min;
-      evoPct = clamp(Math.round((got / span) * 100), 0, 100);
+      evoPct = clamp(Math.round((xp / Math.max(1, nextMin)) * 100), 0, 100);
       $('#charBar').style.width = evoPct + '%';
       $('#charNext').classList.remove('done');
       $('#charNext').innerHTML = `다음 진화 <b>${esc(nxt.name)}</b>까지 딱 <b>${Math.max(0, nxt.min - xp)}P</b> 남음!`;
@@ -2123,9 +2251,9 @@
     if ($('#evoPct')) $('#evoPct').textContent = evoPct + '%';
     if ($('#evoBar')) $('#evoBar').setAttribute('aria-valuenow', String(evoPct));
 
-    // ② 진화 경험치(⚡) vs 선물 코인(🪙) 스탯 카드
+    // ② 진화 경험치(⚡) vs 선물 코인(🪙) 스탯 카드 — 분모는 다음 진화 목표
     if ($('#statXp')) $('#statXp').textContent = xp;
-    if ($('#statXpMax')) $('#statXpMax').textContent = `/${FINAL_P}P`;
+    if ($('#statXpMax')) $('#statXpMax').textContent = `/${nextMin}P`;
     if ($('#statCoin')) $('#statCoin').textContent = bal;
 
     // ③ 오늘 달성 바 — 오늘 모은 P / 오늘 목표(오늘 요일 아이 미션 최대 획득) 합계
@@ -2182,16 +2310,30 @@
     } else {
       const todayList = list.filter((c) => missionOnDay(c, dow));
       const offList = list.filter((c) => !missionOnDay(c, dow));
-      const todayHtml = todayList.length
-        ? todayList.map((c) => choreCardHtml(c, t, nowMin)).join('')
-        : `<div class="shop-empty">${DAYS[dow]}요일은 할 미션이 없어요 — 오늘은 푹 쉬어요 🌴</div>`;
+      // 끝낸 미션은 목록에서 내리고 아래 '오늘 끝낸 미션' 접힘 줄로 보냅니다(실수로 체크해도 펼쳐서 되돌릴 수 있게)
+      const doneListToday = todayList.filter((c) => c.doneOn === t);
+      const todoList = todayList.filter((c) => c.doneOn !== t);
+      const doneOpen = !!(document.getElementById('choreDone') && document.getElementById('choreDone').open);
+      const offOpen = !!(document.getElementById('choreOff') && document.getElementById('choreOff').open);
+      const noTodoMsg = todayList.length
+        ? '🎉 오늘 미션을 다 끝냈어요! 수고했어요'
+        : `${DAYS[dow]}요일은 할 미션이 없어요 — 오늘은 푹 쉬어요 🌴`;
+      const todayHtml = todoList.length
+        ? todoList.map((c) => choreCardHtml(c, t, nowMin)).join('')
+        : `<div class="shop-empty">${noTodoMsg}</div>`;
+      const doneHtml = doneListToday.length
+        ? `<details class="chore-off chore-done" id="choreDone"${doneOpen ? ' open' : ''}>
+            <summary>✅ 오늘 끝낸 미션 <span class="pill">${doneListToday.length}개</span></summary>
+            <div class="chore-off-list">${doneListToday.map((c) => choreCardHtml(c, t, nowMin)).join('')}</div>
+          </details>`
+        : '';
       const offHtml = offList.length
-        ? `<details class="chore-off"${$('#choreOff') && $('#choreOff').open ? ' open' : ''}>
+        ? `<details class="chore-off" id="choreOff"${offOpen ? ' open' : ''}>
             <summary>😴 오늘은 ${DAYS[dow]}요일이라 쉬는 미션 <span class="pill">${offList.length}개</span></summary>
             <div class="chore-off-list">${offList.map((c) => choreCardHtml(c, t, nowMin, true)).join('')}</div>
           </details>`
         : '';
-      $('#choreList').innerHTML = todayHtml + offHtml;
+      $('#choreList').innerHTML = todayHtml + doneHtml + offHtml;
     }
 
     // 10P마다 별 하나 (아이 누적 경험치 기준)
@@ -2996,6 +3138,99 @@
     toast('사고 싶은 것에 적었어요 🎁', 'mint');
   }
 
+  /* ---- 🎤 사고 싶은 것 카드에서 바로 말로 적기 (모달 없이) ----
+     카드 헤더의 🎤 를 누르면 그 자리에서 듣기 시작하고, 끝나면 지금 탭에 바로 넣습니다.
+     · 🎁 사고 싶은 것 → 기본 분류(기타) · 필요 포인트 0 (부모가 나중에 채움)
+     · 🛒 장보기 · 🧊 냉장고 → 기존 규칙대로 보호자 확인 뒤 추가 */
+  let wishMicRec = null;
+  function wishVoiceNote(msg, tone) {
+    const el = $('#wishVoiceNote');
+    if (!el) return;
+    el.hidden = !msg;
+    el.textContent = msg || '';
+    el.classList.toggle('on', tone === 'on');
+    el.classList.toggle('warn', tone === 'warn');
+  }
+  function wishMicState(on) {
+    const btn = $('#wishMicBtn');
+    if (!btn) return;
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '듣기 멈추기' : '말로 적기');
+    btn.title = on ? '듣기 멈추기' : '말로 적기(음성 입력)';
+    btn.textContent = on ? '⏹' : '🎤';
+  }
+  function addVoiceItem(text) {
+    const t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    if (shopTab === 'wish') {
+      S.wishlist.unshift({
+        id: uid(), title: t.slice(0, 40), need: 0, cat: 'etc',
+        at: todayStr(), by: KID_ID, boughtAt: '',
+      });
+      save(); renderWish(); renderShopping();
+      wishVoiceNote(`🎁 “${t.slice(0, 40)}” 적었어요 · 분류·포인트는 ✎ 로 고칠 수 있어요`, 'on');
+      toast('사고 싶은 것에 말로 적었어요 🎁', 'mint');
+      setTimeout(() => wishVoiceNote(''), 4200);
+      return;
+    }
+    asParent('장보기 목록은 보호자만 바꿀 수 있어요.', () => {
+      S.shopping.unshift({ id: uid(), cat: shopTab === 'fridge' ? 'fridge' : 'buy', text: t.slice(0, 80), done: false });
+      save(); renderShopping();
+      wishVoiceNote(`${shopTab === 'fridge' ? '🧊' : '🛒'} “${t.slice(0, 80)}” 넣었어요`, 'on');
+      setTimeout(() => wishVoiceNote(''), 4200);
+    });
+  }
+  function wishVoiceFallback() {
+    if (shopTab === 'wish') { addWish(); return; }
+    if ($('#shopInput')) $('#shopInput').focus({ preventScroll: true });
+  }
+  function wishVoiceToggle() {
+    if (wishMicRec) { try { wishMicRec.stop(); } catch (e) { /* 이미 끝났으면 넘어갑니다 */ } return; }
+    if (!SpeechRec) { wishVoiceNote(VOICE_MSG.unsupported, 'warn'); toast(VOICE_MSG.unsupported, '', 3800); wishVoiceFallback(); return; }
+    if (window.isSecureContext === false) { wishVoiceNote(VOICE_MSG.insecure, 'warn'); toast(VOICE_MSG.insecure, '', 3800); return; }
+    if (voiceStop) voiceStop();          // 다른 칸이 듣고 있었으면 먼저 멈춥니다
+    const rec = new SpeechRec();
+    wishMicRec = rec;
+    let finalText = '';
+    let errored = false;
+    const stop = () => { if (wishMicRec === rec) { try { rec.stop(); } catch (e) { /* noop */ } } };
+    voiceStop = stop;
+    rec.lang = 'ko-KR';
+    rec.interimResults = true;
+    rec.continuous = false;              // 한 마디 말하면 바로 끝내고 추가합니다
+    rec.maxAlternatives = 1;
+    rec.onstart = () => { wishMicState(true); wishVoiceNote('🎙️ 듣고 있어요… 말씀해 주세요', 'on'); };
+    rec.onresult = (ev) => {
+      let interim = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+        const r = ev.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      const now = (finalText + interim).trim();
+      if (now) wishVoiceNote(`🎙️ ${now}`, 'on');
+    };
+    rec.onerror = (ev) => {
+      errored = true;
+      const msg = VOICE_MSG[ev.error] || '음성 입력을 하지 못했어요. 잠시 뒤 다시 해 주세요.';
+      if (msg) { wishVoiceNote(msg, 'warn'); toast(msg, '', 3600); }
+    };
+    rec.onend = () => {
+      wishMicState(false);
+      if (wishMicRec === rec) wishMicRec = null;
+      if (voiceStop === stop) voiceStop = null;
+      const spoken = finalText.trim();
+      if (spoken) addVoiceItem(spoken);
+      else if (!errored) wishVoiceNote('잘 안 들렸어요. 🎤 를 다시 누르고 또박또박 말해 주세요.', 'warn');
+    };
+    try { rec.start(); }
+    catch (e) {
+      wishMicState(false); wishMicRec = null; voiceStop = null;
+      wishVoiceNote('음성 입력을 시작하지 못했어요. 잠시 뒤 다시 해 주세요.', 'warn');
+    }
+  }
+
   async function editWish(id) {
     const w = wishItems().find((x) => x.id === id);
     if (!w) return;
@@ -3330,6 +3565,57 @@
     renderSchool();
   }
 
+  /* ---- 🏫 오늘 학교 → Firestore child_state/today_school (가족 읽기 · 부모 쓰기) ----
+     부모가 급식·시간표를 고쳐 저장하면 아이 기기·태블릿이 그대로 읽어 갑니다.
+     값은 비공개 Firestore 에만 들어가고, 공개 코드에는 예시 문구만 둡니다. */
+  /* var → 함수 선언보다 먼저 save()가 불려도 안전합니다 */
+  var schoolSyncTimer = null;
+  var schoolSyncedSig = '';
+  function schoolDocPayload() {
+    const sc = S.school || {};
+    return { name: sc.name || '', cls: sc.cls || '', byDate: sc.byDate || {} };
+  }
+  function schoolSigOf(d) {
+    const byDate = (d && d.byDate) || {};
+    return JSON.stringify([
+      String((d && d.name) || ''), String((d && d.cls) || ''),
+      Object.keys(byDate).sort().map((k) => [k, String((byDate[k] && byDate[k].meal) || ''), String((byDate[k] && byDate[k].timetable) || '')]),
+    ]);
+  }
+  function schoolSyncMaybe(force) {
+    const fb = fbReady();
+    if (!fb || !fb.on || fb.role !== 'parent' || !fb.sync || typeof fb.sync.pushSchool !== 'function') return;
+    const payload = schoolDocPayload();
+    const sig = schoolSigOf(payload);
+    if (!force && sig === schoolSyncedSig) return;
+    schoolSyncedSig = sig;
+    clearTimeout(schoolSyncTimer);
+    schoolSyncTimer = setTimeout(() => {
+      fb.sync.pushSchool(payload).then((r) => {
+        if (r && !r.ok && !r.cancelled) toast('학교 급식·시간표를 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
+      }).catch(() => {});
+    }, 600);
+  }
+  function applySchoolDoc(doc) {
+    if (!doc || typeof doc !== 'object') return;
+    const by = (doc.byDate && typeof doc.byDate === 'object') ? doc.byDate : {};
+    const next = { name: String(doc.name || '').trim(), cls: String(doc.cls || '').trim(), byDate: {} };
+    Object.keys(by).forEach((k) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+      const v = by[k] || {};
+      next.byDate[k] = { meal: String(v.meal || ''), timetable: String(v.timetable || '') };
+    });
+    const sig = schoolSigOf(next);
+    if (sig === schoolSyncedSig) return;
+    schoolSyncedSig = sig;                       // 서버에서 받은 값은 다시 보내지 않습니다
+    if (!S.school) S.school = { name: '', cls: '', byDate: {} };
+    if (next.name) S.school.name = next.name;
+    if (next.cls) S.school.cls = next.cls;
+    Object.keys(next.byDate).forEach((k) => { S.school.byDate[k] = next.byDate[k]; });
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
+    renderSchool();
+  }
+
   async function editSchoolCard() {
     const today = schoolToday() || { meal: '', timetable: '' };
     const r = await askModal({
@@ -3337,7 +3623,7 @@
       hint: '학교 이름·반은 이 기기에, 급식·시간표는 오늘 날짜 몫으로 저장됩니다.',
       fields: [
         { name: 'name', label: '학교 이름', value: S.school.name || '', placeholder: '예: ○○초등학교' },
-        { name: 'cls', label: '반', value: S.school.cls || '', placeholder: '예: 1학년 2반' },
+        { name: 'cls', label: '반', value: S.school.cls || '', placeholder: '예: 2학년 3반' },
         { name: 'meal', label: '오늘 급식', type: 'textarea', value: today.meal || '', placeholder: '비빔밥, 계란실파국, 닭윙구이, 백김치' },
         { name: 'timetable', label: '오늘 시간표', type: 'textarea', value: today.timetable || '', placeholder: '국어, 국어, 즐거운생활, 즐거운생활' },
       ],
@@ -3891,7 +4177,7 @@
   }
 
   /* host: 포켓몬 그림을 감싼 칸, say: 말풍선 요소 */
-  function pokeReact(host, say, name) {
+  function pokeReact(host, say, name, opts = {}) {
     if (!host) return;
     const img = host.querySelector('img');
     if (img) {
@@ -3899,6 +4185,12 @@
       void img.offsetWidth;
       img.classList.add('poke-jump');
       setTimeout(() => img.classList.remove('poke-jump'), 900);
+    }
+    host.classList.remove('poke-wiggle');
+    if (opts.wiggle) {
+      void host.offsetWidth;
+      host.classList.add('poke-wiggle');
+      setTimeout(() => host.classList.remove('poke-wiggle'), 700);
     }
     const fx = document.createElement('div');
     fx.className = 'poke-fx';
@@ -3915,12 +4207,12 @@
     host.appendChild(fx);
     setTimeout(() => fx.remove(), 1700);
     if (say) {
-      say.textContent = pokeLine(name);
+      say.textContent = String(opts.text || pokeLine(name));
       say.classList.remove('on');
       void say.offsetWidth;
       say.classList.add('on');
       clearTimeout(say._hideTimer);
-      say._hideTimer = setTimeout(() => say.classList.remove('on'), 3200);
+      say._hideTimer = setTimeout(() => say.classList.remove('on'), opts.holdMs || 3200);
     }
     pokeChirp();
   }
@@ -4557,6 +4849,11 @@
   let sbPokeKey = '';
   let sbWxSig = '';
   let sbMissionSig = '';
+  const standbyWakeClickGuard = window.FamilyStandbyGuard.createWakeClickGuard();
+  /* 대기화면에서는 짧은 시간(1.5초) 안에 3번 터치해야 대시보드로 돌아갑니다.
+     한 번 스치듯 누른 것으로는 나가지 않게 해 달라는 요청에 따른 동작입니다. */
+  const standbyTapGate = window.FamilyStandbyGuard.createMultiTapGate({ taps: 3, windowMs: 1500 });
+  let standbyHintTimer = null;
 
   function standbyPartnerStage() {
     const p = partnerOf(S.pokemon.key);
@@ -4657,6 +4954,11 @@
       const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
       if (sig === sbMissionSig) return sbSyncPartner();
       sbMissionSig = sig;
+      // 진화 경험치는 '다음 진화 목표'를 분모로 보여 줍니다 (최종 단계에서만 200P)
+      const sbStages = stagesOf();
+      const sbLv = stageIndex(S.pokemon.xp);
+      const sbXp = Math.round(S.pokemon.xp);
+      const sbNext = sbStages[sbLv + 1] ? sbStages[sbLv + 1].min : FINAL_P;
       $('#sbMission').innerHTML = `
         <div class="sb-m-head"><span>🎯 오늘 미션</span><b>${doneCount} / ${totalToday} 완료</b></div>
         <div class="sb-ring" style="--p:${pct}">
@@ -4667,7 +4969,7 @@
         </div>
         <div class="sb-stats">
           <div class="sb-stat coin"><span>🪙 선물 코인</span><b>${balancePts()}P</b></div>
-          <div class="sb-stat xp"><span>⚡ 진화 경험치</span><b>${Math.round(S.pokemon.xp)}P</b></div>
+          <div class="sb-stat xp"><span>⚡ 진화 경험치</span><b>${sbXp}/${sbNext}P</b></div>
         </div>
         <div class="sb-hint-line">${tg.goal && tg.got >= tg.goal ? '🎉 오늘 목표 달성! 최고예요' : tg.left ? `${tg.left}P 더 모으면 오늘 목표 달성!` : '오늘은 쉬어 가는 날이에요 🌴'}</div>`;
     }
@@ -4704,6 +5006,8 @@
     sbPokeKey = '';
     sbWxSig = '';
     sbMissionSig = '';
+    standbyTapGate.reset();
+    standbyTapText('화면을 연속 3번 터치하면 대시보드로 돌아가요', '');
     const el = $('#standby');
     if (el) el.hidden = false;
     document.body.classList.add('standby-on');
@@ -4718,6 +5022,9 @@
     standbyOn = false;
     clearInterval(standbyTimer);
     standbyTimer = null;
+    standbyTapGate.reset();
+    clearTimeout(standbyHintTimer);
+    standbyHintTimer = null;
     const el = $('#standby');
     if (el) el.hidden = true;
     document.body.classList.remove('standby-on');
@@ -4754,16 +5061,53 @@
     if (lock && !lock.released) lock.release().catch(() => {});
   }
 
-  const standbyWakeClickGuard = window.FamilyStandbyGuard.createWakeClickGuard();
+  function standbyTapText(msg, tone) {
+    const el = $('#sbTap');
+    if (!el) return;
+    el.textContent = msg;
+    el.dataset.tone = tone || '';
+  }
+  function showStandbyTapHint(count, needed) {
+    clearTimeout(standbyHintTimer);
+    standbyTapText(`조금 더! (${count}/${needed})`, 'more');
+    standbyHintTimer = setTimeout(() => {
+      standbyHintTimer = null;
+      standbyTapText('화면을 연속 3번 터치하면 대시보드로 돌아가요', '');
+    }, 1500);
+  }
+  /* 1·2번째 터치는 대시보드를 열지 않고, 대기화면 속 포켓몬만 폴작이며 반응합니다.
+     (아이가 지나가며 톡톡 건더도 실수로 플리지 않게) */
+  function standbyTapReact(count, needed) {
+    const { stage } = standbyPartnerStage();
+    const name = (stage && stage.name) ? stage.name : '파트너';
+    const text = count >= needed - 1
+      ? `한 번 더 누르면 열려요! (${count}/${needed})`
+      : `${name}! 콕! (${count}/${needed})`;
+    pokeReact($('#sbStage'), $('#sbSay'), name, { text, wiggle: count % 2 === 0, holdMs: 2400 });
+  }
   function handleStandbyActivity(event) {
     if (standbyOn) {
       // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
-      if (event.type === 'keydown' && event.key === 'Escape') return;
-      if (event.type === 'pointerdown' || event.type === 'touchstart') standbyWakeClickGuard.arm();
-      exitStandby();
-    } else {
-      resetStandbyIdleTimer();
+      if (event.type === 'keydown' || event.type === 'wheel' || event.type === 'scroll') return;
+      if (event.type === 'pointerdown' || event.type === 'touchstart') {
+        // 🏠 홈으로 버튼은 예전처럼 바로 나갑니다.
+        const t = event.target;
+        if (t && typeof t.closest === 'function' && t.closest('#standbyExit')) return;
+        const r = standbyTapGate.tap();
+        if (r.done) {
+          clearTimeout(standbyHintTimer);
+          standbyHintTimer = null;
+          standbyWakeClickGuard.arm();     // 마지막 세 번째 터치의 click이 뒤 화면 버튼을 누르지 않게
+          exitStandby();
+        } else {
+          showStandbyTapHint(r.count, r.needed);
+          standbyTapReact(r.count, r.needed);   // 1·2번째는 포켓몬이 반응만 합니다
+        }
+      }
+      requestScreenWakeLock();
+      return;
     }
+    resetStandbyIdleTimer();
     requestScreenWakeLock();
   }
 
@@ -4930,6 +5274,7 @@
   $('#stickerResetBtn').addEventListener('click', () => asParent('포인트 초기화는 보호자만 할 수 있어요.', resetPoints));
   $('#pointUseBtn').addEventListener('click', () => asParent('포인트 사용은 보호자만 할 수 있어요.', usePoints));
   $('#wishAddBtn').addEventListener('click', addWish);      // 사고 싶은 것 적기는 아이도 자유롭게
+  if ($('#wishMicBtn')) $('#wishMicBtn').addEventListener('click', wishVoiceToggle);   // 카드에서 바로 말로 적기
   $('#adoptBtn').addEventListener('click', () => {
     if (S.pokemon.xp < FINAL_P) { toast(`최종 진화(${FINAL_P}P)를 마치면 새 포켓몬을 입양할 수 있어요`, '', 2600); return; }
     openPartnerPicker('adopt');
@@ -4964,6 +5309,8 @@
     pokeReact($('#charStage'), $('#charSay'), st ? st.name : '');
   });
   if ($('#sbStage')) $('#sbStage').addEventListener('click', () => {
+    // 대기화면에서는 아래 pointerdown 처리(연속 탭 반응)가 포켓몬을 움직입니다.
+    if (standbyOn) return;
     const { stage } = standbyPartnerStage();
     pokeReact($('#sbStage'), $('#sbSay'), stage ? stage.name : '');
   });
@@ -5341,6 +5688,7 @@
     readyData: false, received: new Set(), requiredData: new Set(),
     summary: null, partner: {}, monthLogs: [], pendingLogs: [],
     notedDenied: '', pill: null, gate: null, card: null,
+    schoolSeeded: false,
     deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
   };
 
@@ -5407,6 +5755,7 @@
   async function fbSignOut() {
     const boot = window.FamilySyncBoot;
     if (!boot || !boot.signOut) return;
+    if (GCAL.on) gcalDisconnect(true);
     fbResetSession();
     fbStatus('로그인 전 · 눌러서 로그인', 'off');
     fbSyncInfo();
@@ -5612,6 +5961,16 @@
     else if (key === 'pendingLogs') FB.pendingLogs = docs;
     else if (key === 'logs') FB.monthLogs = docs;
     else if (key === 'eventCenter') applyEventCenterDoc(docs[0] || null);
+    else if (key === 'school') {
+      // 서버에 아직 문서가 없고 이 기기(부모)에 학교 정보가 있으면 자동으로 한 번 올립니다
+      const doc = docs[0] || null;
+      if (doc) applySchoolDoc(doc);
+      else if (FB.role === 'parent' && !FB.schoolSeeded) {
+        FB.schoolSeeded = true;
+        const sc = S.school || {};
+        if (String(sc.name || '').trim() || String(sc.cls || '').trim() || Object.keys(sc.byDate || {}).length) schoolSyncMaybe(true);
+      }
+    }
     else fbMergeCollection(key, docs);
     FB.received.add(key);
     if (!FB.readyData && [...FB.requiredData].every((required) => FB.received.has(required))) {
@@ -5699,7 +6058,7 @@
     if (r.state === 'ready') {
       FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
       FB.requiredData = new Set([
-        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter',
+        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school',
         ...(r.role === 'parent' ? ['parentConfig'] : []),
       ]);
       fbGate(false);
@@ -5717,6 +6076,11 @@
     if (!boot || !boot.sync || !window.FamilySync) return false;
     FB.sync = boot.sync;
     FB.core = window.FamilySync;
+    // 📅 이 탭에 아직 살아 있는 구글 캘린더 토큰이 있으면 일정을 조용히 다시 읽습니다
+    if (boot.calendar && typeof boot.calendar.current === 'function' && boot.calendar.current()) {
+      GCAL.on = true;
+      gcalLoad();
+    }
     window.addEventListener('family-sync-data', (e) => fbOnData(e.detail));
     window.addEventListener('family-sync-error', (e) => fbOnError(e.detail));
     fbStatus('로그인 확인 중…', 'busy');
@@ -5844,6 +6208,8 @@
 
   fbPillEl();
   fbBootWait();
+  // 10분마다 구글 캘린더를 조용히 새로 읽습니다 (토큰이 살아 있을 때만)
+  setInterval(() => { if (GCAL.on && !document.hidden) gcalLoad(); }, 10 * 60 * 1000);
 
   /* ---------------------------------------------------------------------- init */
   // 예전 #sync 링크와 family-dashboard:sync 의 Apps Script 주소/PIN은 자동으로 읽지 않습니다.

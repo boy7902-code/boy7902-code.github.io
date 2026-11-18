@@ -25,6 +25,8 @@ export const SUMMARY_PATH = `${FAMILY_ROOT}/stats/summary`;
 export const PARTNER_PATH = `${FAMILY_ROOT}/child_state/partner`;
 /** 🎪 이벤트 설정·상태 — 기존 규칙(child_state/{docId} = 가족 읽기 · 부모 쓰기)을 그대로 씁니다 */
 export const EVENT_CENTER_PATH = `${FAMILY_ROOT}/child_state/event_center`;
+/** 🏫 오늘 학교(급식·시간표) — 같은 child_state 규칙(가족 읽기 · 부모 쓰기)을 씁니다 */
+export const SCHOOL_PATH = `${FAMILY_ROOT}/child_state/today_school`;
 export const PARENT_CONFIG_PATH = `${FAMILY_ROOT}/private/parent_config`;
 export const FAMILY_PATH = FAMILY_ROOT;
 /** Firestore 는 빈 필드명('')을 허용하지 않습니다. 공용 미션 몫(byMember[''])은 '_shared' 로 저장합니다. */
@@ -118,6 +120,102 @@ export function missionDocOf(m, { stamp } = {}) {
   if (stamp) doc.updatedAt = stamp;
   return doc;
 }
+
+/* ────────────────────────────── 🏫 오늘 학교(급식·시간표) ────────────────────────────── */
+/**
+ * 급식·시간표 문서 모양 — 날짜(YYYY-MM-DD)별로 담아 두면 대시보드의 '오늘 학교' 카드가
+ * 그날 몫을 그대로 읽습니다. 학교 이름·반도 이 비공개 문서에만 저장합니다.
+ * 빈 날짜도 남겨 두어, 부모가 지운 값이 다른 기기까지 지워지게 합니다.
+ */
+export function schoolDocOf(data = {}) {
+  const src = (data && data.byDate && typeof data.byDate === 'object') ? data.byDate : {};
+  const byDate = {};
+  Object.keys(src).filter(isDateStr).sort().slice(-45).forEach((d) => {
+    const v = src[d] || {};
+    byDate[d] = {
+      meal: String(v.meal || '').slice(0, 600),
+      timetable: String(v.timetable || '').slice(0, 600),
+    };
+  });
+  return {
+    name: String((data && data.name) || '').trim().slice(0, 40),
+    cls: String((data && data.cls) || '').trim().slice(0, 20),
+    byDate,
+  };
+}
+
+/* ─────────────────────── 📅 구글 캘린더(읽기 전용) 도우미 ───────────────────────
+   OAuth 액세스 토큰은 화면(탭 세션) 메모리에만 두고 Firestore·저장 파일에는 남기지 않습니다.
+   여기서는 받아온 events 배열을 앱의 일정 모양으로 바꾸는 계산만 합니다. */
+export const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+
+/** ISO 시각 → KST 달력 날짜/시각 */
+function kstFromIso(iso) {
+  const t = new Date(String(iso || ''));
+  if (isNaN(t.getTime())) return null;
+  const k = new Date(t.getTime() + 9 * 3600 * 1000);
+  return {
+    date: `${k.getUTCFullYear()}-${pad2(k.getUTCMonth() + 1)}-${pad2(k.getUTCDate())}`,
+    time: `${pad2(k.getUTCHours())}:${pad2(k.getUTCMinutes())}`,
+  };
+}
+
+/** 구글 캘린더 이벤트 1건 → 대시보드 일정 (종일 일정은 time:'') */
+export function gcalEventToApp(item = {}, calendarId = 'primary') {
+  if (!item || item.status === 'cancelled') return null;
+  const start = item.start || {};
+  let date = '';
+  let time = '';
+  if (isDateStr(start.date)) {
+    date = start.date;                       // 종일 일정
+  } else {
+    const p = kstFromIso(start.dateTime);
+    if (!p) return null;
+    date = p.date; time = p.time;
+  }
+  const title = String(item.summary || '').trim();
+  if (!title) return null;
+  return {
+    id: `gcal:${calendarId}:${item.id || `${date}_${time}_${title}`}`,
+    date, time, title: title.slice(0, 80), member: '', done: false,
+    source: 'gcal', cal: calendarId, allDay: !start.dateTime,
+  };
+}
+
+/** 여러 캘린더의 이벤트 목록을 한 배열로 (중복 id 제거) */
+export function gcalEventsToApp(items = [], calendarId = 'primary') {
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(items) ? items : []).forEach((it) => {
+    const e = gcalEventToApp(it, calendarId);
+    if (!e || seen.has(e.id)) return;
+    seen.add(e.id);
+    out.push(e);
+  });
+  return out;
+}
+
+/** calendarList 응답 → 읽을 캘린더 목록(전부 읽기 전용) */
+export function gcalCalendars(list = []) {
+  return (Array.isArray(list) ? list : [])
+    .filter((c) => c && c.id && !c.deleted)
+    .map((c) => ({ id: String(c.id), name: String(c.summaryOverride || c.summary || c.id), primary: !!c.primary }))
+    .slice(0, 15);
+}
+
+/** 조회 창 — 오늘 기준 앞뒤 날짜(YYYY-MM-DD) */
+export function gcalWindow(dateStr, { back = 3, ahead = 35 } = {}) {
+  const day = isDateStr(dateStr) ? dateStr : kstTodayStr();
+  const shift = (ds, n) => {
+    const t = new Date(`${ds}T00:00:00Z`);
+    t.setUTCDate(t.getUTCDate() + n);
+    return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`;
+  };
+  return { from: shift(day, -back), to: shift(day, ahead) };
+}
+
+/** 날짜 → Calendar API timeMin/timeMax (KST 경계) */
+export const gcalBoundaryIso = (dateStr, end = false) => `${dateStr}T${end ? '23:59:59' : '00:00:00'}+09:00`;
 
 /** 오늘의 미션 완료 상태를 해당 구성원의 로그에서 복원합니다. */
 export function reconcileMissionCompletions(missions, logs, date, kidId = KID_ID) {
@@ -589,6 +687,8 @@ export function createFamilySync(deps = {}) {
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/partner')), push('partner'), fail('partner')));
     // 🎪 이벤트 센터 — 가족 모두 읽고(부모만 씀) 아이 화면에도 비밀 상자·도장판이 보입니다
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/event_center')), push('eventCenter'), fail('eventCenter')));
+    // 🏫 오늘 학교 — 부모가 고치면 아이 기기·태블릿이 그대로 읽어 갑니다
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/today_school')), push('school'), fail('school')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
       unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
@@ -671,6 +771,26 @@ export function createFamilySync(deps = {}) {
     try {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       await sdk.setDoc(docRef(pathOf('child_state/event_center')), { ...eventCenterDoc(data), updatedAt: sdk.serverTimestamp() });
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: true };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  /* ---- 🏫 오늘 학교 저장 (부모 기기) ----
+     경로: households/main/child_state/today_school
+     규칙: child_state/{docId} = 가족 읽기 / 부모 쓰기 → 아이 기기는 읽기만 합니다. */
+  async function pushSchool(data = {}) {
+    const session = activeSession({ r: 'parent' });
+    if (!session || role !== 'parent') {
+      return { ok: false, cancelled: true, denied: [{ collection: 'child_state', id: 'today_school', reason: '학교 급식·시간표는 보호자 기기에서만 저장할 수 있어요' }] };
+    }
+    try {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      const doc = schoolDocOf(data);
+      await sdk.setDoc(docRef(pathOf('child_state/today_school')), { ...doc, updatedAt: sdk.serverTimestamp() });
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: true };
     } catch (e) {
@@ -1110,7 +1230,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
-    pushEventCenter, writeBonusLog,
+    pushEventCenter, pushSchool, writeBonusLog,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관

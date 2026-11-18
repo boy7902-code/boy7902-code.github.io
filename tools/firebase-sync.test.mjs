@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFamilySync, reconcileMissionCompletions } from '../firebase-sync.js';
+import { createFamilySync, reconcileMissionCompletions, schoolDocOf, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso } from '../firebase-sync.js';
 
 function fakeSdk() {
   const listeners = [];
@@ -303,5 +303,91 @@ test('every signed-in role subscribes to the event center document', async () =>
     await sync.applyAuthUser(auth.currentUser);
     sync.startSubscriptions();
     assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/event_center'));
+    assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/today_school'));
   }
 });
+
+test('school document keeps only real dates and the meal/timetable of each day', () => {
+  const doc = schoolDocOf({
+    name: '  예시초등학교 ',
+    cls: '2학년 3반',
+    byDate: {
+      '2026-11-18': { meal: '비빔밥, 계란실파국, 닭윙구이, 백김치', timetable: '국어, 국어, 즐거운생활, 자율·자치활동' },
+      '2026-11-19': { meal: '강황밥, 미역국' },
+      'not-a-date': { meal: '버려질 값' },
+      '2026-11-20': { meal: '', timetable: '' },
+    },
+  });
+  assert.deepEqual(Object.keys(doc.byDate), ['2026-11-18', '2026-11-19', '2026-11-20']);
+  assert.equal(doc.byDate['2026-11-18'].meal, '비빔밥, 계란실파국, 닭윙구이, 백김치');
+  assert.equal(doc.byDate['2026-11-19'].timetable, '');
+  assert.equal(doc.byDate['2026-11-20'].meal, '');
+  assert.equal(doc.name, '예시초등학교');
+});
+
+test('school document is written only by a parent session', async () => {
+  const parentFake = fakeSdk();
+  const parentAuth = { currentUser: null };
+  const parentSync = createFamilySync({ sdk: parentFake.sdk, db: {}, auth: parentAuth });
+  parentAuth.currentUser = userWithRole('dad', 'parent');
+  await parentSync.applyAuthUser(parentAuth.currentUser);
+  const ok = await parentSync.pushSchool({ name: '예시초등학교', cls: '2학년 3반', byDate: { '2026-11-18': { meal: '비빔밥', timetable: '국어' } } });
+  assert.equal(ok.ok, true);
+  const write = parentFake.writes.find((w) => w.path === 'households/main/child_state/today_school');
+  assert.ok(write, 'parent writes today_school');
+  assert.equal(write.data.name, '예시초등학교');
+  assert.equal(write.data.byDate['2026-11-18'].meal, '비빔밥');
+  assert.equal(write.data.updatedAt, 'server-time');
+
+  const childFake = fakeSdk();
+  const childAuth = { currentUser: null };
+  const childSync = createFamilySync({ sdk: childFake.sdk, db: {}, auth: childAuth });
+  childAuth.currentUser = userWithRole('kid', 'child');
+  await childSync.applyAuthUser(childAuth.currentUser);
+  const denied = await childSync.pushSchool({ name: '바꾸면 안 됨' });
+  assert.equal(denied.ok, false);
+  assert.equal(denied.denied[0].id, 'today_school');
+  assert.equal(childFake.writes.length, 0, 'child device never writes the school document');
+});
+
+test('google calendar events become read-only all-day or KST timed events', () => {
+  const timed = gcalEventToApp({ id: 'a', summary: '가족 야구', start: { dateTime: '2026-11-21T03:00:00Z' }, end: { dateTime: '2026-11-21T05:00:00Z' } }, 'family-calendar@example.com');
+  assert.equal(timed.date, '2026-11-21');          // UTC 03:00 = KST 12:00
+  assert.equal(timed.time, '12:00');
+  assert.equal(timed.title, '가족 야구');
+  assert.equal(timed.source, 'gcal');
+  assert.equal(timed.allDay, false);
+  assert.equal(timed.id, 'gcal:family-calendar@example.com:a');
+
+  const allDay = gcalEventToApp({ id: 'b', summary: '현충일', start: { date: '2026-11-22' } }, 'primary');
+  assert.equal(allDay.date, '2026-11-22');
+  assert.equal(allDay.time, '');
+  assert.equal(allDay.allDay, true);
+
+  assert.equal(gcalEventToApp({ status: 'cancelled', summary: '취소', start: { date: '2026-11-22' } }), null);
+  assert.equal(gcalEventToApp({ id: 'c', summary: '   ', start: { date: '2026-11-22' } }), null);
+
+  const list = gcalEventsToApp([
+    { id: 'a', summary: '하나', start: { date: '2026-11-22' } },
+    { id: 'a', summary: '하나(중복)', start: { date: '2026-11-22' } },
+    { id: 'b', summary: '둘', start: { date: '2026-11-23' } },
+  ], 'primary');
+  assert.equal(list.length, 2);
+});
+
+test('google calendar list and query window are prepared without hard-coded ids', () => {
+  const cals = gcalCalendars([
+    { id: 'primary@example.com', summary: '내 캘린더', primary: true },
+    { id: 'family-calendar@example.com', summaryOverride: '가족', deleted: false },
+    { id: 'gone@example.com', deleted: true },
+    null,
+  ]);
+  assert.deepEqual(cals.map((c) => c.id), ['primary@example.com', 'family-calendar@example.com']);
+  assert.equal(cals[1].name, '가족');
+  assert.equal(cals[0].primary, true);
+
+  assert.deepEqual(gcalWindow('2026-11-18', { back: 3, ahead: 5 }), { from: '2026-11-15', to: '2026-11-23' });
+  assert.equal(gcalBoundaryIso('2026-11-18'), '2026-11-18T00:00:00+09:00');
+  assert.equal(gcalBoundaryIso('2026-11-18', true), '2026-11-18T23:59:59+09:00');
+});
+

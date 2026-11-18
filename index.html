@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=45" />
+<link rel="stylesheet" href="style.css?v=46" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
@@ -298,6 +298,7 @@
             <div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
           </div>
           <div class="card-tools">
+            <button class="mic-btn wish-mic" id="wishMicBtn" type="button" aria-pressed="false" aria-label="말로 적기" title="말로 적기(음성 입력)">🎤</button>
             <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
           </div>
         </div>
@@ -306,6 +307,7 @@
           <button type="button" role="tab" data-shoptab="buy" aria-selected="false" title="장보기" aria-label="장보기"><span class="tab-ico" aria-hidden="true">🛒</span></button>
           <button type="button" role="tab" data-shoptab="fridge" aria-selected="false" title="냉장고" aria-label="냉장고"><span class="tab-ico" aria-hidden="true">🧊</span></button>
         </div>
+        <div class="voice-note" id="wishVoiceNote" hidden></div>
         <div class="card-body wish-body merge-pane" id="wishPane">
           <div class="wish-balance" id="wishBalance"></div>
           <div class="wish-list" id="wishList"></div>
@@ -393,7 +395,7 @@
       </div>
       <div class="sb-name" id="sbName">피카츄</div>
       <div class="sb-sub" id="sbSub"></div>
-      <div class="sb-tap">화면을 터치하면 대시보드로 돌아가요</div>
+      <div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
     </div>
   </div>
 </section>
@@ -482,7 +484,7 @@
       <h4>🏫 학교 급식 · 시간표</h4>
       <div class="row" style="margin-top:8px">
         <input type="text" id="schoolNameInput" class="grow" placeholder="학교 이름 (예: ○○초등학교)" autocomplete="off" />
-        <input type="text" id="schoolClassInput" style="max-width:132px" placeholder="반 (예: 1학년 2반)" autocomplete="off" />
+        <input type="text" id="schoolClassInput" style="max-width:132px" placeholder="반 (예: 2학년 3반)" autocomplete="off" />
         <button class="btn sm primary" id="schoolSaveBtn">저장</button>
       </div>
       <div class="row wrap" style="margin-top:8px">
@@ -533,6 +535,15 @@
         <button class="btn sm" id="fbSettleBtn">✅ 미정산 기록 정산하기</button>
       </div>
       <p class="settings-note" id="fbSettleNote" hidden></p>
+      <div class="settings-section" id="gcalSection">
+        <h4>📅 구글 캘린더</h4>
+        <p class="settings-note" id="gcalNote">로그인한 Google 계정의 일정을 ‘가족 일정’ 달력에 함께 보여 줍니다. 읽기만 하며, 일정을 고치거나 지우지 않습니다.</p>
+        <div class="row wrap" style="margin-top:10px">
+          <button class="btn sm" id="gcalConnectBtn">📅 구글 캘린더 연결</button>
+          <button class="btn sm ghost" id="gcalOffBtn" hidden>연결 해제</button>
+        </div>
+        <p class="settings-note">처음 한 번만 ‘일정 읽기’를 허용하면 이 탭을 열어 둔 동안에는 자동으로 새로 고칩니다. 토큰은 이 탭에만 두고 Firestore·백업에는 저장하지 않아요.</p>
+      </div>
       <div class="settings-section" id="legacySyncControl">
         <h4>🧹 예전 Apps Script 연결 정보</h4>
         <p class="settings-note" id="legacySyncNote">예전 Apps Script 자동 연결은 꺼져 있어요.</p>
@@ -677,6 +688,7 @@
         가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 기본 포인트(+P)가 그 사람 몫으로 쌓입니다.
         미션마다 <b>요일</b>(매일 / 평일(월~금) / 주말(토·일) / 요일별)을 정할 수 있어, 그 요일에만 오늘 미션 목록에 나옵니다.
         오늘 쉬는 미션은 목록 아래 <b>😴 오늘은 ○요일이라 쉬는 미션</b>에 접혀 있습니다.
+        오늘 끝낸 미션은 목록에서 사라져 아래 <b>✅ 오늘 끝낸 미션</b> 접힘 줄로 내려가고, 펼치면 체크를 되돌릴 수 있습니다.
         미션마다 <b>목표 시간</b>(예: 08:00)과 <b>시간 내 완료 보너스</b>(예: +3P)를 정할 수 있고,
         목표 시간 안에 체크하면 기본 포인트에 보너스까지 더해지며 <b>⏰ 목표 시간 달성!</b> 배지가 붙습니다.
         시간이 지나 체크하면 기본 포인트만 쌓이고 실제 완료 시각과 함께 <b>⏱️ 목표 시간 초과</b>로 표시됩니다.
@@ -808,9 +820,9 @@
 
 <script src="legacy-sync-guard.js?v=1"></script>
 <script src="parent-session-guard.js?v=1"></script>
-<script src="standby-guard.js?v=1"></script>
-<script src="app.js?v=v4-events-4"></script>
+<script src="standby-guard.js?v=2"></script>
+<script src="app.js?v=v4-events-5"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=2"></script>
+<script type="module" src="firebase-boot.js?v=3"></script>
 </body>
 </html>

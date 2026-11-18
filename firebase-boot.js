@@ -41,6 +41,76 @@ const REDIRECT_CODES = [
 ];
 const QUIET_CODES = ['auth/popup-closed-by-user'];
 
+/* ── 📅 구글 캘린더(읽기 전용) 연결 ────────────────────────────────────────
+   가족 대시보드는 Google 계정의 '일정 읽기'만 받아 옵니다.
+   토큰은 이 탭의 메모리(sessionStorage)에만 두고, Firestore·깃허브·백업 파일에는 남기지 않습니다.
+   액세스 토큰은 1시간이면 만료되므로, 화면은 만료를 확인해 스스로 다시 연결을 시도합니다. */
+const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+const TOKEN_MARGIN_MS = 60 * 1000;
+
+function tokenFromCredential(cred) {
+  const resp = (cred && cred._tokenResponse) || {};
+  const token = (cred && cred.accessToken) || resp.oauthAccessToken || '';
+  const seconds = Number(resp.oauthExpireTime || (cred && cred.expiresIn) || 0);
+  const expiresAt = Date.now() + (seconds > 0 ? seconds * 1000 : 55 * 60 * 1000);
+  return token ? { token, expiresAt: expiresAt - TOKEN_MARGIN_MS } : null;
+}
+
+function calendarProvider() {
+  const provider = new authSdk.GoogleAuthProvider();
+  provider.addScope(CALENDAR_SCOPE);
+  provider.setCustomParameters({ prompt: 'consent' });   // 이미 허용한 계정도 토큰을 다시 받도록
+  return provider;
+}
+
+const calendar = {
+  token: '', expiresAt: 0,
+  current() {
+    return (this.token && this.expiresAt > Date.now()) ? { token: this.token, expiresAt: this.expiresAt } : null;
+  },
+  adopt(tokenInfo) {
+    if (!tokenInfo || !tokenInfo.token) return null;
+    this.token = tokenInfo.token;
+    this.expiresAt = tokenInfo.expiresAt;
+    try { sessionStorage.setItem('family-dashboard:gcal-token', JSON.stringify({ token: this.token, expiresAt: this.expiresAt })); } catch (e) { /* 저장 못 해도 동작 */ }
+    return this.current();
+  },
+  restore() {
+    try {
+      const raw = sessionStorage.getItem('family-dashboard:gcal-token');
+      if (!raw) return null;
+      const v = JSON.parse(raw);
+      if (v && v.token && v.expiresAt > Date.now()) { this.token = v.token; this.expiresAt = v.expiresAt; }
+    } catch (e) { /* noop */ }
+    return this.current();
+  },
+  clear() {
+    this.token = ''; this.expiresAt = 0;
+    try { sessionStorage.removeItem('family-dashboard:gcal-token'); } catch (e) { /* noop */ }
+  },
+  /** 사용자가 누를 때만 실행 — Google 팝업에서 '일정 읽기'를 허용받아 토큰을 받습니다. */
+  async connect() {
+    if (!auth.currentUser) return { ok: false, reason: 'signed-out' };
+    let cred;
+    try {
+      cred = await authSdk.reauthenticateWithPopup(auth, calendarProvider());
+    } catch (e) {
+      const code = (e && e.code) || '';
+      if (QUIET_CODES.includes(code)) return { ok: false, reason: 'cancelled', code };
+      if (REDIRECT_CODES.includes(code)) {
+        await authSdk.signInWithRedirect(auth, calendarProvider());
+        return { ok: false, reason: 'redirected', code };
+      }
+      return { ok: false, reason: 'error', code, message: (e && e.message) || '' };
+    }
+    const info = tokenFromCredential(cred);
+    if (!info) return { ok: false, reason: 'no-token' };
+    const cur = this.adopt(info);
+    return { ok: true, token: cur.token, expiresAt: cur.expiresAt };
+  },
+};
+calendar.restore();
+
 async function signInWithGoogle() {
   const provider = new authSdk.GoogleAuthProvider();
   // 기기마다 계정을 고르게 합니다 — 태블릿에 부모 계정이 남아 있어도 아이 계정을 선택할 수 있게
@@ -61,9 +131,9 @@ async function signInWithGoogle() {
 
 window.FamilySync = Sync;                 // 순수 계산 함수(화면 통계·오류 분류)를 app.js 가 씁니다
 window.FamilySyncBoot = {
-  sync, auth, db, sdk, config: CONFIG,
+  sync, auth, db, sdk, config: CONFIG, calendar,
   signIn: signInWithGoogle,
-  signOut: () => authSdk.signOut(auth),
+  signOut: () => { calendar.clear(); return authSdk.signOut(auth); },
   ready: true,
 };
 window.dispatchEvent(new CustomEvent('family-sync-ready'));
