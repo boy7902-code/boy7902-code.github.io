@@ -4594,7 +4594,7 @@
     const sky = $('#sbSky');
     if (!sky) return;
     let html = '';
-    const clouds = (wx === 'rain' || wx === 'snow') ? 5 : (wx === 'cloud' ? 4 : 1);
+    const clouds = (wx === 'rain' || wx === 'snow') ? 5 : (wx === 'cloud' ? 4 : 0);   // 맑은 날은 구름 없이
     for (let i = 0; i < clouds; i++) html += `<span class="sb-cloud c${i + 1}"></span>`;
     if (wx === 'rain') {
       for (let i = 0; i < 30; i++) {

@@ -2581,6 +2581,7 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
 .standby[data-tod="dusk"][data-wx="cloud"] { --sb-a: #2a2a44; --sb-b: #4a4157; --sb-c: #7d6570; }
 /* 밤 19~05시 */
 .standby[data-tod="night"] { --sb-a: #121a33; --sb-b: #0c1226; --sb-c: #070b16; }
+.standby[data-tod="night"][data-wx="cloud"] { --sb-a: #0f1626; --sb-b: #182135; --sb-c: #243049; }
 /* 비 — 시간대와 상관없이 잿빛 하늘 */
 .standby[data-wx="rain"] { --sb-a: #22303f; --sb-b: #33475a; --sb-c: #47606f; }
 .standby[data-wx="rain"][data-tod="night"] { --sb-a: #0b1220; --sb-b: #141d2c; --sb-c: #233041; }
@@ -2679,13 +2680,13 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
     width: 40px; min-width: 40px; padding: 0; justify-content: center; gap: 0; font-size: 17px;
   }
   .parent-badge[data-state="off"] .parent-word::after { content: none; }
-  .weather { flex: 1 1 auto; min-width: 0; gap: 8px; overflow: visible; }
+  .weather { flex: 0 0 auto; min-width: 0; gap: 8px; overflow: visible; }
   .weather-now { flex: 0 0 auto; min-width: max-content; }
   .weather-temp { flex: 0 0 auto; white-space: nowrap; }
   .weather-temp small { color: var(--text-2); }
   .weather-meta { flex: 0 1 auto; flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
   .weather-chips { display: none; }          /* 최고·최저·미세먼지는 아래 그림 알약이 대신 보여 줍니다 */
-  .outfit-guide { flex: 0 0 auto; max-width: none; overflow: visible; gap: 5px; }
+  .outfit-guide { flex: 1 1 auto; max-width: none; overflow: visible; gap: 5px; justify-content: flex-end; }
 }
 
 /* ---------------- ⑤ 핵심 글자 확대 (거실 태블릿) ---------------- */
