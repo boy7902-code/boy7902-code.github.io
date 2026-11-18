@@ -951,6 +951,14 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
 .search-results button { text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-solid); font-size: 13px; font-weight: 600; }
 
 /* ============================ 반응형 ============================ */
+/* 1181~1400px(태블릿 가로) — 미션 목록이 좁아지지 않게 일정 카메라를 줄이고 미션 카드를 넓힙니다 */
+@media (min-width: 1181px) and (max-width: 1400px) {
+  .card.schedule { grid-column: span 3; }
+  .card.chores { grid-column: span 6; }
+  .card.shopping { grid-column: span 3; }
+  .char-panel { flex: 0 0 178px; }
+  .char-stage { width: 108px; height: 108px; }
+}
 @media (max-width: 1180px) {
   .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .card { grid-column: span 3; }
