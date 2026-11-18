@@ -285,7 +285,34 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(79, 149, 255, .18);
 }
 input::placeholder { color: var(--text-3); }
-label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; color: var(--text-2); }
+label.field, .field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; color: var(--text-2); }
+
+/* 말로 쓰기(음성 입력) — 입력칸 옆 🎤 버튼 */
+.field-row { display: flex; align-items: center; gap: 6px; }
+.field-row > input { flex: 1 1 auto; min-width: 0; }
+.mic-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; width: 44px; height: 44px; min-height: 44px; padding: 0;
+  border-radius: 12px; border: 1px solid var(--border-strong);
+  background: var(--surface-2); color: var(--text);
+  font-size: 19px; line-height: 1; cursor: pointer;
+  transition: transform .12s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.mic-btn:active { transform: scale(.94); }
+.mic-btn.on {
+  background: linear-gradient(140deg, var(--coral), #ff9d7f);
+  border-color: transparent; color: #fff;
+  animation: micPulse 1.4s ease-out infinite;
+}
+@keyframes micPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 122, 107, .45); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 122, 107, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 122, 107, 0); }
+}
+.mic-btn.shop-mic { width: 40px; height: 40px; min-height: 40px; font-size: 17px; border-radius: 11px; }
+.voice-note { font-size: 11.5px; font-weight: 700; color: var(--text-3); line-height: 1.5; }
+.voice-note.on, .voice-note.warn { color: var(--coral); }
+@media (prefers-reduced-motion: reduce) { .mic-btn.on { animation: none; } }
 .quick-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .qchip {
   font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 999px;

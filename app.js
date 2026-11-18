@@ -2643,7 +2643,7 @@
       title: '🎁 사고 싶은 것 적기',
       hint: '갖고 싶은 물건을 적어 두면 지금 선물 코인으로 살 수 있는지 알려 줘요. 분류를 골라 두면 카드에 태그로 붙습니다.',
       fields: [
-        { name: 'title', label: '갖고 싶은 것', placeholder: '예: 포켓몬 카드' },
+        { name: 'title', label: '갖고 싶은 것', placeholder: '예: 포켓몬 카드', voice: true, maxlength: 40 },
         { name: 'cat', label: '분류', type: 'select', value: 'etc', options: WISH_CATS.map((c) => ({ value: c.key, label: `${c.ico} ${c.label}` })) },
         { name: 'need', label: '필요한 포인트 (P · 비워도 됨)', type: 'number', value: '' },
       ],
@@ -2668,7 +2668,7 @@
       title: '사고 싶은 것 수정',
       hint: '필요한 포인트를 정해 두면 그만큼 모았을 때 "지금 살 수 있어요!"로 바뀝니다. 분류 태그도 여기서 바꿀 수 있어요.',
       fields: [
-        { name: 'title', label: '갖고 싶은 것', value: w.title },
+        { name: 'title', label: '갖고 싶은 것', value: w.title, voice: true, maxlength: 40 },
         { name: 'cat', label: '분류', type: 'select', value: wishCatOf(w.cat).key, options: WISH_CATS.map((c) => ({ value: c.key, label: `${c.ico} ${c.label}` })) },
         { name: 'need', label: '필요한 포인트 (P)', type: 'number', value: w.need || '' },
       ],
@@ -3063,6 +3063,94 @@
     save(); renderLinks(); toast('저장했어요', 'mint');
   }
 
+  /* ------------------------------------------------------- 음성 입력(말로 쓰기) */
+  // Web Speech API — 크롬·삼성 인터넷·엣지 등에서 동작하고, 아이폰 사파리는 지원이 들쭉날쭉합니다.
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let voiceStop = null;          // 지금 듣고 있는 인식기를 멈추는 함수(한 번에 하나만 듣습니다)
+  const VOICE_MSG = {
+    unsupported: '이 브라우저에서는 음성 인식을 지원하지 않아요. 키보드의 마이크 버튼을 이용해 주세요.',
+    insecure: '음성 입력은 https 주소에서만 쓸 수 있어요. 키보드의 마이크 버튼을 이용해 주세요.',
+    'not-allowed': '마이크 사용이 허락되지 않았어요. 주소창의 자물쇠에서 마이크를 허용하거나, 키보드의 마이크 버튼을 이용해 주세요.',
+    'service-not-allowed': '이 브라우저에서는 음성 인식을 쓸 수 없어요. 키보드의 마이크 버튼을 이용해 주세요.',
+    'audio-capture': '마이크를 찾지 못했어요. 마이크가 켜져 있는지 확인해 주세요.',
+    'no-speech': '잘 안 들렸어요. 🎤 를 다시 누르고 또박또박 말해 주세요.',
+    network: '음성 인식 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 해 주세요.',
+    'language-not-supported': '한국어 음성 인식을 쓸 수 없는 브라우저예요. 키보드의 마이크 버튼을 이용해 주세요.',
+    aborted: '',
+  };
+
+  // 입력칸 하나에 🎤 버튼을 붙입니다. 한 번 누르면 듣고, 다시 누르면 멈춥니다.
+  function attachVoiceInput({ input, btn, note = null, onEnd = null }) {
+    let rec = null;
+    let base = '';
+    let finalText = '';
+    let errored = false;
+    const setNote = (msg, tone) => {
+      if (!note) return;
+      note.hidden = !msg;
+      note.textContent = msg || '';
+      note.classList.toggle('on', tone === 'on');
+      note.classList.toggle('warn', tone === 'warn');
+    };
+    const setOn = (on) => {
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? '듣기 멈추기' : '말로 쓰기');
+      btn.title = on ? '듣기 멈추기' : '말로 쓰기(음성 입력)';
+      btn.textContent = on ? '⏹' : '🎤';
+    };
+    const stop = () => { if (rec) { try { rec.stop(); } catch (e) { /* 이미 끝났으면 그냥 넘어갑니다 */ } } };
+    const start = () => {
+      if (!SpeechRec) { setNote(VOICE_MSG.unsupported, 'warn'); toast(VOICE_MSG.unsupported, '', 3800); return; }
+      if (window.isSecureContext === false) { setNote(VOICE_MSG.insecure, 'warn'); toast(VOICE_MSG.insecure, '', 3800); return; }
+      if (voiceStop) voiceStop();          // 다른 칸이 듣고 있었으면 먼저 멈춥니다
+      voiceStop = stop;
+      errored = false;
+      finalText = '';
+      base = input.value.trim() ? input.value.replace(/\s+$/, '') + ' ' : '';
+      try { rec = new SpeechRec(); } catch (e) { setNote(VOICE_MSG.unsupported, 'warn'); return; }
+      rec.lang = 'ko-KR';
+      rec.interimResults = true;
+      rec.continuous = true;
+      rec.maxAlternatives = 1;
+      rec.onstart = () => {
+        setOn(true);
+        setNote('🎙️ 듣고 있어요… 말씀해 주세요 (끝나면 🎤 를 다시 눌러 주세요)', 'on');
+      };
+      rec.onresult = (ev) => {
+        let interim = '';
+        for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+          const r = ev.results[i];
+          if (r.isFinal) finalText += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        input.value = base + finalText + interim;   // 말하는 동안에도 입력칸에 바로 보입니다
+      };
+      rec.onerror = (ev) => {
+        errored = true;
+        const msg = VOICE_MSG[ev.error] || '음성 입력을 하지 못했어요. 잠시 뒤 다시 해 주세요.';
+        setNote(msg, 'warn');
+        if (ev.error !== 'aborted' && msg) toast(msg, '', 3600);
+      };
+      rec.onend = () => {
+        setOn(false);
+        if (!errored && note && note.classList.contains('on')) setNote('');
+        const spoken = finalText.trim();
+        rec = null;
+        if (voiceStop === stop) voiceStop = null;
+        if (onEnd) onEnd(spoken);
+      };
+      try { rec.start(); input.focus({ preventScroll: true }); }
+      catch (e) { setNote('음성 입력을 시작하지 못했어요. 잠시 뒤 다시 해 주세요.', 'warn'); setOn(false); voiceStop = null; rec = null; }
+    };
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (rec) stop(); else start();
+    });
+    return stop;
+  }
+
   /* ---------------------------------------------------------------- modal utils */
   let modalResolve = null;
 
@@ -3082,6 +3170,17 @@
         if (f.type === 'textarea') {
           return `<label class="field">${esc(f.label)}<textarea name="${esc(f.name)}" id="${id}" rows="3" placeholder="${esc(f.placeholder || '')}">${esc(f.value ?? '')}</textarea></label>`;
         }
+        if (f.voice) {
+          // 말로 쓰기 — 입력칸 옆에 🎤 버튼을 붙입니다(버튼은 label 밖에 두어 클릭이 입력칸으로 새지 않게)
+          return `<div class="field voice-field">
+            <label for="${id}">${esc(f.label)}</label>
+            <span class="field-row">
+              <input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.inputmode ? ` inputmode="${esc(f.inputmode)}"` : ''}${f.maxlength ? ` maxlength="${Math.round(+f.maxlength)}"` : ''} autocomplete="off" />
+              <button type="button" class="mic-btn" data-voice="${esc(f.name)}" aria-pressed="false" aria-label="말로 쓰기" title="말로 쓰기(음성 입력)">🎤</button>
+            </span>
+            <span class="voice-note" data-voicenote="${esc(f.name)}" hidden></span>
+          </div>`;
+        }
         if (f.type === 'days') {
           const cur = normDays(f.value);
           const onDay = (n) => (cur.length ? cur.indexOf(n) >= 0 : true);   // 비어 있으면 매일 = 7일 모두 켜짐
@@ -3098,6 +3197,13 @@
           ? `<span class="quick-row">${f.quick.map((v) => `<button type="button" class="qchip" data-quick="${esc(f.name)}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</span>`
           : ''}</label>`;
       }).join('');
+
+      // 🎤 말로 쓰기 — 필드에 voice: true 를 주면 입력칸 옆 마이크가 붙습니다
+      $$('[data-voice]', modal).forEach((btn) => {
+        const input = $('#mf_' + btn.dataset.voice);
+        if (!input) return;
+        attachVoiceInput({ input, btn, note: $(`[data-voicenote="${btn.dataset.voice}"]`, modal) });
+      });
 
       // 빠른 선택 버튼(예: 목표 시간 칩)은 입력간을 그대로 채웁니다.
       $$('[data-quick]', modal).forEach((b) => {
@@ -3156,6 +3262,7 @@
          <button class="btn primary" type="button" data-modal-ok>${esc(okText)}</button>`;
 
       const finish = (val) => {
+        if (voiceStop) { const s = voiceStop; voiceStop = null; s(); }   // 창을 닫으면 듣던 것도 멈춥니다
         modal.hidden = true;
         modalResolve = null;
         resolve(val);
@@ -3698,6 +3805,7 @@
 
   $('#shopAddBtn').addEventListener('click', () => asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem));
   $('#shopInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem); } });
+  if ($('#shopMicBtn')) attachVoiceInput({ input: $('#shopInput'), btn: $('#shopMicBtn') });   // 장보기도 말로 적기
   $$('[data-shoptab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.shoptab; renderShopping(); }));
 
   $('#swatches').addEventListener('click', (e) => {
