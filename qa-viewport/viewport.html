@@ -20,7 +20,7 @@
   f.width = w; f.height = h;
   f.style.width = w + 'px'; f.style.height = h + 'px';
   document.getElementById('wrap').style.transform = 'scale(' + scale + ')';
-  f.src = '../index.html?qa=' + Date.now();
+  f.src = q.get('src') ? (q.get('src') + '?qa=' + Date.now()) : ('../index.html?qa=' + Date.now());
 </script>
 </body>
 </html>
