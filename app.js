@@ -1136,6 +1136,7 @@
     const on = parentUnlocked();
     document.body.dataset.parent = on ? 'on' : 'off';
     if (parentSynced) parentSynced();      // Firebase 준비 뒤에만 연결되는 후크(정산 버튼 표시)
+    if (typeof renderEventBadge === 'function') renderEventBadge();   // 🎪 깜짝 이벤트 버튼은 부모 모드에서만 늘 보입니다
     if (!b) return;
     b.dataset.state = on ? 'on' : 'off';
     b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">부모 모드</span>`;
@@ -4767,13 +4768,39 @@
 `;
   }
 
+  /* 🎪 이벤트는 늘 보이지 않고, 수호에게 실제 깜짝 이벤트가 열렸을 때만 나타납니다.
+     (비밀 상자 · 뽑기 티켓 · 2배 데이 · 월말 상장). 부모 모드에서는 언제나 보입니다. */
+  function eventSurprise() {
+    const s = secretToday();
+    const tickets = gachaTickets();
+    const dd = doubleDayOn();
+    const day = new Date().getDate();
+    if (s && !s.done) return { on: true, kind: 'secret', ico: '🎁', label: '비밀 상자' };
+    if (tickets > 0) return { on: true, kind: 'gacha', ico: '🎰', label: `뽑기 ${tickets}장` };
+    if (dd.on) return { on: true, kind: 'double', ico: '✨', label: '2배 데이' };
+    if (day >= 28) return { on: true, kind: 'mvp', ico: '🏆', label: '이번 달 상장' };
+    return { on: false, kind: '', ico: '🎪', label: '이벤트' };
+  }
   function renderEventBadge() {
     const badge = $('#evBadge');
     const s = secretToday();
     const pending = (s && !s.done ? 1 : 0) + (gachaTickets() > 0 ? 1 : 0);
     if (badge) { badge.hidden = !pending; badge.textContent = pending ? String(pending) : '0'; }
     const btn = $('#eventOpenBtn');
-    if (btn) btn.classList.toggle('has', pending > 0);
+    const surprise = eventSurprise();
+    const parent = parentUnlocked();
+    if (btn) {
+      // 잠긴 수호 화면: 깜짝 이벤트가 있을 때만 버튼이 나타납니다
+      btn.hidden = !parent && !surprise.on;
+      btn.classList.toggle('has', pending > 0 || surprise.on);
+      btn.classList.toggle('surprise', !!surprise.on && !parent);
+      btn.dataset.kind = surprise.on ? surprise.kind : '';
+      const ico = btn.querySelector('.mb-ico');
+      const txt = btn.querySelector('.mb-txt');
+      if (ico) ico.textContent = surprise.on ? surprise.ico : '🎪';
+      if (txt) txt.textContent = surprise.on ? surprise.label : '이벤트';
+      btn.title = surprise.on ? `깜짝 이벤트 · ${surprise.label}` : '가족 이벤트';
+    }
     const box = $('#secretBox');
     if (box) box.hidden = !(s && !s.done);
   }

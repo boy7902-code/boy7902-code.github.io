@@ -2825,8 +2825,17 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   background: var(--surface-solid); color: var(--text-3);
 }
 .mbtn.has .mb-num { background: var(--coral); color: #fff; }
+.mbtn[hidden] { display: none !important; }
 .mbtn.ev { background: linear-gradient(140deg, rgba(155, 123, 240, .16), rgba(79, 149, 255, .14)); border-color: transparent; color: #5b47c8; }
 html[data-theme="dark"] .mbtn.ev { color: #c9b8ff; }
+/* 🎪 깜짝 이벤트 — 평소엔 숨어 있다가 이벤트가 열린 순간에만 반짝이며 나타납니다 */
+.mbtn.ev.surprise { animation: evPop .5s cubic-bezier(.2, 1.5, .4, 1), evGlow 2.6s ease-in-out .5s infinite; }
+@keyframes evPop { 0% { transform: scale(.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes evGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(155, 123, 240, .0); }
+  50% { box-shadow: 0 0 0 5px rgba(155, 123, 240, .22); }
+}
+@media (prefers-reduced-motion: reduce) { .mbtn.ev.surprise { animation: none; } }
 @media (min-width: 1024px) {
   .mbtn { min-height: 32px; font-size: 12px; }
   .mbtn .mb-ico { font-size: 16px; }

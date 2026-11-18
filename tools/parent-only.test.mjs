@@ -43,3 +43,16 @@ test('the event center hides parent setups but keeps the child participation par
   assert.match(app, /data-act="ev-gacha"\$\{tickets > 0 \? '' : ' disabled'\}/);
   assert.match(app, /data-act="ev-mvp"/);
 });
+
+test('the event button is a surprise on the child screen and always there in parent mode', async () => {
+  const app = await read('app.js');
+  assert.match(app, /function eventSurprise\(\)/);
+  assert.match(app, /if \(s && !s\.done\) return \{ on: true, kind: 'secret'/);
+  assert.match(app, /if \(tickets > 0\) return \{ on: true, kind: 'gacha'/);
+  assert.match(app, /if \(dd\.on\) return \{ on: true, kind: 'double'/);
+  assert.match(app, /if \(day >= 28\) return \{ on: true, kind: 'mvp'/);
+  assert.match(app, /btn\.hidden = !parent && !surprise\.on;/);
+  assert.match(app, /btn\.classList\.toggle\('surprise', !!surprise\.on && !parent\)/);
+  // 부모 모드를 열거나 잠글 때 바로 다시 계산됩니다
+  assert.match(app, /renderParentBtn[\s\S]{0,400}renderEventBadge\(\)/);
+});
