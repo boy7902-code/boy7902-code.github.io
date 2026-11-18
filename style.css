@@ -957,8 +957,6 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .card.schedule { grid-column: span 3; }
   .card.chores { grid-column: span 6; }
   .card.shopping { grid-column: span 3; }
-  .char-panel { flex: 0 0 178px; }
-  .char-stage { width: 108px; height: 108px; }
 }
 @media (max-width: 1180px) {
   .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
