@@ -95,12 +95,12 @@
     if (!out.points || typeof out.points !== 'object') out.points = { total: 0, byMember: {} };
     out.points.total = Math.max(0, Math.round(+out.points.total || 0));
     if (!out.points.byMember || typeof out.points.byMember !== 'object') out.points.byMember = {};
-    // 예전 데이터(할 일 · 스티커)가 있으면 미션/포인트로 옮김
+    // 예전 데이터(할 일 · 스티커)가 있으면 한 번만 미션/포인트로 옮김
     if (Array.isArray(raw.chores) && !Array.isArray(raw.missions)) {
       out.missions = raw.chores.map((c) => ({ id: c.id || 'x' + Math.random().toString(36).slice(2, 9), title: c.title || '', points: 3, member: '', doneOn: c.doneOn || null }));
+      const legacyPts = Math.max(0, Math.round(+raw.stickers || 0)) * 3;
+      out.points = { total: legacyPts, byMember: legacyPts ? { '': legacyPts } : {} };
     }
-    if (typeof raw.stickers === 'number' && !out.points.total) out.points.total = Math.max(0, Math.round(raw.stickers)) * 3;
-    if (out.points.total && !out.points.byMember['']) out.points.byMember[''] = out.points.total;
     out.missions.forEach((m) => {
       m.points = Math.max(0, Math.round(+m.points || 0));
       m.member = m.member || '';
