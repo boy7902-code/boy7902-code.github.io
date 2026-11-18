@@ -428,7 +428,6 @@ html[data-theme="dark"] .char-balance b { color: #6ee7c2; }
 .dex-wrap { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--border); }
 .dex-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--text); flex-wrap: wrap; }
 .dex-head .pill { font-size: 10.5px; padding: 2px 8px; }
-.dex-note { font-size: 10px; font-weight: 700; color: var(--text-3); margin-left: auto; }
 .dex-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 7px; }
 .dex-card {
   display: flex; flex-direction: column; align-items: center; gap: 1px;

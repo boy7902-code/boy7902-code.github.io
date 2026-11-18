@@ -149,6 +149,7 @@
     }));
     out.pokemon = pk;
     delete out.partner;
+    delete out.budget;          // 가계부 카드는 더 이상 쓰지 않습니다 (예전 백업은 무시)
 
     // ---- 포인트 사용 내역 ----
     out.pointUses = out.pointUses.filter((u) => u && typeof u === 'object').map((u) => ({
@@ -998,7 +999,7 @@
       hint: `${kid.name} 님의 사용 가능 포인트는 ${bal}P입니다. 사용한 만큼만 잔액이 줄고, 포켓몬 경험치와 진화 단계는 그대로 유지돼요.`,
       fields: [
         { name: 'title', label: '무엇을 사줬나요?', placeholder: '예: 포켓몬 카드 팩' },
-        { name: 'amount', label: '사용 포인트 (P)', type: 'number', value: Math.min(bal, 50) },
+        { name: 'amount', label: '사용 포인트 (P)', type: 'number', value: Math.min(bal, 10) },
       ],
       okText: '사용',
     });
@@ -1177,11 +1178,11 @@
 
   function partnerHintText() {
     const p = partnerOf(S.pokemon.key);
-    const fin = finalStageOf(p);
+    const cur = p.stages[stageIndex(S.pokemon.xp)];
     if (partnerMode === 'adopt') {
-      return `지금 파트너 ${fin.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
+      return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
     }
-    return `지금은 ${p.label} 계열 ${fin.name}을(를) 키우는 중이에요(파트너 경험치 ${S.pokemon.xp}P). 아이 미션으로만 경험치가 쌓이고, 언제든 바꿀 수 있습니다.`;
+    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 아이 미션으로만 경험치가 쌓이고, 언제든 바꿀 수 있습니다.`;
   }
 
   function openPartnerPicker(mode = 'change') {
