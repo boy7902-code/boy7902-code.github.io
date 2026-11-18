@@ -1,0 +1,18 @@
+{
+  "name": "family-dashboard-review",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node --check app.js && node --check firebase-sync.js && node --check firebase-boot.js && node --check firebase-runtime.js && node --check legacy-sync-guard.js && node --check parent-session-guard.js",
+    "test:unit": "node --test tools/firebase-runtime.test.mjs tools/firebase-sync.test.mjs tools/legacy-sync.test.mjs tools/parent-session.test.mjs",
+    "test:emulator": "firebase emulators:exec --project demo-family-dashboard --only auth,firestore \"node --test tools/firebase-emulator.test.mjs\""
+  },
+  "devDependencies": {
+    "firebase": "11.0.2",
+    "firebase-admin": "14.5.1",
+    "firebase-tools": "15.36.0"
+  }
+}

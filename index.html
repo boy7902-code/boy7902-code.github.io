@@ -338,8 +338,8 @@
 
   <footer class="footer">
     <span class="grow">
-      <b>이 대시보드의 모든 내용은 이 기기 브라우저에만 저장됩니다.</b> 서버로 보내지 않고, 인터넷이 끊겨도 그대로 남아요.
-      날씨만 무료 날씨 서비스(Open-Meteo)에서, 포켓몬 그림만 PokeAPI 이미지 저장소에서 받아옵니다.
+      로그아웃 상태의 기록은 이 기기 브라우저에 저장됩니다. Google 계정으로 로그인하면 권한이 있는 가족 기록만 Firestore와 동기화됩니다.
+      날씨는 Open-Meteo에서, 포켓몬 그림은 PokeAPI 이미지 저장소에서 받아옵니다.
     </span>
     <button class="btn sm" id="exportBtn">⬇︎ 백업 내보내기</button>
     <button class="btn sm" id="importBtn">⬆︎ 백업 불러오기</button>
@@ -405,7 +405,7 @@
 <div class="modal" id="settingsModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <h3 id="settingsTitle">⚙️ 설정</h3>
-    <p class="hint">설정은 이 기기에만 저장됩니다.</p>
+    <p class="hint">날씨·화면 설정은 이 기기에 저장되고, 가족 기록은 Google 로그인 시 Firestore와 동기화됩니다.</p>
 
     <div class="settings-section">
       <h4>📍 날씨 위치</h4>
@@ -468,7 +468,7 @@
         <input type="password" id="pinInput" class="grow" inputmode="numeric" maxlength="4" placeholder="새 PIN 숫자 4자리" autocomplete="off" />
         <button class="btn sm" id="pinSaveBtn">변경</button>
       </div>
-      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 모드</b>를 다시 누르면 바로 잠깁니다. PIN은 공개 앱 코드가 아니라 비공개 동기화 DB에만 저장됩니다.</p>
+      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 모드</b>를 다시 누르면 바로 잠깁니다. 로그인 상태에서 바꾼 PIN은 부모 기기끼리 비공개 Firebase 문서로 동기화됩니다. 로그아웃 상태에서는 이 기기에만 저장됩니다.</p>
     </div>
 
     <div class="settings-section">
@@ -494,6 +494,11 @@
         <button class="btn sm" id="fbSettleBtn">✅ 미정산 기록 정산하기</button>
       </div>
       <p class="settings-note" id="fbSettleNote" hidden></p>
+      <div class="settings-section" id="legacySyncControl">
+        <h4>🧹 예전 Apps Script 연결 정보</h4>
+        <p class="settings-note" id="legacySyncNote">예전 Apps Script 자동 연결은 꺼져 있어요.</p>
+        <button class="btn sm ghost" id="legacySyncOffBtn" hidden>이 기기의 저장 정보 지우기</button>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -600,10 +605,12 @@
       </p>
     </div>
     <div class="settings-section">
-      <h4>3. 모든 기록은 이 기기에 저장</h4>
+      <h4>3. 로그아웃 상태는 이 기기, 로그인하면 가족 동기화</h4>
       <p class="settings-note">
-        일정·미션·포인트·편지·장보기·위키 기록은 브라우저 저장소에 자동 저장됩니다.
-        기기를 바꾸거나 기록을 옮기려면 <b>백업 내보내기</b>로 파일을 받아 두세요.
+        로그아웃 상태에서는 일정·미션·포인트·편지·장보기·위키 기록이 브라우저 저장소에 저장됩니다.
+        설정에서 Google 계정으로 로그인하면 가족 권한이 있는 계정끼리 Firestore를 통해 기록을 함께 씁니다.
+        예전 Apps Script 동기화 주소/PIN은 더 이상 사용하지 않으며 기존 기록을 자동으로 옮기지 않습니다.
+        기록을 옮기려면 보호자 계정의 <b>백업 내보내기</b>를 사용하세요.
       </p>
     </div>
     <div class="settings-section">
@@ -678,8 +685,10 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=fbdraft"></script>
-<!-- Firebase Auth + Firestore 연동 초안. 모듈이 없거나 실패하면 app.js 는 로컬 모드로 그대로 동작합니다. -->
-<script type="module" src="firebase-boot.js?v=1"></script>
+<script src="legacy-sync-guard.js?v=1"></script>
+<script src="parent-session-guard.js?v=1"></script>
+<script src="app.js?v=fb-review-1"></script>
+<!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
+<script type="module" src="firebase-boot.js?v=2"></script>
 </body>
 </html>

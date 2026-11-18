@@ -1,25 +1,20 @@
 /* ============================================================================
-   firebase-boot.js — 브라우저에서 Firebase 모듈을 불러와 app.js에 연결하는 얇은 다리
-   (지금 공개 사이트에서 실제로 쓰는 Firebase 동기화 모듈)
+   firebase-boot.js — Firebase 모듈을 app.js에 연결하는 얇은 다리
 
-   • 여기에는 **비밀키도, 가족 이메일도** 없습니다.
-     `firebase-config.js` 의 공개 설정(apiKey·projectId 등)만 씁니다.
-   • 실제 프로젝트(family-bcfe4)에 붙습니다 — firebase-config.js 의 emulator 가 false.
-   • 로그인은 **팝업 우선**: 서드파티 쿠키를 막는 브라우저에서도 결과를 받을 수 있습니다.
-     팝업이 차단되거나 지원되지 않을 때만 redirect 로 넘어갑니다.
+   • localhost/127.0.0.1 에서는 demo 프로젝트 + 로컬 Auth/Firestore 에뮬레이터만 사용.
+   • 원격 도메인에서는 firebase-config.js 설정을 사용하고 emulator=true 면 실패 처리.
+   • 로그인은 팝업 우선, 팝업이 막힌 경우에만 redirect 로 넘어갑니다.
    ========================================================================== */
 import * as Sync from './firebase-sync.js';
+import { firebaseConfigForRuntime } from './firebase-runtime.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
 import * as authSdk from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 import * as fsSdk from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
-const CONFIG = window.FAMILY_FIREBASE_CONFIG || {
-  apiKey: 'demo-emulator-placeholder',
-  authDomain: 'demo-family-dashboard.firebaseapp.com',
-  projectId: 'demo-family-dashboard',
-  appId: '1:000000000000:web:0000000000000000000000',
-  emulator: true,
-};
+const CONFIG = firebaseConfigForRuntime({
+  hostname: window.location.hostname,
+  configured: window.FAMILY_FIREBASE_CONFIG || null,
+});
 
 const app = initializeApp(CONFIG);
 const auth = authSdk.getAuth(app);

@@ -1,9 +1,9 @@
 /* ============================================================================
-   우리 가족 대시보드 — Firebase Auth + Firestore 연동 모듈 (공개 사이트에서 실제 사용 중)
+   우리 가족 대시보드 — Firebase Auth + Firestore 연동 모듈
 
-   · 공개 사이트(`work/family-dashboard/`)가 이 모듈로 family-bcfe4 프로젝트와 붙습니다.
-   · 에뮬레이터 테스트(`work/firebase-design-test/`)도 같은 파일을 그대로 씁니다.
-   · 이전에 쓰던 Apps Script 웹 앱 동기화는 이 모듈로 완전히 대체되었습니다.
+   · 실제 공개 사이트의 동작은 별도 배포 시점의 파일 상태에 따릅니다.
+   · 로컬 검증은 firebase-runtime.js 의 demo 설정과 Auth/Firestore 에뮬레이터만 사용합니다.
+   · 예전 Apps Script 주소/PIN 값은 자동으로 읽거나 이관하지 않습니다.
 
    설계 원칙
    1) 브라우저 코드에는 관리자 비밀키(Service Account)도, 가족 이메일 목록도 넣지 않습니다.
@@ -470,14 +470,28 @@ export function createFamilySync(deps = {}) {
   let role = '';
   let uid = '';
   let listening = false;
+  let authGeneration = 0;
 
   const pathOf = (sub) => `${root}/${sub}`;
   const colRef = (name) => sdk.collection(db, pathOf(name));
   const docRef = (p) => sdk.doc(db, p);
+  const sessionIsCurrent = (generation, expectedRole, expectedUid) =>
+    generation === authGeneration && role === expectedRole && uid === expectedUid
+      && (!auth || !!(auth.currentUser && auth.currentUser.uid === expectedUid));
+  const activeSession = ({ by = uid, r = role } = {}) => {
+    const expectedUid = String(by || '');
+    const generation = authGeneration;
+    return sessionIsCurrent(generation, r, expectedUid)
+      ? { generation, role: r, uid: expectedUid }
+      : null;
+  };
+  const sessionChanged = () => ({ kind: 'session-changed', title: '로그인 상태가 바뀌었어요', message: '다시 로그인한 뒤 시도해 주세요.', retryable: false });
 
   /* ---- 역할 판별 + 차단 ---- */
   async function applyAuthUser(user) {
-    if (!user) { stopAll(); role = ''; uid = ''; return { state: 'signed-out', role: '' }; }
+    const generation = ++authGeneration;
+    stopAll(); role = ''; uid = '';
+    if (!user) return { state: 'signed-out', role: '' };
     let claims = {};
     try {
       const tok = await user.getIdTokenResult();
@@ -485,17 +499,19 @@ export function createFamilySync(deps = {}) {
     } catch (e) {
       claims = {};
     }
+    if (generation !== authGeneration || (auth && (!auth.currentUser || auth.currentUser.uid !== user.uid))) {
+      return { state: 'stale', role: '' };
+    }
     const r = resolveRole(claims);
     if (!r) {
       // 규칙이 role 을 요구하므로, role 이 없으면 아무것도 읽을 수 없습니다.
       // 즉시 로그아웃 + 모든 onSnapshot 리스너 해제 (요구사항: 안내 화면 차단)
-      stopAll();
-      role = ''; uid = '';
-      try { await sdk.signOut(auth); } catch (e) { /* 이미 로그아웃 */ }
       const info = { state: 'denied', reason: 'no-role', message: '이 계정에는 가족 권한(role)이 없어요. 보호자에게 권한 설정을 요청해 주세요.' };
       if (deps.onError) deps.onError(info);
+      try { await sdk.signOut(auth); } catch (e) { /* 이미 로그아웃 */ }
       return info;
     }
+    if (generation !== authGeneration) return { state: 'stale', role: '' };
     role = r; uid = user.uid || '';
     return { state: 'ready', role, uid, displayName: user.displayName || '', email: user.email || '' };
   }
@@ -505,12 +521,18 @@ export function createFamilySync(deps = {}) {
     const onData = handlers.onData || deps.onData || (() => {});
     const onError = handlers.onError || deps.onError || (() => {});
     if (!role) return { error: 'no-role' };
+    const generation = authGeneration;
+    const subscribedRole = role;
+    const subscribedUid = uid;
     stopAll();
     const push = (key) => (snap) => {
+      if (!sessionIsCurrent(generation, subscribedRole, subscribedUid)) return;
       const docs = snap.docs ? snap.docs.map((d) => ({ id: d.id, ...d.data() })) : (snapExists(snap) ? [{ id: snap.id, ...snap.data() }] : []);
       onData({ key, docs });
     };
-    const fail = (key) => (err) => onError({ ...classifyFirestoreError(err), path: key });
+    const fail = (key) => (err) => {
+      if (sessionIsCurrent(generation, subscribedRole, subscribedUid)) onError({ ...classifyFirestoreError(err), path: key });
+    };
     PLAIN_COLLECTIONS.forEach((name) => {
       unsubs.push(sdk.onSnapshot(colRef(name), push(name), fail(name)));
     });
@@ -524,6 +546,10 @@ export function createFamilySync(deps = {}) {
       push('pendingLogs'), fail('pendingLogs')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('stats/summary')), push('summary'), fail('summary')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/partner')), push('partner'), fail('partner')));
+    // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
+    if (role === 'parent') {
+      unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
+    }
     listening = true;
     return { ok: true, listeners: unsubs.length };
   }
@@ -555,15 +581,19 @@ export function createFamilySync(deps = {}) {
 
   /** 아이 체크 → 로그 쓰기. 자정/지연 거절이면 안내용 분류를 돌려주고, 재시도로 살아납니다. */
   async function writeLog(mission, { at, date, by, member, retries = 1 } = {}) {
+    const session = activeSession({ by, r: role });
+    if (!session || (session.role !== 'child' && session.role !== 'parent')) return { ok: false, cancelled: true, error: sessionChanged() };
     const today = kstTodayStr(nowFn());
     let attempt = 0;
     let lastErr = null;
     while (attempt <= retries) {
       const payload = buildLogPayload(mission, { at: attempt === 0 ? at : undefined, date, by, member });
       try {
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged(), payload, attempts: attempt + 1 };
         await sdk.setDoc(docRef(pathOf(`logs/${logDocId(payload)}`)), payload);
         return { ok: true, id: logDocId(payload), payload, attempts: attempt + 1 };
       } catch (e) {
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged(), payload, attempts: attempt + 1 };
         lastErr = e;
         const info = classifyFirestoreError(e, { date: payload.date, today, at: payload.at, nowMin: toMin(kstHhmm(nowFn())) });
         if (info.kind === 'time-drift' && attempt < retries) { attempt += 1; continue; }
@@ -574,23 +604,32 @@ export function createFamilySync(deps = {}) {
   }
 
   async function deleteLog(log) {
+    const session = activeSession();
+    if (!session) return { ok: false, cancelled: true, error: sessionChanged() };
     try {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       await sdk.deleteDoc(docRef(pathOf(`logs/${logDocId(log)}`)));
       return { ok: true };
     } catch (e) {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e, { date: log.date, settled: log.settled === true }) };
     }
   }
 
   /* ---- 정산 트랜잭션 (부모 기기) ---- */
   async function settleUnsettled({ by = uid, chunkSize = 100 } = {}) {
+    const session = activeSession({ by, r: 'parent' });
+    if (!session) return { ok: false, cancelled: true, ...sessionChanged() };
     try {
       const pendingSnap = await sdk.getDocs(sdk.query(colRef('logs'), sdk.where('settled', '==', false)));
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
       const refs = pendingSnap.docs.map((d) => d.ref);
       let total = 0, count = 0, rounds = 0;
       for (let i = 0; i < refs.length; i += chunkSize) {
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
         const slice = refs.slice(i, i + chunkSize);
         const res = await sdk.runTransaction(db, async (tx) => {
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
           const summRef = docRef(pathOf('stats/summary'));
           const summSnap = await tx.get(summRef);
           const before = snapExists(summSnap) ? summSnap.data() : { totalXp: 0, settledCount: 0, monthly: {}, byMember: {} };
@@ -600,15 +639,17 @@ export function createFamilySync(deps = {}) {
             if (!s.exists || s.data().settled !== false) continue;
             targets.push({ ref, log: s.data() });
           }
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
           if (!targets.length) return { total: 0, count: 0 };
           const monthly = JSON.parse(JSON.stringify(before.monthly || {}));
           const byMember = { ...(before.byMember || {}) };
-          let t = 0, c = 0;
+          let t = 0, kidT = 0, c = 0;
           targets.forEach(({ ref, log }) => {
             tx.update(ref, { settled: true, settledAt: sdk.serverTimestamp(), settledBy: by });
             const earned = intOf(log.earned);
             const key = bmKey(log.member);
             t += earned; c += 1;
+            if (log.member === kidId) kidT += earned;
             byMember[key] = intOf(byMember[key]) + earned;
             const mk = monthOf(log.date);
             const cur = monthly[mk] || { total: 0, count: 0, byMember: {} };
@@ -617,14 +658,16 @@ export function createFamilySync(deps = {}) {
             monthly[mk] = { total: intOf(cur.total) + earned, count: intOf(cur.count) + 1, byMember: bm };
           });
           const payload = {
-            totalXp: intOf(before.totalXp) + t,
+            totalXp: intOf(before.totalXp) + kidT,
             settledCount: intOf(before.settledCount) + c,
             monthly, byMember,
             updatedAt: sdk.serverTimestamp(),
           };
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
           if (snapExists(summSnap)) tx.update(summRef, payload); else tx.set(summRef, payload);
           return { total: t, count: c };
         });
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid) || res.cancelled) return { ok: false, cancelled: true, ...sessionChanged() };
         total += res.total; count += res.count; rounds += 1;
         if (!res.count) break;
       }
@@ -636,7 +679,10 @@ export function createFamilySync(deps = {}) {
 
   /* ---- 파트너 입양 (아이가 쓸 수 있는 유일한 상태 문서) ---- */
   async function adoptPartner({ key, sinceXp = 0 }) {
+    const session = activeSession();
+    if (!session) return { ok: false, cancelled: true, error: sessionChanged() };
     try {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       await sdk.setDoc(docRef(pathOf('child_state/partner')), {
         partnerKey: String(key || '').toLowerCase(),
         sinceXp: intOf(sinceXp),
@@ -644,6 +690,7 @@ export function createFamilySync(deps = {}) {
       });
       return { ok: true };
     } catch (e) {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e) };
     }
   }
@@ -668,6 +715,8 @@ export function createFamilySync(deps = {}) {
     const written = [];
     const denied = [];
     const errors = [];
+    const session = activeSession({ by, r });
+    if (!session) return { ok: false, cancelled: true, written, denied, errors, role: r };
     const stamp = sdk.serverTimestamp();
     const batchOps = [];
     const pushOp = (fn) => batchOps.push(fn);
@@ -738,7 +787,12 @@ export function createFamilySync(deps = {}) {
     async function finish() {
       let failed = null;
       if (batchOps.length) {
-        try { for (const op of batchOps) await op(); }
+        try {
+          for (const op of batchOps) {
+            if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, written, denied, errors, role: r };
+            await op();
+          }
+        }
         catch (e) { failed = classifyFirestoreError(e); errors.push(failed); }
       }
       return { ok: !failed, written, denied, errors, role: r };
@@ -747,7 +801,10 @@ export function createFamilySync(deps = {}) {
     let failed = null;
     if (batchOps.length) {
       try {
-        for (const op of batchOps) await op();          // 한 건씩 — 실패한 항목을 정확히 알기 위해
+        for (const op of batchOps) {
+          if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, written, denied, errors, role: r };
+          await op();                                  // 한 건씩 — 실패한 항목을 정확히 알기 위해
+        }
       } catch (e) {
         failed = classifyFirestoreError(e);
         errors.push(failed);
@@ -759,17 +816,22 @@ export function createFamilySync(deps = {}) {
   const bonusOfLog = (l) => (l.goalMet ? intOf(l.bonus) : 0);
 
   /* ---- 백업 (부모 기기 전용) · 복원 ---- */
-  async function readAllRecords() {
+  async function readAllRecords(session = activeSession({ r: 'parent' })) {
+    if (!session || session.role !== 'parent') throw Object.assign(new Error('Parent session required'), { code: 'auth/session-changed' });
     const records = [];
     for (const name of PLAIN_COLLECTIONS) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
       const snap = await sdk.getDocs(colRef(name));
       snap.docs.forEach((d) => records.push({ path: pathOf(`${name}/${d.id}`), data: toPlain(d.data()) }));
     }
+    if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
     const logsSnap = await sdk.getDocs(colRef('logs'));
     logsSnap.docs.forEach((d) => records.push({ path: pathOf(`logs/${d.id}`), data: toPlain(d.data()) }));
+    if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
     const familySnap = await sdk.getDoc(docRef(root));
     if (snapExists(familySnap)) records.push({ path: root, data: toPlain(familySnap.data()) });
     for (const sub of ['stats/summary', 'child_state/partner', 'private/parent_config']) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
       const path = pathOf(sub);
       const s = await sdk.getDoc(docRef(path));
       if (snapExists(s)) records.push({ path, data: toPlain(s.data()) });
@@ -785,8 +847,11 @@ export function createFamilySync(deps = {}) {
    */
   async function createBackup({ r = role } = {}) {
     if (r !== 'parent') return { skipped: true, reason: 'child-device', chunks: [], docCount: 0, totalBytes: 0, checksum: checksumOf([]), message: '자동 백업은 보호자 기기에서만 실행돼요' };
+    const session = activeSession({ r });
+    if (!session) return { skipped: true, reason: 'session-changed', chunks: [], docCount: 0, totalBytes: 0, checksum: checksumOf([]) };
     try {
-      const records = await readAllRecords();
+      const records = await readAllRecords(session);
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { skipped: true, reason: 'session-changed', chunks: [], docCount: 0, totalBytes: 0, checksum: checksumOf([]) };
       const chunks = chunkRecords(records);
       const oversize = chunks.filter((c) => c.bytes >= 1024 * 1024);
       return {
@@ -800,6 +865,7 @@ export function createFamilySync(deps = {}) {
         checksum: checksumOf(records),
       };
     } catch (e) {
+      if (e && e.code === 'auth/session-changed') return { skipped: true, reason: 'session-changed', chunks: [], docCount: 0, totalBytes: 0, checksum: checksumOf([]) };
       return { skipped: true, reason: 'error', error: classifyFirestoreError(e), chunks: [], docCount: 0, totalBytes: 0 };
     }
   }
@@ -808,20 +874,24 @@ export function createFamilySync(deps = {}) {
    * 백업 복원 — 부모만. 각 조각을 그대로 덮어쓰고, 쓴 뒤 다시 읽어 비교합니다.
    * @returns {{ok:boolean, written:number, verified:{matched:number, mismatched:object[]}}}
    */
-  async function restoreBackup(backup, { r = role, verify = true } = {}) {
+  async function restoreBackup(backup, { r = role, verify = true, by = uid } = {}) {
     if (r !== 'parent') return { ok: false, reason: 'not-parent', written: 0, verified: { matched: 0, mismatched: [] } };
     if (!backup || !Array.isArray(backup.chunks)) return { ok: false, reason: 'bad-backup', written: 0, verified: { matched: 0, mismatched: [] } };
+    const session = activeSession({ by, r: 'parent' });
+    if (!session) return { ok: false, cancelled: true, reason: 'session-changed', written: 0, verified: { matched: 0, mismatched: [] } };
     let written = 0;
     let currentPath = '';
     try {
       for (const chunk of backup.chunks) {
         for (const rec of chunk.records) {
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, verified: { matched: 0, mismatched: [] } };
           currentPath = rec.path;
           const target = docRef(rec.path);
           let data = fromPlain(rec.data, sdk);
           // 이미 있는 문서를 덮어쓸 때는 '만든 시각'을 그대로 둡니다
           // (shopping·letters 규칙이 createdBy·createdAt 불변을 요구하기 때문)
           const existing = await sdk.getDoc(target);
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, verified: { matched: 0, mismatched: [] } };
           const prev = snapExists(existing) ? existing.data() : null;
           if (prev && prev.createdAt) data = { ...data, createdAt: prev.createdAt };
           if (prev && prev.createdBy) data = { ...data, createdBy: prev.createdBy };
@@ -834,6 +904,7 @@ export function createFamilySync(deps = {}) {
       let matched = 0;
       for (const chunk of backup.chunks) {
         for (const rec of chunk.records) {
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, verified: { matched, mismatched } };
           const s = await sdk.getDoc(docRef(rec.path));
           const got = toPlain(snapExists(s) ? s.data() : null);
           const want = toPlain(rec.data);
@@ -853,6 +924,8 @@ export function createFamilySync(deps = {}) {
   /** migrateFromLegacyJson 의 결과를 실제 Firestore 에 씁니다. */
   async function applyMigration(plan, { by = uid, r = role, dryRun = false } = {}) {
     if (r !== 'parent') return { ok: false, reason: 'not-parent', written: 0 };
+    const session = activeSession({ by, r: 'parent' });
+    if (!session) return { ok: false, cancelled: true, reason: 'session-changed', written: 0 };
     const stamp = sdk.serverTimestamp();
     const ops = [];
     ops.push(async () => sdk.setDoc(docRef(root), { ...plan.family, updatedAt: stamp }));
@@ -870,11 +943,50 @@ export function createFamilySync(deps = {}) {
     if (dryRun) return { ok: true, dryRun: true, planned: ops.length, written: 0 };
     let written = 0;
     try {
-      for (const op of ops) { await op(); written += 1; }
+      for (const op of ops) {
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, planned: ops.length };
+        await op(); written += 1;
+      }
       return { ok: true, written, planned: ops.length };
     } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, planned: ops.length };
       return { ok: false, error: { ...classifyFirestoreError(e), detail: String((e && e.message) || '') }, written, planned: ops.length };
     }
+  }
+
+  async function saveParentPin({ pin, by = uid } = {}) {
+    const session = activeSession({ by, r: 'parent' });
+    if (!session) return { ok: false, cancelled: true, error: sessionChanged() };
+    const value = String(pin || '');
+    if (!/^\d{4}$/.test(value)) return { ok: false, error: { kind: 'validation', message: 'PIN은 숫자 4자리여야 해요.' } };
+    try {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      await sdk.setDoc(docRef(pathOf('private/parent_config')), { parentPin: value, updatedAt: sdk.serverTimestamp() }, { merge: true });
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: true };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  async function signOut() {
+    authGeneration += 1;
+    stopAll(); role = ''; uid = '';
+    try { await sdk.signOut(auth); }
+    catch (e) {
+      const user = auth && auth.currentUser;
+      if (user) await applyAuthUser(user);
+      throw e;
+    }
+  }
+
+  function watchAuthState(cb) {
+    if (!auth) return () => {};
+    return sdk.onAuthStateChanged(auth, (user) => {
+      if (!user) { authGeneration += 1; stopAll(); role = ''; uid = ''; }
+      cb(user);
+    });
   }
 
   return {
@@ -883,14 +995,14 @@ export function createFamilySync(deps = {}) {
     get uid() { return uid; },
     get listening() { return listening; },
     // 인증
-    applyAuthUser, watchAuthState: (cb) => (auth ? sdk.onAuthStateChanged(auth, cb) : () => {}),
+    applyAuthUser, watchAuthState,
     signInWithRedirect: (provider) => sdk.signInWithRedirect(auth, provider),
     getRedirectResult: () => (auth ? sdk.getRedirectResult(auth) : Promise.resolve(null)),
-    signOut: () => sdk.signOut(auth),
+    signOut,
     // 실시간
     startSubscriptions, stopAll,
     // 쓰기
-    buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, pushPatch,
+    buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관

@@ -1,7 +1,7 @@
 /* ==========================================================================
    우리 가족 대시보드 — app.js
-   순수 바닐라 JS. 모든 기록은 이 브라우저(localStorage)에만 저장되며,
-   네트워크로는 날씨(Open-Meteo)만 조회합니다.
+   기본은 이 브라우저(localStorage)에 저장합니다. Google 로그인 후에는
+   Firebase 연동 모듈이 허용된 가족 기록을 Firestore와 동기화합니다.
    기본 데이터에는 개인정보가 들어 있지 않습니다 — 전부 예시값입니다.
    ========================================================================== */
 (() => {
@@ -698,6 +698,7 @@
      태블릿·폰이 같은 기록을 보도록 '변경분(patch)'만 주고받습니다.
      지금 기본 동기화는 Firebase(firebase-sync.js)이고, 이 localStorage 기반
      경로는 로그인 전·오프라인일 때 화면이 그대로 동작하게 남겨 둔 옛 방식입니다. */
+  const LEGACY_SYNC = window.FamilyLegacySync || { autoStartAllowed: () => false, hasSavedConfig: () => false, disable: () => false };
   const SYNCKEY = 'family-dashboard:sync';
   const SYNC_POLL_MS = 30000;          // 화면이 보이는 동안 30초마다 확인
   const SYNC_ARRAYS = ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses', 'wishlist'];
@@ -752,6 +753,8 @@
   }
 
   function loadSync() {
+    // Firebase is the only supported remote sync. Never restore saved Apps Script credentials.
+    if (!LEGACY_SYNC.autoStartAllowed()) return false;
     try {
       const raw = localStorage.getItem(SYNCKEY);
       if (!raw) return false;
@@ -1011,11 +1014,13 @@
   }
 
   function syncDisconnect() {
-    SY.cfg = null;
-    SY.dirty = false;
     clearTimeout(SY.pushTimer);
     clearInterval(SY.timer);
-    try { localStorage.removeItem(SYNCKEY); } catch (e) { /* noop */ }
+    SY.cfg = null;
+    SY.dirty = false;
+    SY.snapshot = null;
+    SY.busy = false;
+    LEGACY_SYNC.disable(localStorage);
     setSyncStatus('off', '');
   }
 
@@ -1106,12 +1111,12 @@
      보호자 일(미션/일정/장보기/위키 고치기, 포인트 사용, 설정)은 PIN을 넣어야 열립니다.
      PIN은 코드에 박지 않고 상태(state.parentPin)에서만 읽습니다 — 기본값 '0000'. */
   const PARENT_MS = 5 * 60 * 1000;      // 부모 모드 유지 시간 — 5분 뒤 자동 잠금
-  let parentAt = 0;
+  const parentSession = { unlockedAt: 0 };
   let parentSynced = null;              // Firebase 쪽에서 채우는 후크(부모 모드 변화 → 설정 화면 갱신)
 
   const parentPinOf = () => (/^\d{4,12}$/.test(String(S.parentPin || '')) ? String(S.parentPin) : '0000');
-  const parentUnlocked = () => !!parentAt && (Date.now() - parentAt) < PARENT_MS;
-  const parentLeftText = () => `${Math.max(1, Math.ceil((PARENT_MS - (Date.now() - parentAt)) / 60000))}분`;
+  const parentUnlocked = () => !!parentSession.unlockedAt && (Date.now() - parentSession.unlockedAt) < PARENT_MS;
+  const parentLeftText = () => `${Math.max(1, Math.ceil((PARENT_MS - (Date.now() - parentSession.unlockedAt)) / 60000))}분`;
 
   function renderParentBtn() {
     const b = $('#parentBtn');
@@ -1127,13 +1132,21 @@
 
   function lockParent(quiet) {
     if (!parentUnlocked()) return;
-    parentAt = 0;
+    parentSession.unlockedAt = 0;
     renderParentBtn();
     if (!quiet) toast('🔒 부모 모드로 잠갔어요', '', 1800);
   }
 
   // 4자리 PIN 확인 — 맞으면 true (3번까지 다시 넣을 수 있음)
   async function askParentPin(reason) {
+    if (!window.FamilyParentSessionGuard.canPromptForPin({ firebaseOn: FB.on, role: FB.role })) {
+      toast('아이 계정에서는 부모 모드를 열 수 없어요.', 'coral', 3000);
+      return false;
+    }
+    if (FB.on && FB.role === 'parent' && !FB.parentPinReady) {
+      toast('가족 PIN을 확인 중이에요. 잠시 뒤 다시 눌러 주세요.', '', 2600);
+      return false;
+    }
     let msg = reason || '보호자만 바꿀 수 있어요. 4자리 PIN을 넣어 주세요.';
     for (let i = 0; i < 3; i++) {
       const r = await askModal({
@@ -1155,14 +1168,14 @@
   // 부모 전용 동작 감싸개 — 잠겨 있으면 PIN을 받고, 맞으면 이어서 실행
   async function asParent(reason, run) {
     if (parentUnlocked()) {
-      parentAt = Date.now();          // 부모 모드가 열려 있으면 5분을 새로 셉니다
+      parentSession.unlockedAt = Date.now();          // 부모 모드가 열려 있으면 5분을 새로 셉니다
       renderParentBtn();
       await run();
       return;
     }
     const ok = await askParentPin(reason);
     if (!ok) return;
-    parentAt = Date.now();
+    parentSession.unlockedAt = Date.now();
     renderParentBtn();
     toast('🔓 부모 모드 열림 · 5분 뒤 자동으로 잠겨요', 'mint', 2800);
     await run();
@@ -1171,7 +1184,7 @@
   // 부모 모드 자동 잠금 감시
   setInterval(() => {
     if (parentUnlocked()) { renderParentBtn(); return; }
-    if (parentAt) { parentAt = 0; renderParentBtn(); toast('🔒 5분이 지나 부모 모드가 자동으로 잠겼어요', '', 2400); }
+    if (parentSession.unlockedAt) { parentSession.unlockedAt = 0; renderParentBtn(); toast('🔒 5분이 지나 부모 모드가 자동으로 잠겼어요', '', 2400); }
   }, 15000);
 
   /* ------------------------------------------------------------------ weather */
@@ -3890,7 +3903,7 @@
       if (parentUnlocked()) { lockParent(false); return; }
       const ok = await askParentPin('보호자가 쓰는 기능이에요. 4자리 PIN을 넣으면 부모 모드가 열립니다.');
       if (!ok) return;
-      parentAt = Date.now();
+      parentSession.unlockedAt = Date.now();
       renderParentBtn();
       toast('🔓 부모 모드 열림 · 5분 뒤 자동으로 잠겨요', 'mint', 2800);
     });
@@ -3911,15 +3924,24 @@
     save(); renderMissions(); renderSettings();
     toast(S.showAdultMissions ? '어른 미션도 함께 보여요' : '아이 미션만 보여요', 'mint', 2400);
   });
-  if ($('#pinSaveBtn')) $('#pinSaveBtn').addEventListener('click', () => {
+  if ($('#pinSaveBtn')) $('#pinSaveBtn').addEventListener('click', async () => {
     const v = String($('#pinInput').value || '').replace(/\D/g, '');
     if (!/^\d{4}$/.test(v)) { toast('PIN은 숫자 4자리로 정해 주세요', 'coral', 2800); return; }
+    if (FB.on && FB.role === 'parent' && FB.sync && FB.sync.saveParentPin) {
+      const session = FB.session;
+      const result = await FB.sync.saveParentPin({ pin: v, by: FB.uid });
+      if (session !== FB.session) return;
+      if (!result || !result.ok) {
+        toast('PIN을 가족 기기에 동기화하지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요.', 'coral', 4200);
+        return;
+      }
+    }
     S.parentPin = v;
     save();
-    parentAt = 0;                 // PIN을 바꾸면 부모 모드는 바로 잠깁니다
+    parentSession.unlockedAt = 0;                 // PIN을 바꾸면 부모 모드는 바로 잠깁니다
     renderParentBtn();
     $('#pinInput').value = '';
-    toast('부모 모드 PIN을 바꿨어요 🔒', 'mint', 2600);
+    toast(FB.on && FB.role === 'parent' ? '부모 모드 PIN을 가족 기기에 동기화했어요 🔒' : '부모 모드 PIN을 이 기기에 저장했어요 🔒', 'mint', 3000);
   });
   $('#settingsClose').addEventListener('click', () => { $('#settingsModal').hidden = true; });
   $('#settingsModal').addEventListener('click', (e) => { if (e.target.id === 'settingsModal') $('#settingsModal').hidden = true; });
@@ -3990,6 +4012,16 @@
   });
 
   /* ------------------------------------------------------- 동기화 설정 화면 */
+  function renderLegacySyncInfo() {
+    const note = $('#legacySyncNote');
+    const button = $('#legacySyncOffBtn');
+    const hasSaved = LEGACY_SYNC.hasSavedConfig(localStorage);
+    if (note) note.textContent = hasSaved
+      ? '이 기기에 예전 Apps Script 주소/PIN이 저장되어 있지만 자동 연결은 꺼져 있어요. 원하면 저장된 연결 정보만 이 기기에서 지울 수 있습니다.'
+      : '예전 Apps Script 자동 연결은 꺼져 있어요. 이 기기에 저장된 연결 정보가 없습니다.';
+    if (button) button.hidden = !hasSaved;
+  }
+
   function fillSyncInputs() {
     if ($('#syncUrlInput')) $('#syncUrlInput').value = SY.cfg ? SY.cfg.url : '';
     if ($('#syncPinInput')) $('#syncPinInput').value = SY.cfg ? SY.cfg.pin : '';
@@ -4045,6 +4077,13 @@
     renderSyncBadge();
     toast(ok ? '지금 동기화했어요 ☁️' : ('동기화하지 못했어요 — ' + (SY.lastErr || '연결 확인')), ok ? 'mint' : 'coral', 3200);
   });
+  if ($('#legacySyncOffBtn')) $('#legacySyncOffBtn').addEventListener('click', () => {
+    clearTimeout(SY.pushTimer); clearInterval(SY.timer);
+    SY.cfg = null; SY.dirty = false; SY.snapshot = null; SY.busy = false;
+    const cleared = LEGACY_SYNC.disable(localStorage);
+    renderLegacySyncInfo();
+    toast(cleared ? '예전 Apps Script 연결 정보를 이 기기에서 지웠어요' : '연결 정보를 지우지 못했어요', cleared ? 'mint' : 'coral', 3200);
+  });
   if ($('#syncOffBtn')) $('#syncOffBtn').addEventListener('click', async () => {
     if (!SY.cfg) { toast('지금은 로컬 전용이에요'); return; }
     const r = await askModal({
@@ -4084,7 +4123,7 @@
   });
 
   /* =======================================================================
-     🔥 Firebase 연동 (지금 공개 사이트에서 실제로 쓰는 가족 동기화)
+     🔥 Firebase 연동 (Google 로그인 + Firestore 가족 동기화)
      ───────────────────────────────────────────────────────────────────────
      · 로그인: Google 계정을 팝업으로 받습니다(서드파티 쿠키를 막는 브라우저에서도 동작).
              팝업이 차단되거나 지원되지 않을 때만 redirect 로 넘어갑니다.
@@ -4101,8 +4140,10 @@
      · 모듈이 없거나(오프라인) 로그인 전이면 기존 localStorage 모드로 그대로 동작합니다.
      ======================================================================= */
   const FB = {
-    on: false, role: '', uid: '', sync: null, core: null,
+    on: false, role: '', uid: '', sync: null, core: null, session: 0,
     blocked: false, busy: false, settling: false, timer: null, snap: null,
+    parentPinReady: false,
+    readyData: false, received: new Set(), requiredData: new Set(),
     summary: null, partner: {}, monthLogs: [], pendingLogs: [],
     notedDenied: '', pill: null, gate: null, card: null,
     deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
@@ -4125,6 +4166,31 @@
     el.dataset.kind = kind || 'off';
     el.querySelector('.fb-text').textContent = text;
     el.title = kind === 'on' ? '가족 기록이 실시간으로 오갑니다' : '아직 Firebase 에 연결되지 않았어요 · 눌러서 로그인';
+    const badge = $('#syncBadge');
+    if (badge) {
+      const state = kind === 'on' ? 'ok' : (kind === 'busy' ? 'busy' : (kind === 'bad' ? 'err' : 'off'));
+      const icon = kind === 'on' ? '☁️' : (kind === 'busy' ? '🔄' : (kind === 'bad' ? '⚠️' : '📴'));
+      const word = kind === 'on' ? '동기화됨' : (kind === 'busy' ? '확인 중' : (kind === 'bad' ? '연결 확인' : '로컬 전용'));
+      badge.dataset.state = state;
+      badge.innerHTML = `<span aria-hidden="true">${icon}</span><span class="sync-word">${word}</span>`;
+      badge.title = text;
+    }
+  }
+
+  function fbResetSession() {
+    FB.session += 1;
+    clearTimeout(FB.timer); FB.timer = null;
+    if (FB.sync && FB.sync.stopAll) FB.sync.stopAll();
+    FB.on = false; FB.role = ''; FB.uid = ''; FB.blocked = false;
+    FB.busy = false; FB.settling = false; FB.snap = null;
+    FB.parentPinReady = false;
+    FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
+    FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = [];
+    FB.deleted.clear();
+    window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY });
+    renderParentBtn();
+    if (FB.gate) fbGate(false);
+    return FB.session;
   }
 
   /* ---- 로그인 / 로그아웃 / 설정 화면 상태 ---- */
@@ -4146,10 +4212,14 @@
   async function fbSignOut() {
     const boot = window.FamilySyncBoot;
     if (!boot || !boot.signOut) return;
-    try { await boot.signOut(); toast('로그아웃했어요 · 이 기기 기록만 따로 보입니다', '', 2800); }
-    catch (e) { toast('로그아웃하지 못했어요. 잠시 뒤 다시 시도해 주세요.', 'coral', 3400); }
+    fbResetSession();
     fbStatus('로그인 전 · 눌러서 로그인', 'off');
     fbSyncInfo();
+    try { await boot.signOut(); toast('로그아웃했어요 · 이 기기 기록만 따로 보입니다', '', 2800); }
+    catch (e) {
+      toast('로그아웃하지 못했어요. 잠시 뒤 다시 시도해 주세요.', 'coral', 3400);
+      if (boot.auth && boot.auth.currentUser) await fbHandleAuthUser(boot, boot.auth.currentUser);
+    }
   }
 
   /* ---- 설정 화면: 로그인 상태 문구 + (보호자·부모 모드) 미정산 정산 버튼 ---- */
@@ -4186,16 +4256,19 @@
   async function fbSettleNow() {
     if (!FB.on || FB.role !== 'parent' || !FB.sync || !FB.sync.settleUnsettled) return;
     if (FB.settling) return;
+    const session = FB.session;
     const n = (FB.pendingLogs || []).length;
     if (!n) { toast('정산할 기록이 없어요', '', 2200); return; }
     FB.settling = true; fbSyncInfo();
     try {
       const r = await FB.sync.settleUnsettled({ by: FB.uid });
+      if (session !== FB.session) return;
       if (r && r.ok) toast(`✅ ${r.count}건 정산 완료 · +${r.total}P 확정`, 'mint', 3600);
       else toast('정산하지 못했어요 — ' + ((r && r.message) || '잠시 뒤 다시 시도해 주세요.'), 'coral', 4600);
     } catch (e) {
+      if (session !== FB.session) return;
       toast('정산하지 못했어요 — 잠시 뒤 다시 시도해 주세요.', 'coral', 4600);
-    } finally { FB.settling = false; fbSyncInfo(); }
+    } finally { if (session === FB.session) { FB.settling = false; fbSyncInfo(); } }
   }
 
   parentSynced = fbSyncInfo;              // 부모 모드가 열리고 잠길 때 설정 화면을 다시 그립니다
@@ -4335,9 +4408,24 @@
     const { key, docs } = detail;
     if (key === 'summary') FB.summary = docs[0] || null;
     else if (key === 'partner') FB.partner = docs[0] ? { key: docs[0].partnerKey, sinceXp: docs[0].sinceXp } : {};
+    else if (key === 'parentConfig') {
+      FB.parentPinReady = true;
+      const remotePin = String((docs[0] && docs[0].parentPin) || '');
+      if (/^\d{4,12}$/.test(remotePin) && remotePin !== S.parentPin) {
+        S.parentPin = remotePin;
+        parentSession.unlockedAt = 0;
+        try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
+        renderParentBtn();
+      }
+    }
     else if (key === 'pendingLogs') FB.pendingLogs = docs;
     else if (key === 'logs') FB.monthLogs = docs;
     else fbMergeCollection(key, docs);
+    FB.received.add(key);
+    if (!FB.readyData && [...FB.requiredData].every((required) => FB.received.has(required))) {
+      FB.readyData = true;
+      FB.snap = fbSnapOf();
+    }
     fbRecalc();
   }
   function fbOnError(info) {
@@ -4349,13 +4437,14 @@
 
   /* ---- 로컬 변경분 보내기 ---- */
   function fbLocalChanged() {
-    if (!FB.on || !FB.sync) return;
+    if (!FB.on || !FB.readyData || !FB.sync) return;
     clearTimeout(FB.timer);
     FB.timer = setTimeout(() => { fbPushNow(); }, 500);
   }
   async function fbPushNow() {
-    if (!FB.on || !FB.sync) return { ok: true, written: [], denied: [] };
+    if (!FB.on || !FB.readyData || !FB.sync) return { ok: true, written: [], denied: [] };
     if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
+    const session = FB.session;
     const prev = FB.snap || {};
     const next = fbSnapOf();
     FB.busy = true;
@@ -4363,7 +4452,9 @@
     // 로그는 writeLog()/deleteLog() 로 한 건씩 직접 다룹니다(빠른 체크·취소에도 유령 기록이 남지 않게)
     try { res = await FB.sync.pushPatch({ prev, next, by: FB.uid, r: FB.role, skipLogs: true }); }
     catch (e) { res = { ok: false, written: [], denied: [], errors: [FB.core.classifyFirestoreError(e)] }; }
-    finally { FB.busy = false; }
+    finally { if (session === FB.session) FB.busy = false; }
+    if (session !== FB.session) return { ok: false, cancelled: true, written: [], denied: [], errors: [] };
+    if (res && res.cancelled) return res;
     if (res.denied && res.denied.length) {
       const d = res.denied[0];
       const sig = `${d.collection}:${d.reason}`;
@@ -4384,8 +4475,10 @@
       toast('Firestore 백업은 보호자 기기에서만 만들 수 있어요', '', 3200);
       return;
     }
+    const session = FB.session;
     fbStatus('백업 만드는 중…', 'busy');
     const b = await FB.sync.createBackup({ r: FB.role });
+    if (session !== FB.session) return;
     fbStatus('보호자 기기 연결됨', 'on');
     if (b.skipped) { toast('백업을 만들지 못했어요' + (b.reason ? ` (${b.reason})` : ''), 'coral', 3400); return; }
     const payload = { app: 'family-dashboard', kind: 'firestore-backup', version: 1, createdAt: b.createdAt, docCount: b.docCount, totalBytes: b.totalBytes, checksum: b.checksum, chunks: b.chunks };
@@ -4399,6 +4492,35 @@
   }
 
   /* ---- Firebase 시작 ---- */
+  async function fbHandleAuthUser(boot, user) {
+    if (!user) {
+      if (FB.blocked) return;
+      fbResetSession();
+      fbStatus('로그인 전 · 눌러서 로그인', 'off');
+      fbSyncInfo();
+      return;
+    }
+    const session = fbResetSession();
+    fbStatus('로그인 확인 중…', 'busy');
+    const r = await boot.sync.applyAuthUser(user);
+    if (session !== FB.session || r.state === 'stale') return;
+    if (r.state === 'ready') {
+      FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
+      FB.requiredData = new Set([
+        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner',
+        ...(r.role === 'parent' ? ['parentConfig'] : []),
+      ]);
+      fbGate(false);
+      const sub = boot.sync.startSubscriptions();
+      fbStatus(r.role === 'parent' ? '보호자 기기 연결됨' : '아이 기기 연결됨', 'on');
+      if (sub && sub.error) fbOnError({ kind: 'permission', message: '구독을 시작하지 못했어요' });
+    } else {
+      FB.on = false; FB.role = ''; FB.uid = ''; FB.blocked = true;
+      fbOnError(r);
+    }
+    fbSyncInfo();
+  }
+
   function fbStart(boot) {
     if (!boot || !boot.sync || !window.FamilySync) return false;
     FB.sync = boot.sync;
@@ -4406,20 +4528,7 @@
     window.addEventListener('family-sync-data', (e) => fbOnData(e.detail));
     window.addEventListener('family-sync-error', (e) => fbOnError(e.detail));
     fbStatus('로그인 확인 중…', 'busy');
-    boot.sync.watchAuthState(async (user) => {
-      if (!user) { if (FB.blocked) return; fbStatus('로그인 전 · 눌러서 로그인', 'off'); fbSyncInfo(); return; }
-      const r = await boot.sync.applyAuthUser(user);
-      if (r.state === 'ready') {
-        FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
-        fbGate(false);
-        const sub = boot.sync.startSubscriptions();
-        fbStatus(r.role === 'parent' ? '보호자 기기 연결됨' : '아이 기기 연결됨', 'on');
-        if (sub && sub.error) fbOnError({ kind: 'permission', message: '구독을 시작하지 못했어요' });
-      } else {
-        FB.on = false; FB.role = ''; FB.blocked = true;
-        fbOnError(r);
-      }
-    });
+    boot.sync.watchAuthState((user) => { fbHandleAuthUser(boot, user); });
     /* redirect 로 돌아온 경우: 결과를 조용히 삼키지 않고 이유를 보여 줍니다 */
     if (boot.sync.getRedirectResult) {
       boot.sync.getRedirectResult().then((r) => {
@@ -4444,6 +4553,7 @@
   // 1) 미션 체크: 로컬 반영 후 로그를 서버로 보내고, 거절되면 화면을 되돌리고 안내 카드
   const fbBaseToggle = toggleMission;
   toggleMission = function (id) {
+    const session = FB.session;
     const c = S.missions.find((x) => x.id === id);
     const wasDone = !!(c && c.doneOn === todayStr());
     if (wasDone && FB.on) {
@@ -4455,7 +4565,8 @@
     const member = c.member || KID_ID;
     if (!wasDone) {
       FB.sync.writeLog(c, { by: FB.uid, member }).then((r) => {
-        if (!r.ok) {
+        if (session !== FB.session) return;
+        if (!r.ok && !r.cancelled) {
           fbBaseToggle(id);                 // 체크를 원래대로 되돌림
           toast('기록을 보내지 못해 체크를 되돌렸어요', 'coral', 3000);
           fbRetryCard(r.error);
@@ -4463,7 +4574,8 @@
       });
     } else {
       FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: false }).then((r) => {
-        if (!r.ok) fbRetryCard(r.error);
+        if (session !== FB.session) return;
+        if (!r.ok && !r.cancelled) fbRetryCard(r.error);
       });
     }
     fbPushNow();
@@ -4483,11 +4595,12 @@
   // 3) 파트너 입양/변경 → child_state/partner (아이가 쓸 수 있는 유일한 문서)
   const fbBasePickPartner = pickPartner;
   pickPartner = function (key) {
+    const session = FB.session;
     const beforeKey = S.pokemon.key;
     fbBasePickPartner(key);
     if (!FB.on || S.pokemon.key === beforeKey) return;
     const sinceXp = Math.max(0, Math.round(kidTotalPts() - Math.min(FINAL_P, Math.round(+S.pokemon.xp || 0))));
-    FB.sync.adoptPartner({ key: S.pokemon.key, sinceXp }).then((r) => { if (!r.ok) fbRetryCard(r.error); });
+    FB.sync.adoptPartner({ key: S.pokemon.key, sinceXp }).then((r) => { if (session === FB.session && !r.ok && !r.cancelled) fbRetryCard(r.error); });
   };
 
   // 4) 백업 내보내기: 부모만 · Firestore 전체 백업(1MiB 미만 조각)
@@ -4518,7 +4631,9 @@
         return;
       }
       fbStatus('복원 중…', 'busy');
+      const session = FB.session;
       const res = await FB.sync.restoreBackup(data, { r: FB.role });
+      if (session !== FB.session) return;
       fbStatus('보호자 기기 연결됨', 'on');
       if (res.ok) toast(`복원 완료 · ${res.written}건 · 확인 ${res.verified.matched}/${res.written}`, 'mint', 4000);
       else toast(`복원 실패 · ${(res.error && res.error.title) || res.reason || '오류'}`, 'coral', 4200);
@@ -4530,13 +4645,8 @@
   fbBootWait();
 
   /* ---------------------------------------------------------------------- init */
-  const syncLinked = syncReadLinkHash();     // #sync=… 한 번 누르면 설정이 채워집니다
-  if (syncLinked) {
-    if ($('#syncUrlInput')) $('#syncUrlInput').value = syncLinked.url;
-    if ($('#syncPinInput')) $('#syncPinInput').value = syncLinked.pin;
-  }
-  const hadSync = loadSync();
-  const firstRunHere = !localStorage.getItem(KEY);
+  // 예전 #sync 링크와 family-dashboard:sync 의 Apps Script 주소/PIN은 자동으로 읽지 않습니다.
+  // 기존 localStorage 값은 지우거나 전송하지 않고 그대로 둡니다.
   loadWeatherCache();
   applyTheme();
   syncDex();                 // 형식 2에서 옮겨 온 데이터가 이미 최종 진화 상태면 도감에 채워 둡니다
@@ -4553,17 +4663,9 @@
   // 목표 시간까지 남은 시간 표시를 20초마다 갱신
   setInterval(() => { if (!document.hidden) updateDueChips(); }, 20000);
 
-  // ☁️ 가족 실시간 동기화 시작
+  // 레거시 PIN 동기화는 자동 시작하지 않습니다. Firebase 시작은 위 fbBootWait()가 담당합니다.
   renderSyncBadge();
-  if (hadSync) {
-    startSyncLoop();
-    setTimeout(() => { syncTick(); }, 1500);
-  }
-  if (syncLinked && !(SY.cfg && SY.cfg.url === syncLinked.url && SY.cfg.pin === syncLinked.pin)) {
-    setTimeout(() => { syncConnectFlow(firstRunHere); }, 900);
-  } else if (syncLinked) {
-    toast('이 기기는 이미 가족 동기화에 연결돼 있어요 ☁️', 'mint', 2600);
-  }
+  renderLegacySyncInfo();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { if (SY.cfg) syncFlushBeacon(); return; }
     if (SY.cfg) setTimeout(() => { syncTick(); }, 400);
@@ -4585,7 +4687,7 @@
     }),
     wishlist: () => (S.wishlist || []).map((w) => ({ id: w.id, title: w.title, need: w.need, cat: w.cat || 'etc', boughtAt: w.boughtAt })),
     wishCats: () => WISH_CATS.map((c) => ({ key: c.key, label: c.label })),
-    parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentAt)) : 0 }),
+    parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentSession.unlockedAt)) : 0 }),
     pokemon: () => ({
       key: S.pokemon.key,
       label: partnerOf(S.pokemon.key).label,
