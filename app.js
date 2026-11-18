@@ -555,7 +555,8 @@
     const m = /(?:^|[#&])sync=([A-Za-z0-9_\-+/=]+)/.exec(location.hash || '');
     if (!m) return null;
     try {
-      const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');;
+      let b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
       const txt = decodeURIComponent(escape(atob(b64)));
       const o = JSON.parse(txt);
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ }
