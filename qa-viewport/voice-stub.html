@@ -7,6 +7,11 @@
   const q = new URLSearchParams(location.search);
   if (q.get('nosr') === '1' || location.hash.indexOf('nosr') >= 0) {
     window.__STUB = 'none';
+    // 크롬은 SpeechRecognition 을 기본으로 갖고 있어서, 미지원 브라우저를 흔내려면 지워 둡니다.
+    try {
+      Object.defineProperty(window, 'SpeechRecognition', { value: undefined, configurable: true, writable: true });
+      Object.defineProperty(window, 'webkitSpeechRecognition', { value: undefined, configurable: true, writable: true });
+    } catch (e) { /* 그냥 넘어갑니다 */ }
   } else {
     window.SpeechRecognition = class {
       constructor() { window.__rec = this; this.lang = ''; this.interimResults = false; this.continuous = false; }
