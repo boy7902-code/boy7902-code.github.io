@@ -1861,7 +1861,7 @@ html[data-quiet="1"] .standby * { animation: none !important; }
   .wd-ev { font-size: 0; height: 4px; padding: 0; border-left-width: 3px; border-radius: 2px; margin-top: 1px; min-width: 0; max-width: 100%; }
   .wd-more { font-size: 8.5px; }
   /* 마감 시각 안내가 폰에서 잘리지 않게 두 줄로 접힙니다 */
-  .chore-meta .due-chip { white-space: normal; line-height: 1.3; text-align: left; }
+  .chore-meta .due-chip { white-space: normal; line-height: 1.3; text-align: left; word-break: keep-all; }
 }
 
 /* 폰에서는 헤더가 화면을 덮지 않도록 붙박이를 풉니다 (스크롤해도 내용이 가려지지 않게) */
