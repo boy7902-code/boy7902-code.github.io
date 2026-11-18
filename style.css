@@ -325,16 +325,20 @@ label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; 
 .mstat-total { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 html[data-theme="dark"] .mstat-pts { color: #ffcf7a; }
 
-.chore-main { flex: 1 1 auto; min-width: 0; }
-.chore-meta { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--text-3); font-weight: 700; margin-top: 1px; }
+.chore-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.chore-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chore-top .pts { flex: 0 0 auto; }
+.chore-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; font-size: 10.5px; color: var(--text-3); font-weight: 700; }
+.mem { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .pts {
-  flex: 0 0 auto; font-size: 11.5px; font-weight: 800;
+  flex: 0 0 auto; font-size: 11px; font-weight: 800;
   color: #a86a00; background: var(--amber-soft);
-  border-radius: 999px; padding: 3px 8px; white-space: nowrap;
+  border-radius: 999px; padding: 2px 7px; white-space: nowrap;
 }
 html[data-theme="dark"] .pts { color: #ffcf7a; }
 .char-panel {
-  flex: 0 0 182px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 0 0 182px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  align-self: flex-start;
   gap: 5px; padding: 12px 8px; border-radius: var(--r-lg);
   background: radial-gradient(120% 100% at 50% 0%, var(--lilac-soft), transparent 70%), var(--surface-2);
   border: 1px solid var(--border); position: relative; overflow: hidden;
@@ -377,8 +381,8 @@ html[data-theme="dark"] .char-today { color: #6ee7c2; }
   border-color: transparent; color: #fff;
   box-shadow: 0 8px 18px rgba(33, 195, 154, .32);
 }
-.chore-title { font-size: 14px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chore-tools { display: flex; gap: 2px; opacity: .5; }
+.chore-title { font-size: 14px; font-weight: 700; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chore-tools { display: flex; gap: 2px; opacity: .5; align-self: center; }
 .chore:hover .chore-tools { opacity: 1; }
 
 /* ---- 포켓몬 파트너 ---- */
@@ -404,9 +408,10 @@ html[data-theme="dark"] .char-stage .poke-img { filter: drop-shadow(0 10px 18px 
 
 /* ---- 목표 시간 / 완료 배지 ---- */
 .due-chip {
-  display: inline-flex; align-items: center; gap: 3px; margin-left: 2px;
+  display: inline-flex; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
   background: var(--sky-soft); color: #2b6fd0; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .due-chip.soon { background: var(--amber-soft); color: #a86a00; }
 .due-chip.late { background: var(--coral-soft); color: #c23b2c; }
@@ -414,8 +419,9 @@ html[data-theme="dark"] .due-chip { color: #8fbaff; }
 html[data-theme="dark"] .due-chip.soon { color: #ffcf7a; }
 html[data-theme="dark"] .due-chip.late { color: #ff9c8f; }
 .done-badge {
-  display: inline-flex; align-items: center; gap: 3px; margin-left: 2px;
+  display: inline-flex; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .done-badge.goal { background: linear-gradient(100deg, #d8f7c4, #ffe9a8); color: #55720f; box-shadow: 0 0 0 1px rgba(180, 150, 20, .18) inset; }
 .done-badge.late { background: var(--surface-2); color: #c23b2c; border: 1px solid rgba(255, 122, 107, .35); }

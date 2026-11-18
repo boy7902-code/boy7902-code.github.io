@@ -762,13 +762,15 @@
           return `<div class="chore ${done ? 'done' : ''}" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <div class="chore-main">
-              <div class="chore-title">${esc(c.title)}</div>
+              <div class="chore-top">
+                <span class="chore-title">${esc(c.title)}</span>
+                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
+              </div>
               <div class="chore-meta">
-                <span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}
+                <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
                 ${chip}
               </div>
             </div>
-            <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
             <div class="chore-tools">
               <button class="btn icon sm ghost" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
               <button class="btn icon sm ghost" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
