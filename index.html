@@ -13,6 +13,8 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="style.css?v=39" />
+<!-- 🔥 테스트 사본 전용: Firebase 공개 설정(에뮬레이터 플레이스홀더) — 비밀키·이메일 없음 -->
+<script src="firebase-config.js?v=1"></script>
 </head>
 <body>
 <div class="app">
@@ -679,6 +681,8 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=16"></script>
+<script src="app.js?v=fbdraft"></script>
+<!-- Firebase Auth + Firestore 연동 초안. 모듈이 없거나 실패하면 app.js 는 로컬 모드로 그대로 동작합니다. -->
+<script type="module" src="firebase-boot.js?v=1"></script>
 </body>
 </html>

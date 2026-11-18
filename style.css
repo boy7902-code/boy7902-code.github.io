@@ -1938,3 +1938,54 @@ html[data-quiet="1"] .standby * { animation: none !important; }
 @media (min-width: 1024px) {
   .char-adopt { white-space: normal; line-height: 1.12; text-align: center; }
 }
+
+/* ==========================================================================
+   🔥 Firebase 연동 초안 UI (테스트 사본 전용)
+   상태 알약 · 권한 없음 안내 화면 · 거절/재시도 카드
+   ========================================================================== */
+.fb-pill {
+  position: fixed; left: 14px; bottom: 14px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border-radius: 999px;
+  background: var(--surface-solid); border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-sm); font-size: 12px; color: var(--text-2);
+  cursor: pointer; max-width: 70vw;
+}
+.fb-pill .fb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: none; }
+.fb-pill[data-kind="on"] .fb-dot { background: var(--mint); box-shadow: 0 0 0 3px var(--mint-soft); }
+.fb-pill[data-kind="busy"] .fb-dot { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.fb-pill[data-kind="bad"] .fb-dot { background: var(--coral); box-shadow: 0 0 0 3px var(--coral-soft); }
+.fb-pill .fb-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.fb-gate {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(18, 25, 45, .55); backdrop-filter: blur(4px); padding: 20px;
+}
+.fb-gate[hidden] { display: none; }
+.fb-gate-card {
+  width: min(420px, 100%); background: var(--surface-solid); border-radius: 22px;
+  padding: 26px 22px 20px; box-shadow: var(--shadow-lg); text-align: center;
+}
+.fb-gate-ico { font-size: 40px; line-height: 1; }
+.fb-gate-title { margin: 12px 0 6px; font-size: 18px; color: var(--text); }
+.fb-gate-msg { margin: 0 0 18px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.fb-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+.fb-card {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 70;
+  display: flex; align-items: center; gap: 12px; width: min(520px, calc(100vw - 24px));
+  padding: 12px 14px; border-radius: 16px; background: var(--surface-solid);
+  border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+}
+.fb-card[hidden] { display: none; }
+.fb-card-ico { font-size: 22px; flex: none; }
+.fb-card-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fb-card-title { font-size: 13.5px; color: var(--text); }
+.fb-card-msg { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.fb-card-actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
+
+@media (max-width: 420px) {
+  .fb-card { flex-wrap: wrap; }
+  .fb-card-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+}

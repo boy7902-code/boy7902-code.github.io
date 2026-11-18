@@ -340,6 +340,10 @@
   function resolvePartnerKey(k) {
     const key = String(k || '');
     if (LINE_BY_KEY[key]) return key;
+    // 서버(Firestore)는 계열 키를 소문자로 보관합니다 → 대소문자 차이만으로 기본 파트너로
+    // 되돌아가지 않도록 대소문자를 무시하고 한 번 더 찾습니다.
+    const ci = POKE_KEYS.find((x) => x.toLowerCase() === key.toLowerCase());
+    if (ci) return ci;
     if (LEGACY_KEYS[key] && LINE_BY_KEY[LEGACY_KEYS[key]]) return LEGACY_KEYS[key];
     return LINE_BY_KEY[DEFAULT_PARTNER] ? DEFAULT_PARTNER : POKE_KEYS[0];
   }
@@ -651,6 +655,7 @@
         }
       }
       syncLocalChanged();
+      fbLocalChanged();          // 🔥 Firebase 연결 중이면 변경분만 Firestore 로 보냅니다 (연동 초안)
     }, 120);
   }
 
@@ -1546,7 +1551,9 @@
     const t = todayStr();
     S.logs = S.logs.filter((l) => !(l.mid === c.id && l.date === t));
     S.logs.unshift({
-      id: uid(), date: t, at: at || hhmm(), mid: c.id, title: c.title, member: c.member || '',
+      // 로그의 member 는 '완료한 사람'. 공용 미션(member:'')도 이 기기에서 끝냈으면 아이(m3)로 남깁니다.
+      // (서버 규칙: 아이 기기가 만드는 로그의 member 는 항상 m3)
+      id: uid(), date: t, at: at || hhmm(), mid: c.id, title: c.title, member: c.member || KID_ID,
       base: r.base || 0, bonus: r.goalMet ? (r.bonus || 0) : 0, earned: r.earned || 0,
       due: c.due || '', goalMet: !!r.goalMet,
     });
@@ -4072,6 +4079,364 @@
   window.addEventListener('beforeunload', () => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
   });
+
+  /* =======================================================================
+     🔥 Firebase 연동 초안 (테스트 사본 전용)
+     ───────────────────────────────────────────────────────────────────────
+     · 로그인: Google 계정을 redirect 방식으로 받습니다(모바일 권장).
+     · 권한: 서버 Custom Claims(role) 만 믿습니다. role 이 없는 계정이면
+             즉시 signOut + 모든 onSnapshot 리스너 해제 + 안내 화면(차단).
+     · 읽기: missions·members·events·wiki·links·pointUses·wishlist·shopping·letters
+             + 이번 달 logs + 미정산 logs + stats/summary + child_state/partner
+     · 쓰기: save() 가 만든 변경분(diff)만 firebase-sync.pushPatch 로 보냅니다.
+             아이 기기는 오늘·본인 로그, 위시 추가/본인 것 삭제, 장보기·편지 등
+             허용된 것만 보내고 나머지는 보내기 전에 막습니다.
+     · 계산: 포인트·경험치는 저장하지 않고 summary + 미정산 로그로 매번 계산.
+     · 백업: role === 'parent' 일 때만. 아이 기기에서는 진입 자체를 막습니다.
+     · 모듈이 없거나(오프라인) 로그인 전이면 기존 localStorage 모드로 그대로 동작합니다.
+     ======================================================================= */
+  const FB = {
+    on: false, role: '', uid: '', sync: null, core: null,
+    blocked: false, busy: false, timer: null, snap: null,
+    summary: null, partner: {}, monthLogs: [], pendingLogs: [],
+    notedDenied: '', pill: null, gate: null, card: null,
+    deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
+  };
+
+  /* ---- 상태 표시(작은 알약) ---- */
+  function fbPillEl() {
+    if (FB.pill) return FB.pill;
+    const el = document.createElement('div');
+    el.className = 'fb-pill';
+    el.id = 'fbPill';
+    el.innerHTML = '<span class="fb-dot"></span><span class="fb-text">로컬 모드</span>';
+    el.addEventListener('click', () => {
+      if (!FB.on && window.FamilySyncBoot && window.FamilySyncBoot.signIn) window.FamilySyncBoot.signIn();
+    });
+    document.body.appendChild(el);
+    FB.pill = el;
+    return el;
+  }
+  function fbStatus(text, kind) {
+    const el = fbPillEl();
+    el.dataset.kind = kind || 'off';
+    el.querySelector('.fb-text').textContent = text;
+    el.title = kind === 'on' ? '가족 기록이 실시간으로 오갑니다' : '아직 Firebase 에 연결되지 않았어요 · 눌러서 로그인';
+  }
+
+  /* ---- 차단/안내 화면 ---- */
+  function fbGate(show, info = {}) {
+    if (!FB.gate) {
+      const el = document.createElement('div');
+      el.className = 'fb-gate';
+      el.id = 'fbGate';
+      el.hidden = true;
+      el.innerHTML = `<div class="fb-gate-card" role="dialog" aria-modal="true">
+        <div class="fb-gate-ico">🔒</div>
+        <h3 class="fb-gate-title"></h3>
+        <p class="fb-gate-msg"></p>
+        <div class="fb-actions"></div>
+      </div>`;
+      document.body.appendChild(el);
+      FB.gate = el;
+    }
+    const el = FB.gate;
+    if (!show) { el.hidden = true; document.body.classList.remove('fb-blocked'); return; }
+    document.body.classList.add('fb-blocked');
+    el.querySelector('.fb-gate-title').textContent = info.title || '이 기기에서는 가족 기록을 열 수 없어요';
+    el.querySelector('.fb-gate-msg').textContent = info.message || '보호자에게 이 계정의 가족 권한(role) 설정을 요청해 주세요.';
+    const box = el.querySelector('.fb-actions');
+    box.innerHTML = '';
+    const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn; box.appendChild(b); };
+    if (window.FamilySyncBoot && window.FamilySyncBoot.signIn) mk('다른 계정으로 로그인', 'primary', () => window.FamilySyncBoot.signIn());
+    mk('이 기기만 쓰기', 'ghost', () => { FB.blocked = false; fbGate(false); fbStatus('로컬 모드', 'off'); toast('이 기기 기록만 따로 쓰고 있어요', '', 2600); });
+    el.hidden = false;
+  }
+
+  /* ---- 실패 안내 + 재시도 카드 (자정·오프라인 거절 UX) ---- */
+  function fbRetryCard(info = {}) {
+    const kind = info.kind || 'unknown';
+    if (!FB.card) {
+      const el = document.createElement('div');
+      el.className = 'fb-card';
+      el.id = 'fbCard';
+      el.hidden = true;
+      el.innerHTML = `<div class="fb-card-ico">⏰</div>
+        <div class="fb-card-body"><b class="fb-card-title"></b><span class="fb-card-msg"></span></div>
+        <div class="fb-card-actions"></div>`;
+      document.body.appendChild(el);
+      FB.card = el;
+    }
+    const el = FB.card;
+    el.querySelector('.fb-card-ico').textContent = kind === 'offline' ? '📡' : (kind === 'settled' ? '✅' : (kind === 'midnight' ? '🌙' : '⏰'));
+    el.querySelector('.fb-card-title').textContent = info.title || '보내지 못했어요';
+    el.querySelector('.fb-card-msg').textContent = info.message || '잠시 뒤 다시 시도해 주세요.';
+    const box = el.querySelector('.fb-card-actions');
+    box.innerHTML = '';
+    if (info.retryable !== false) {
+      const b = document.createElement('button');
+      b.className = 'btn sm primary'; b.textContent = '다시 시도';
+      b.onclick = () => { el.hidden = true; fbPushNow(); };
+      box.appendChild(b);
+    }
+    const c = document.createElement('button');
+    c.className = 'btn sm ghost'; c.textContent = '닫기';
+    c.onclick = () => { el.hidden = true; };
+    box.appendChild(c);
+    el.hidden = false;
+    if (notifyParentIfNeeded(info)) toast('보호자에게 알림을 남겼어요', 'mint', 2200);
+  }
+  // 아이가 실패를 알리면 부모 확인용 메모를 남깁니다(가족 문서는 부모만 쓰므로 아이는 남길 수 없어 로컬 메모).
+  function notifyParentIfNeeded(info) {
+    if (FB.role !== 'child' || !info || info.retryable !== false) return false;
+    try {
+      const k = 'family-dashboard:needs-parent';
+      const arr = JSON.parse(localStorage.getItem(k) || '[]');
+      arr.unshift({ at: hhmm(), title: info.title || '', kind: info.kind || '', message: info.message || '' });
+      localStorage.setItem(k, JSON.stringify(arr.slice(0, 20)));
+    } catch (e) { /* noop */ }
+    return true;
+  }
+
+  /* ---- 서버 문서 → 화면 상태 ---- */
+  function fbMergeLogs() {
+    const seen = new Set();
+    const now = Date.now();
+    FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
+    return [...FB.monthLogs, ...FB.pendingLogs]
+      .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
+      // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
+      .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
+      .filter((l) => { if (seen.has(l.id)) return false; seen.add(l.id); return true; });
+  }
+  const fbDocIdOf = (l) => `${l.date}_${l.mid}_${l.member || KID_ID}`;
+  function fbMergeCollection(key, docs) {
+    const items = docs.map((d) => { const { id, ...rest } = d; return { ...rest, id: rest.id || id }; });
+    if (key === 'missions') { S.missions = items; return; }
+    if (key === 'members') { if (items.length) S.members = items; return; }
+    if (['events', 'wiki', 'links', 'pointUses', 'wishlist', 'shopping', 'letters'].includes(key)) S[key] = items;
+  }
+  function fbRecalc() {
+    if (!FB.on || !FB.core) return;
+    const logs = fbMergeLogs();
+    S.logs = logs;
+    const stats = FB.core.computeScreenStats({
+      summary: FB.summary || {},
+      logs,
+      pointUses: S.pointUses || [],
+      partner: FB.partner || {},
+      stageCount: (S.pokemon && stagesOf().length) || 4,
+    });
+    // 오늘 완료 표시는 '오늘 로그'가 정답 — 미션 문서에는 완료 상태를 저장하지 않습니다
+    const t = todayStr();
+    (S.missions || []).forEach((m) => {
+      const l = logs.find((x) => x.mid === m.id && x.date === t && (x.member === KID_ID || !x.member));
+      if (l) { m.doneOn = t; m.doneAt = l.at; m.earned = Math.max(0, Math.round(+l.earned || 0)); m.goalMet = !!l.goalMet; }
+      else if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; }
+    });
+    S.points = { total: Object.values(stats.byMember || {}).reduce((a, b) => a + Math.max(0, Math.round(+b || 0)), 0), byMember: stats.byMember };
+    S.pokemon.xp = Math.min(FINAL_P, Math.round(stats.partnerXp));
+    // 서버에서 받은 값은 다시 보내지 않습니다(에코 방지) — localStorage 에만 조용히 반영
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
+    FB.snap = fbSnapOf();
+    renderMissions();
+    if (typeof renderLog === 'function') renderLog();
+    if (typeof renderDex === 'function') renderDex();
+  }
+  function fbSnapOf() {
+    return {
+      missions: S.missions, logs: S.logs, members: S.members, events: S.events,
+      wiki: S.wiki, links: S.links, pointUses: S.pointUses, wishlist: S.wishlist,
+      shopping: S.shopping, letters: S.letters,
+    };
+  }
+  function fbOnData(detail) {
+    if (!FB.on || !detail) return;
+    const { key, docs } = detail;
+    if (key === 'summary') FB.summary = docs[0] || null;
+    else if (key === 'partner') FB.partner = docs[0] ? { key: docs[0].partnerKey, sinceXp: docs[0].sinceXp } : {};
+    else if (key === 'pendingLogs') FB.pendingLogs = docs;
+    else if (key === 'logs') FB.monthLogs = docs;
+    else fbMergeCollection(key, docs);
+    fbRecalc();
+  }
+  function fbOnError(info) {
+    if (!info) return;
+    if (info.reason === 'no-role' || info.state === 'denied') { FB.on = false; FB.blocked = true; fbGate(true, info); fbStatus('권한 없음', 'off'); return; }
+    fbStatus('연결 끊김 · 다시 연결 중', 'bad');
+    if (info.kind === 'permission') fbGate(true, { title: '가족 문서를 읽지 못했어요', message: info.message });
+  }
+
+  /* ---- 로컬 변경분 보내기 ---- */
+  function fbLocalChanged() {
+    if (!FB.on || !FB.sync) return;
+    clearTimeout(FB.timer);
+    FB.timer = setTimeout(() => { fbPushNow(); }, 500);
+  }
+  async function fbPushNow() {
+    if (!FB.on || !FB.sync) return { ok: true, written: [], denied: [] };
+    if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
+    const prev = FB.snap || {};
+    const next = fbSnapOf();
+    FB.busy = true;
+    let res;
+    // 로그는 writeLog()/deleteLog() 로 한 건씩 직접 다룹니다(빠른 체크·취소에도 유령 기록이 남지 않게)
+    try { res = await FB.sync.pushPatch({ prev, next, by: FB.uid, r: FB.role, skipLogs: true }); }
+    catch (e) { res = { ok: false, written: [], denied: [], errors: [FB.core.classifyFirestoreError(e)] }; }
+    finally { FB.busy = false; }
+    if (res.denied && res.denied.length) {
+      const d = res.denied[0];
+      const sig = `${d.collection}:${d.reason}`;
+      if (FB.notedDenied !== sig) {
+        FB.notedDenied = sig;
+        toast(`이 기기에서는 ${d.reason}`, '', 3200);
+      }
+    }
+    if (!res.ok && res.errors && res.errors.length) fbRetryCard(res.errors[0]);
+    else FB.snap = next;
+    return res;
+  }
+
+  /* ---- 부모 전용 백업 (부모 기기에서만) ---- */
+  async function fbBackupDownload() {
+    if (!FB.on || !FB.sync) { exportJSONLocal(); return; }
+    if (FB.role !== 'parent') {
+      toast('Firestore 백업은 보호자 기기에서만 만들 수 있어요', '', 3200);
+      return;
+    }
+    fbStatus('백업 만드는 중…', 'busy');
+    const b = await FB.sync.createBackup({ r: FB.role });
+    fbStatus('보호자 기기 연결됨', 'on');
+    if (b.skipped) { toast('백업을 만들지 못했어요' + (b.reason ? ` (${b.reason})` : ''), 'coral', 3400); return; }
+    const payload = { app: 'family-dashboard', kind: 'firestore-backup', version: 1, createdAt: b.createdAt, docCount: b.docCount, totalBytes: b.totalBytes, checksum: b.checksum, chunks: b.chunks };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `family-dashboard-firestore-${fmtDate(new Date())}.json`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+    toast(`백업 완료 · ${b.docCount}건 · ${b.chunks.length}조각(최대 ${Math.round((b.maxChunkBytes || 0) / 1024)}KB)`, 'mint', 4000);
+  }
+
+  /* ---- Firebase 시작 ---- */
+  function fbStart(boot) {
+    if (!boot || !boot.sync || !window.FamilySync) return false;
+    FB.sync = boot.sync;
+    FB.core = window.FamilySync;
+    window.addEventListener('family-sync-data', (e) => fbOnData(e.detail));
+    window.addEventListener('family-sync-error', (e) => fbOnError(e.detail));
+    fbStatus('로그인 확인 중…', 'busy');
+    boot.sync.watchAuthState(async (user) => {
+      if (!user) { if (FB.blocked) return; fbStatus('로그인 전 · 눌러서 로그인', 'off'); return; }
+      const r = await boot.sync.applyAuthUser(user);
+      if (r.state === 'ready') {
+        FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
+        fbGate(false);
+        const sub = boot.sync.startSubscriptions();
+        fbStatus(r.role === 'parent' ? '보호자 기기 연결됨' : '아이 기기 연결됨', 'on');
+        if (sub && sub.error) fbOnError({ kind: 'permission', message: '구독을 시작하지 못했어요' });
+      } else {
+        FB.on = false; FB.role = ''; FB.blocked = true;
+        fbOnError(r);
+      }
+    });
+    if (boot.sync.getRedirectResult) boot.sync.getRedirectResult().catch(() => {});
+    return true;
+  }
+  function fbBootWait(tries = 0) {
+    if (window.FamilySyncBoot && window.FamilySyncBoot.ready && window.FamilySync) { fbStart(window.FamilySyncBoot); return; }
+    if (tries > 40) { fbStatus('로컬 모드', 'off'); return; }   // 12초 안에 모듈이 없으면 로컬 모드 유지
+    setTimeout(() => fbBootWait(tries + 1), 300);
+  }
+
+  /* ---- 기존 함수에 Firebase 동작을 덧입히기 ---- */
+  // 1) 미션 체크: 로컬 반영 후 로그를 서버로 보내고, 거절되면 화면을 되돌리고 안내 카드
+  const fbBaseToggle = toggleMission;
+  toggleMission = function (id) {
+    const c = S.missions.find((x) => x.id === id);
+    const wasDone = !!(c && c.doneOn === todayStr());
+    if (wasDone && FB.on) {
+      const l = (S.logs || []).find((x) => x.mid === id && x.date === todayStr());
+      if (l) FB.deleted.set(fbDocIdOf(l), Date.now());
+    }
+    const out = fbBaseToggle(id);
+    if (!FB.on || !c) return out;
+    const member = c.member || KID_ID;
+    if (!wasDone) {
+      FB.sync.writeLog(c, { by: FB.uid, member }).then((r) => {
+        if (!r.ok) {
+          fbBaseToggle(id);                 // 체크를 원래대로 되돌림
+          toast('기록을 보내지 못해 체크를 되돌렸어요', 'coral', 3000);
+          fbRetryCard(r.error);
+        }
+      });
+    } else {
+      FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: false }).then((r) => {
+        if (!r.ok) fbRetryCard(r.error);
+      });
+    }
+    fbPushNow();
+    return out;
+  };
+
+  // 2) 보호자 동작: 아이 계정 기기에서는 서버 권한이 없으므로 미리 막습니다
+  const fbBaseAsParent = asParent;
+  asParent = function (reason, run) {
+    if (FB.on && FB.role === 'child') {
+      toast('이 기기는 아이 계정이에요. 보호자 기기에서 해 주세요.', '', 3400);
+      return Promise.resolve();
+    }
+    return fbBaseAsParent(reason, run);
+  };
+
+  // 3) 파트너 입양/변경 → child_state/partner (아이가 쓸 수 있는 유일한 문서)
+  const fbBasePickPartner = pickPartner;
+  pickPartner = function (key) {
+    const beforeKey = S.pokemon.key;
+    fbBasePickPartner(key);
+    if (!FB.on || S.pokemon.key === beforeKey) return;
+    const sinceXp = Math.max(0, Math.round(kidTotalPts() - Math.min(FINAL_P, Math.round(+S.pokemon.xp || 0))));
+    FB.sync.adoptPartner({ key: S.pokemon.key, sinceXp }).then((r) => { if (!r.ok) fbRetryCard(r.error); });
+  };
+
+  // 4) 백업 내보내기: 부모만 · Firestore 전체 백업(1MiB 미만 조각)
+  const exportJSONLocal = exportJSON;
+  exportJSON = function () { fbBackupDownload(); };
+
+  // 5) 백업 불러오기: 부모만 · 확인 후 복원
+  const importJSONLocal = importJSON;
+  importJSON = function (file) {
+    if (!FB.on) return importJSONLocal(file);
+    if (FB.role !== 'parent') { toast('복원은 보호자 기기에서만 할 수 있어요', '', 3200); return; }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      let data;
+      try { data = JSON.parse(String(reader.result)); } catch (e) { toast('백업 파일을 읽지 못했어요', 'coral', 3600); return; }
+      const isFs = data && data.kind === 'firestore-backup' && Array.isArray(data.chunks);
+      const ok = await askModal({
+        title: '⬆︎ 백업 복원',
+        hint: isFs
+          ? `Firestore 백업 ${data.docCount || '?'}건(${(data.chunks || []).length}조각)을 그대로 덮어씁니다. 지금 기록 중 덮어쓰이지 않은 것은 남지 않아요.`
+          : '이 기기(localStorage) 백업 파일이에요. 화면 상태를 이 파일로 바꿉니다.',
+        fields: [], okText: '복원',
+      });
+      if (!ok) return;
+      if (!isFs) {
+        S = mergeState(data); syncDex(); save(); applyTheme(); renderAll(); renderSettings();
+        toast('백업을 불러왔어요', 'mint');
+        return;
+      }
+      fbStatus('복원 중…', 'busy');
+      const res = await FB.sync.restoreBackup(data, { r: FB.role });
+      fbStatus('보호자 기기 연결됨', 'on');
+      if (res.ok) toast(`복원 완료 · ${res.written}건 · 확인 ${res.verified.matched}/${res.written}`, 'mint', 4000);
+      else toast(`복원 실패 · ${(res.error && res.error.title) || res.reason || '오류'}`, 'coral', 4200);
+    };
+    reader.readAsText(file);
+  };
+
+  fbPillEl();
+  fbBootWait();
 
   /* ---------------------------------------------------------------------- init */
   const syncLinked = syncReadLinkHash();     // #sync=… 한 번 누르면 설정이 채워집니다
