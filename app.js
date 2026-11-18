@@ -1399,7 +1399,7 @@
   /* ----------------------------------------------------------------- schedule */
   function memberById(id) { return S.members.find((m) => m.id === id) || null; }
   /* 📅 구글 캘린더에서 읽어 온 일정 — 저장하지 않고 화면에만 합칩니다 */
-  const GCAL = { on: false, events: [], calendars: [], at: 0, busy: false };
+  const GCAL = { on: false, events: [], calendars: [], at: 0, busy: false, connecting: false, redirectNextAt: 0 };
   function gcalEventsOn(dateStr) {
     if (!GCAL.on || !GCAL.events.length) return [];
     return GCAL.events.filter((e) => e.date === dateStr);
@@ -1713,7 +1713,9 @@
       return false;
     } finally { GCAL.busy = false; }
   }
-  async function gcalConnect() {
+  /* 팝업이 막힌 기기에서 한 번 더 누르면 이동(redirect) 방식으로 연결합니다 — 화면에는 버튼 하나만 둡니다. */
+  const GCAL_REDIRECT_WINDOW_MS = 90 * 1000;
+  async function gcalConnect(opts = {}) {
     const boot = window.FamilySyncBoot;
     if (!boot || !boot.calendar || typeof boot.calendar.connect !== 'function') {
       toast('로그인 모듈을 아직 불러오지 못했어요 · 잠시 뒤 다시 눌러 주세요', 'coral', 3200);
@@ -1724,18 +1726,45 @@
       fbSignIn();
       return;
     }
-    gcalNote('Google 창에서 ‘일정 읽기’를 허용해 주세요…');
-    const r = await boot.calendar.connect().catch((e) => ({ ok: false, reason: 'error', message: String((e && e.message) || '') }));
-    if (!r || !r.ok) {
-      if (r && r.reason === 'cancelled') gcalNote('연결을 취소했어요 · 필요하면 다시 눌러 주세요');
-      else if (r && r.reason === 'redirected') gcalNote('Google 창에서 돌아오면 다시 연결해 주세요');
-      else if (r && r.reason === 'signed-out') gcalNote('먼저 Google 계정으로 로그인해 주세요', 'warn');
-      else gcalNote('구글 캘린더를 연결하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn');
-      if (r && r.reason === 'error' && r.message) toast('구글 캘린더 연결 실패 — ' + r.message.slice(0, 90), 'coral', 4400);
-      return;
+    if (GCAL.connecting) return;
+    const retryRedirect = opts.redirect === true || (!!GCAL.redirectNextAt && Date.now() - GCAL.redirectNextAt < GCAL_REDIRECT_WINDOW_MS);
+    GCAL.connecting = true;
+    try {
+      gcalNote(retryRedirect ? 'Google 화면으로 이동합니다 · ‘일정 읽기’를 허용한 뒤 돌아와 주세요…' : 'Google 창에서 ‘일정 읽기’를 허용해 주세요…');
+      const r = await (retryRedirect ? boot.calendar.connect({ redirect: true }) : boot.calendar.connect())
+        .catch((e) => ({ ok: false, reason: 'error', code: 'exception', message: String((e && e.message) || '') }));
+      if (r && r.ok) {
+        GCAL.redirectNextAt = 0;
+        GCAL.at = 0;
+        await gcalLoad({ force: true });
+        return;
+      }
+      const reason = (r && r.reason) || 'error';
+      const code = (r && r.code) || '';
+      const msg = (r && r.message) || '';
+      if (reason === 'cancelled') {
+        GCAL.redirectNextAt = 0;
+        gcalNote('연결을 취소했어요 · 필요하면 다시 눌러 주세요');
+      } else if (reason === 'popup-blocked') {
+        GCAL.redirectNextAt = Date.now();
+        gcalNote('이 브라우저가 Google 창을 막았어요 · 한 번 더 누르면 Google 화면으로 이동해서 연결합니다', 'warn');
+        toast('한 번 더 누르면 이동 방식으로 연결할게요', 'coral', 4200);
+      } else if (reason === 'redirected') {
+        gcalNote('Google 화면에서 ‘일정 읽기’를 허용하면 자동으로 이어집니다');
+      } else if (reason === 'no-token') {
+        gcalNote('Google에서 ‘일정 읽기’ 허용이 끝나지 않았어요 · 다시 눌러 주세요', 'warn');
+        toast('Google 창에서 ‘허용’까지 눌러야 연결돼요', 'coral', 4800);
+      } else if (reason === 'signed-out') {
+        gcalNote('먼저 Google 계정으로 로그인해 주세요', 'warn');
+      } else if (code === 'auth/unauthorized-domain') {
+        gcalNote('이 주소는 Google 로그인이 허용되지 않았어요 · Firebase 인증의 승인된 도메인을 확인해 주세요', 'warn');
+      } else {
+        gcalNote('구글 캘린더를 연결하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn');
+        if (msg) toast('구글 캘린더 연결 실패 — ' + msg.slice(0, 90), 'coral', 4400);
+      }
+    } finally {
+      GCAL.connecting = false;
     }
-    GCAL.at = 0;
-    await gcalLoad({ force: true });
   }
   function gcalDisconnect(quiet) {
     const boot = window.FamilySyncBoot;
@@ -1745,7 +1774,7 @@
     renderSchedule();
   }
   if ($('#gcalConnectBtn')) $('#gcalConnectBtn').addEventListener('click', () => { gcalConnect(); });
-  if ($('#gcalOffBtn')) $('#gcalOffBtn').addEventListener('click', () => gcalDisconnect());
+  if ($('#gcalOffBtn')) $('#gcalOffBtn').addEventListener('click', () => { GCAL.redirectNextAt = 0; gcalDisconnect(); });
 
   async function addEvent(defaults = {}) {
     const memberOpts = [{ value: '', label: '가족 모두' }].concat(S.members.map((m) => ({ value: m.id, label: m.name })));
@@ -6132,6 +6161,7 @@
         if (cal && typeof cal.consumeRedirect === 'function') {
           const got = cal.consumeRedirect(r);
           if (got) { GCAL.on = true; GCAL.at = 0; gcalLoad({ force: true }); }
+          else if (cal.redirectFailed) gcalNote('Google 화면에서 ‘일정 읽기’ 허용이 끝나지 않았어요 · 다시 연결해 주세요', 'warn');
         }
       }).catch((e) => {
         const code = (e && e.code) || '';

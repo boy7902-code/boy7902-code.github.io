@@ -49,6 +49,12 @@ const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 const TOKEN_MARGIN_MS = 60 * 1000;
 const REDIRECT_FLAG = 'family-dashboard:gcal-redirect';   // redirect 로 다녀오는 중인지 표시(이 탭에만)
 
+/* 연결 실패를 화면이 구분해 안내할 수 있도록 사유를 나눕니다.
+   - CAL_CANCEL_CODES: 사용자가 창을 닫았거나 Google 이 허용을 끝내지 않은 경우
+   - CAL_POPUP_FALLBACK_CODES: 이 기기에서 팝업 자체가 안 되는 경우(막힘·미지원) → 이동(redirect) 방식으로 안내 */
+const CAL_CANCEL_CODES = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled'];
+const CAL_POPUP_FALLBACK_CODES = ['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'];
+
 function tokenFromCredential(cred) {
   const resp = (cred && cred._tokenResponse) || {};
   /* modular SDK 의 공식 경로를 먼저 확인합니다 — 팝업·redirect 결과 모두 여기로 옵니다. */
@@ -70,7 +76,7 @@ function calendarProvider() {
 }
 
 const calendar = {
-  token: '', expiresAt: 0,
+  token: '', expiresAt: 0, redirectFailed: false,
   current() {
     return (this.token && this.expiresAt > Date.now()) ? { token: this.token, expiresAt: this.expiresAt } : null;
   },
@@ -96,38 +102,51 @@ const calendar = {
   },
   /** redirect 로 돌아왔을 때 getRedirectResult 결과에서 '일정 읽기' 토큰을 이어받습니다. */
   consumeRedirect(cred) {
+    this.redirectFailed = false;
     let pending = false;
     try { pending = sessionStorage.getItem(REDIRECT_FLAG) === '1'; } catch (e) { /* noop */ }
     if (!pending) return null;
     try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) { /* noop */ }
     const info = tokenFromCredential(cred);
-    return info ? this.adopt(info) : null;
+    if (!info) { this.redirectFailed = true; return null; }
+    return this.adopt(info);
   },
-  /** 사용자가 누를 때만 실행 — Google 팝업에서 '일정 읽기'를 허용받아 토큰을 받습니다. */
-  async connect() {
-    if (!auth.currentUser) return { ok: false, reason: 'signed-out' };
+  /** 같은 탭에서 Google 화면으로 이동했다 돌아오는 방식 — 팝업이 막히는 기기용 폴백입니다. */
+  async connectByRedirect(cause) {
+    if (!auth.currentUser) return { ok: false, reason: 'signed-out', code: 'auth/no-current-user', cause: cause || '' };
+    try { sessionStorage.setItem(REDIRECT_FLAG, '1'); } catch (e) { /* 저장 못 하면 돌아온 뒤 다시 눌러야 합니다 */ }
+    try {
+      await authSdk.reauthenticateWithRedirect(auth.currentUser, calendarProvider());
+    } catch (e) {
+      try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e3) { /* noop */ }
+      return { ok: false, reason: 'error', code: (e && e.code) || 'auth/redirect-failed', message: (e && e.message) || '', cause: cause || '' };
+    }
+    return { ok: false, reason: 'redirected', code: cause || 'redirect' };
+  },
+  /** 사용자가 누를 때만 실행 — Google 팝업에서 '일정 읽기'를 허용받아 토큰을 받습니다.
+     connect({ redirect: true }) 로 부르면 처음부터 이동(redirect) 방식으로 연결합니다. */
+  async connect(options) {
+    const opts = options || {};
+    if (opts.redirect === true) return this.connectByRedirect('requested');
+    if (!auth.currentUser) return { ok: false, reason: 'signed-out', code: 'auth/no-current-user' };
     let cred;
     try {
       /* reauthenticate 계열의 첫 인자는 auth 가 아니라 로그인한 사용자 객체입니다. */
       cred = await authSdk.reauthenticateWithPopup(auth.currentUser, calendarProvider());
     } catch (e) {
       const code = (e && e.code) || '';
-      if (QUIET_CODES.includes(code)) return { ok: false, reason: 'cancelled', code };
-      if (REDIRECT_CODES.includes(code)) {
-        if (!auth.currentUser) return { ok: false, reason: 'signed-out' };
-        try {
-          try { sessionStorage.setItem(REDIRECT_FLAG, '1'); } catch (e2) { /* 저장 못 하면 돌아온 뒤 다시 눌러야 합니다 */ }
-          await authSdk.reauthenticateWithRedirect(auth.currentUser, calendarProvider());
-        } catch (e2) {
-          try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e3) { /* noop */ }
-          return { ok: false, reason: 'error', code: (e2 && e2.code) || code, message: (e2 && e2.message) || '' };
-        }
-        return { ok: false, reason: 'redirected', code };
-      }
-      return { ok: false, reason: 'error', code, message: (e && e.message) || '' };
+      const message = (e && e.message) || '';
+      console.warn('[gcal] connect 실패', { code, message });
+      if (CAL_CANCEL_CODES.includes(code)) return { ok: false, reason: 'cancelled', code, message };
+      if (CAL_POPUP_FALLBACK_CODES.includes(code)) return { ok: false, reason: 'popup-blocked', code, message };
+      return { ok: false, reason: 'error', code, message };
     }
     const info = tokenFromCredential(cred);
-    if (!info) return { ok: false, reason: 'no-token' };
+    if (!info) {
+      /* 창은 닫혔는데 access token 이 없음 — Google 쪽 허용이 끝나지 않았거나 계정이 달라진 경우입니다. */
+      console.warn('[gcal] connect 결과에 access token 이 없습니다', { provider: (cred && cred.providerId) || '', operationType: (cred && cred.operationType) || '' });
+      return { ok: false, reason: 'no-token', code: 'no-token', message: 'Google 응답에 access token 이 없습니다' };
+    }
     const cur = this.adopt(info);
     return { ok: true, token: cur.token, expiresAt: cur.expiresAt };
   },
