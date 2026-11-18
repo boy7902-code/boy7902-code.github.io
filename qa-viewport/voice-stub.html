@@ -5,7 +5,7 @@
 <script>
   // 검증용: 마이크가 없는 헤드리스 브라우저에서 음성 인식 흐름을 확인하려고 만든 가짜 API.
   const q = new URLSearchParams(location.search);
-  if (q.get('nosr') === '1') {
+  if (q.get('nosr') === '1' || location.hash.indexOf('nosr') >= 0) {
     window.__STUB = 'none';
   } else {
     window.SpeechRecognition = class {
