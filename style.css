@@ -2679,12 +2679,13 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
     width: 40px; min-width: 40px; padding: 0; justify-content: center; gap: 0; font-size: 17px;
   }
   .parent-badge[data-state="off"] .parent-word::after { content: none; }
-  .weather { flex: 0 1 auto; min-width: 0; gap: 8px; overflow: visible; }
+  .weather { flex: 1 1 auto; min-width: 0; gap: 8px; overflow: visible; }
   .weather-now { flex: 0 0 auto; min-width: max-content; }
   .weather-temp { flex: 0 0 auto; white-space: nowrap; }
-  .weather-meta { flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
+  .weather-temp small { color: var(--text-2); }
+  .weather-meta { flex: 0 1 auto; flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
   .weather-chips { display: none; }          /* 최고·최저·미세먼지는 아래 그림 알약이 대신 보여 줍니다 */
-  .outfit-guide { flex: 0 1 auto; max-width: none; overflow: hidden; gap: 5px; }
+  .outfit-guide { flex: 0 0 auto; max-width: none; overflow: visible; gap: 5px; }
 }
 
 /* ---------------- ⑤ 핵심 글자 확대 (거실 태블릿) ---------------- */
@@ -2740,6 +2741,11 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .btn.sm { font-size: 12px; }
   .og-chip { font-size: 12px; padding: 4px 10px; gap: 5px; }
   .og-chip .og-ico { font-size: 15px; }
+
+  /* 포켓몬 패널 — 미션 칸을 넓히고 '입양' 버튼이 잘리지 않게 */
+  .char-stage { width: 76px; height: 76px; flex: 0 0 76px; }
+  .char-aside { width: 118px; }
+  .char-adopt { font-size: 9.5px; }
 }
 
 /* ---------------- ③ 달력: 2주 기본 · [2주]/[1달] ---------------- */
@@ -2753,11 +2759,22 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
 }
 .cal-mode .cmb.on { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 4px rgba(23, 35, 73, .14); }
 .cal-today-btn { margin-left: 6px !important; }
-.cal-grid.two { grid-auto-rows: minmax(34px, 1fr); }
+/* 2주는 두 줄 — 칸을 과하게 키우지 않아 아래 '선택한 날 일정'과 '오늘 학교'가 넓어집니다 */
+.cal-grid.two { grid-auto-rows: minmax(40px, 62px); }
 .cal-grid.two .cal-cell { padding: 4px 2px; }
 .cal-grid.two .cal-num { font-size: 16px; }
 .cal-grid.two .cal-bars i { height: 4px; }
 .cal-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 1024px) {
+  .col-left > .card.schedule { flex: 1 1 0; }
+  .col-left > .card.school { flex: 0 0 auto; min-height: 116px; }
+  .card.schedule .cal-grid.two { flex: 0 0 auto; }
+  .card.schedule .cal-day { max-height: none; flex: 1 1 auto; }
+}
+
+/* 탭은 그림 하나씩 — 폭을 남용하지 않고 내용만큼 */
+.merge-tabs { width: fit-content; max-width: 100%; }
+.merge-tabs button { min-width: 54px; }
 
 /* ---------------- ④ 탭·버튼을 그림으로 ---------------- */
 .merge-tabs { gap: 4px; }

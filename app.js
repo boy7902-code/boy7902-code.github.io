@@ -2154,7 +2154,7 @@
     if (adoptBtn) {
       adoptBtn.disabled = !done;
       adoptBtn.classList.toggle('on', done);
-      adoptBtn.textContent = done ? '✨ 새 포켓몬 입양하기' : `🔒 새 포켓몬 입양 (${FINAL_P}P)`;
+      adoptBtn.textContent = done ? '✨ 입양하기' : `🔒 입양 ${FINAL_P}P`;
       adoptBtn.title = done
         ? '지금 포켓몬은 도감에 저장되고, 새 포켓몬을 0P부터 다시 키울 수 있어요'
         : `현재 파트너가 ${FINAL_P}P에 도달하면 새 포켓몬을 입양할 수 있어요`;
