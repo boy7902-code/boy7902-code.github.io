@@ -1394,6 +1394,11 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .shop-text { font-size: 11.5px; }
   .shop-item .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
 
+  /* 카드 안쪽 스크롤은 얇게 */
+  .card :is(.card-body, .chore-list, .wish-list, #shopList, .log-list, .dex-row, .links)::-webkit-scrollbar { width: 6px; height: 6px; }
+  .card :is(.card-body, .chore-list, .wish-list, #shopList, .log-list, .dex-row, .links)::-webkit-scrollbar-thumb { background: rgba(120, 132, 160, .38); border-radius: 6px; }
+  .card :is(.card-body, .chore-list, .wish-list, #shopList, .log-list, .dex-row, .links)::-webkit-scrollbar-track { background: transparent; }
+
   .card.letters .card-body {
     display: grid; gap: 4px 7px; min-height: 0;
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
@@ -1411,7 +1416,7 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .emojis { gap: 2px; max-height: 42px; overflow-y: auto; }
   .emo { width: 19px; height: 19px; font-size: 11px; border-radius: 6px; }
   .card.letters #eraserBtn { min-height: 19px; font-size: 9px; padding: 0 5px; border-radius: 6px; }
-  .canvas-hint { font-size: 10.5px; }
+  .canvas-hint { font-size: 9px; padding: 0 6px; text-align: center; line-height: 1.35; }
   .card.letters #letterAuthor { flex: 0 0 88px; width: 88px; min-height: 26px; font-size: 10.5px; padding: 3px 6px; max-width: 88px !important; border-radius: 8px; }
   .card.letters #letterSendBtn { min-height: 26px; font-size: 10.5px; padding: 0 9px; border-radius: 8px; }
   .card.letters #letterCount { font-size: 9px; padding: 2px 7px; white-space: nowrap; }
