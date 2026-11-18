@@ -993,7 +993,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .card, .card.span-6, .card.span-8, .card.schedule, .card.chores, .card.shopping,
   .card.letters, .card.timer, .card.wish, .card.wiki { grid-column: span 1; }
   .chore-wrap { flex-direction: column; }
-  .char-panel { flex: 0 0 auto; flex-direction: row; gap: 14px; padding: 12px; align-items: center; flex-wrap: wrap; }
+  .char-panel { flex: 0 0 auto; flex-direction: row; gap: 14px; padding: 12px; align-items: flex-start; flex-wrap: wrap; }
   .char-stage { width: 96px; height: 96px; flex: 0 0 96px; }
   .char-panel .char-info { flex: 1 1 520px; text-align: left; align-items: flex-start; gap: 7px; }
   .char-nameline { justify-content: flex-start; }   /* 이름·말풍선은 포켓몬 쪽(왼쪽)에서 시작 */
