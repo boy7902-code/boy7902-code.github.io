@@ -4771,7 +4771,7 @@
 `;
   }
 
-  /* 🎪 이벤트는 늘 보이지 않고, 수호에게 실제 깜짝 이벤트가 열렸을 때만 나타납니다.
+  /* 🎪 이벤트는 늘 보이지 않고, 아이에게 실제 깜짝 이벤트가 열렸을 때만 나타납니다.
      (비밀 상자 · 뽑기 티켓 · 2배 데이 · 월말 상장). 부모 모드에서는 언제나 보입니다. */
   function eventSurprise() {
     const s = secretToday();
@@ -4793,7 +4793,7 @@
     const surprise = eventSurprise();
     const parent = parentUnlocked();
     if (btn) {
-      // 잠긴 수호 화면: 깜짝 이벤트가 있을 때만 버튼이 나타납니다
+      // 잠긴 아이 화면: 깜짝 이벤트가 있을 때만 버튼이 나타납니다
       btn.hidden = !parent && !surprise.on;
       btn.classList.toggle('has', pending > 0 || surprise.on);
       btn.classList.toggle('surprise', !!surprise.on && !parent);

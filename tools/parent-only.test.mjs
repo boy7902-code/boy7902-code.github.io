@@ -13,7 +13,7 @@ test('locked parent mode hides parent-only controls instead of disabling them', 
     const re = new RegExp(`class="[^"]*parent-only[^"]*" id="${id}"`);
     assert.match(html, re, `${id} must be parent-only`);
   }
-  // 수호가 쓸 수 있는 것은 그대로 보입니다
+  // 아이가 쓸 수 있는 것은 그대로 보입니다
   const shown = /class="mic-btn wish-mic" id="wishMicBtn"/.test(html) && /class="btn icon sm" id="wishAddBtn"/.test(html);
   assert.ok(shown, 'wishlist + and mic stay available to the child');
   assert.match(css, /\.parent-only/);
@@ -37,7 +37,7 @@ test('the event center hides parent setups but keeps the child participation par
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>③🎂 2배 데이/);
   assert.match(app, /class="btn sm ghost parent-only" data-act="ev-stamp-reset"/);
   assert.match(app, /class="btn sm ghost parent-only" data-act="ev-gacha-edit"/);
-  // 수호가 직접 여는 비밀 상자·도장·뽑기·상장은 부모 전용이 아닙니다
+  // 아이가 직접 여는 비밀 상자·도장·뽑기·상장은 부모 전용이 아닙니다
   assert.match(app, /data-act="ev-secret-open"/);
   assert.match(app, /data-act="ev-stamp" data-id="\$\{kind\}"/);
   assert.match(app, /data-act="ev-gacha"\$\{tickets > 0 \? '' : ' disabled'\}/);
