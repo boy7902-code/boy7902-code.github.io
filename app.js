@@ -357,14 +357,12 @@
   const linesForSpecies = (id) => LINES.filter((l) => l.members.indexOf(+id) >= 0);
   const lineForSpecies = (id) => linesForSpecies(id)[0] || null;
 
-  /* 그림 — PokeAPI/sprites
-     움직이는 showdown GIF(파트너·대기화면) → 공식 일러스트 PNG → 로컬 SVG 순서로 자동 대체됩니다. */
+  /* 그림 — PokeAPI/sprites 의 공식 일러스트(official-artwork, 475×475)를 씁니다.
+     큼직하게 키워도 화질이 그대로라, 움직임은 CSS 애니메이션(숨쉬기·둥실둥실·점프)으로 살립니다.
+     그림을 못 받으면 로컬 SVG로 자동 대체됩니다. */
   const SPRITE_ROOT = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
   const POKE_ART = (id) => `${SPRITE_ROOT}/other/official-artwork/${id}.png`;
-  const POKE_GIF = (id) => `${SPRITE_ROOT}/other/showdown/${id}.gif`;
-  const POKE_GIF_SHINY = (id) => `${SPRITE_ROOT}/other/showdown/shiny/${id}.gif`;
-  const POKE_MINI = (id) => `${SPRITE_ROOT}/${id}.png`;
-  const POKE_MINI_SHINY = (id) => `${SPRITE_ROOT}/shiny/${id}.png`;
+  const POKE_ART_SHINY = (id) => `${SPRITE_ROOT}/other/official-artwork/shiny/${id}.png`;
 
   // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
   function pokeFallback(stage, tint) {
@@ -389,15 +387,12 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  /* opts: { mini } 작은 칸은 정지 스프라이트 · { art } 공식 일러스트 · { shiny } 이로치 · { eager } 바로 불러오기 */
+  /* 공식 일러스트 한 장으로 파트너·대기화면·도감을 모두 채맵니다 (화질 통일).
+     opts: { shiny } 이로치 · { eager } 바로 불러오기 · { mini } 작은 칸(지연 로딩) */
   function pokeImg(stage, cls, tint, opts = {}) {
     const color = tint || stage.tint || pokeTint(stage.id);
     const shiny = !!(opts.shiny || stage.shiny);
-    const src = opts.art
-      ? POKE_ART(stage.id)
-      : (opts.mini
-        ? (shiny ? POKE_MINI_SHINY(stage.id) : POKE_MINI(stage.id))
-        : (shiny ? POKE_GIF_SHINY(stage.id) : POKE_GIF(stage.id)));
+    const src = shiny ? POKE_ART_SHINY(stage.id) : POKE_ART(stage.id);
     return `<img class="${cls}" src="${src}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}"`
       + ` data-fallback="${esc(POKE_ART(stage.id))}" data-fallback2="${esc(pokeFallback(stage, color))}"`
       + ` loading="${opts.eager ? 'eager' : 'lazy'}" decoding="async" draggable="false">`;
@@ -2048,7 +2043,7 @@
       const got = !!caughtOf(id);
       return `<button type="button" class="dex-cell ${got ? 'got' : 'miss'}${DEXUI.sel === id ? ' sel' : ''}${curId === id ? ' cur' : ''}" data-dexid="${id}" aria-pressed="${DEXUI.sel === id}" aria-label="${esc(info.name)} ${got ? '획득' : '미획득'}" title="${esc(info.name)}${got ? ` · ${esc(caughtOf(id))} 만남` : ' · 아직 만나지 못했어요'}">
         <span class="dex-no">${pad(id)}</span>
-        <img class="dex-mini" src="${POKE_MINI(id)}" alt="" loading="lazy" decoding="async" draggable="false"
+        <img class="dex-mini" src="${POKE_ART(id)}" alt="" loading="lazy" decoding="async" draggable="false"
           data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({ id, name: info.name }, pokeTint(id)))}">
         <span class="dex-nm">${got ? esc(info.name) : '???'}</span>
         ${curId === id ? '<span class="dex-cur" aria-hidden="true">★</span>' : ''}
