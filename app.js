@@ -1362,7 +1362,7 @@
       const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) + '&count=6&language=ko&format=json');
       const data = await res.json();
       if (!data.results || !data.results.length) {
-        box.innerHTML = '<div class="settings-note">검색 결과가 없어요. 다른 이름으로 찾아보세요. (예: 기흥, 수원시)</div>';
+        box.innerHTML = '<div class="settings-note">검색 결과가 없어요. 다른 이름으로 찾아보세요. (예: 강남, 수원시)</div>';
         return;
       }
       box.innerHTML = data.results.map((r) => `<button data-city="${esc(r.latitude)},${esc(r.longitude)},${esc(r.name)}">
