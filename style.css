@@ -328,7 +328,7 @@ html[data-theme="dark"] .mstat-pts { color: #ffcf7a; }
 .chore-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .chore-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .chore-top .pts { flex: 0 0 auto; }
-.chore-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; font-size: 10.5px; color: var(--text-3); font-weight: 700; }
+.chore-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; font-size: 10.5px; color: var(--text-3); font-weight: 700; }
 .mem { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .pts {
   flex: 0 0 auto; font-size: 11px; font-weight: 800;
@@ -402,7 +402,7 @@ html[data-theme="dark"] .char-stage .poke-img { filter: drop-shadow(0 10px 18px 
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .evo .evo-img { width: 25px; height: 25px; object-fit: contain; }
-.evo.lock { opacity: .32; filter: grayscale(1); }
+.evo.lock { opacity: .48; filter: grayscale(.65); }
 .evo.on { border-color: var(--lilac); background: var(--lilac-soft); box-shadow: 0 0 0 2px var(--lilac-soft); transform: scale(1.08); }
 .char-partner-btn { min-height: 26px; font-size: 11px; padding: 0 8px; color: var(--text-2); }
 
