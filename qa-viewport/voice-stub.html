@@ -3,31 +3,23 @@
 <head><meta charset="utf-8" /><title>voice stub</title>
 <style>html,body{margin:0;background:#fff}</style>
 <script>
-  // 검증용: 마이크가 없는 헤드리스 브라우저에서 음성 인식 흐름을 확인하려고 만든 가짜 API.
-  const q = new URLSearchParams(location.search);
-  if (q.get('nosr') === '1' || location.hash.indexOf('nosr') >= 0) {
-    window.__STUB = 'none';
-    // 크롬은 SpeechRecognition 을 기본으로 갖고 있어서, 미지원 브라우저를 흔내려면 지워 둡니다.
-    window.SpeechRecognition = undefined;
-    window.webkitSpeechRecognition = undefined;
-  } else {
-    window.SpeechRecognition = class {
-      constructor() { window.__rec = this; this.lang = ''; this.interimResults = false; this.continuous = false; }
-      start() { window.__started = (window.__started || 0) + 1; setTimeout(() => this.onstart && this.onstart(), 10); }
-      stop() { if (this._stopped) return; this._stopped = true; setTimeout(() => this.onend && this.onend(), 10); }
-    };
-    window.webkitSpeechRecognition = window.SpeechRecognition;
-    window.__speak = (text, isFinal) => {
-      const r = { 0: { transcript: text }, isFinal: !!isFinal, length: 1 };
-      const ev = { resultIndex: 0, results: [r] };
-      if (window.__rec && window.__rec.onresult) window.__rec.onresult(ev);
-    };
-    window.__fail = (code) => { if (window.__rec && window.__rec.onerror) window.__rec.onerror({ error: code }); if (window.__rec && window.__rec.onend) window.__rec.onend(); };
-  }
+  // 검증용 페이지: 마이크가 없는 헤드리스 브라우저에서 음성 인식 흐름을 확인합니다.
+  //  - 기본: 가짜 SpeechRecognition 을 주입해 "듣고 있어요 → 입력칸 채움 → 멈추기" 를 확인
+  //  - #nosr: SpeechRecognition 을 지워 미지원 브라우저 안내 문구를 확인
+  const noSr = location.hash.indexOf('nosr') >= 0;
+  const qa = location.hash.indexOf('qa') >= 0;
+  const inject = noSr
+    ? 'window.SpeechRecognition=undefined;window.webkitSpeechRecognition=undefined;'
+    : 'window.SpeechRecognition=class{constructor(){window.__rec=this;this.lang="";this.interimResults=false;this.continuous=false;}'
+      + 'start(){window.__started=(window.__started||0)+1;setTimeout(()=>this.onstart&&this.onstart(),10);}'
+      + 'stop(){if(this._stopped)return;this._stopped=true;setTimeout(()=>this.onend&&this.onend(),10);}};'
+      + 'window.webkitSpeechRecognition=window.SpeechRecognition;'
+      + 'window.__speak=function(t,f){const r={0:{transcript:t},isFinal:!!f,length:1};'
+      + 'const ev={resultIndex:0,results:[r]};if(window.__rec&&window.__rec.onresult)window.__rec.onresult(ev);};';
   fetch('/index.html').then((r) => r.text()).then((html) => {
     const out = html
       .replace('<head>', '<head><base href="/" />')
-      .replace('<script src="app.js', '<script src="app.js');
+      .replace('<script src="app.js', '<script>' + inject + '<\/script><script src="app.js');
     document.open(); document.write(out); document.close();
   });
 </script>
