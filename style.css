@@ -993,9 +993,9 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .chore-wrap { flex-direction: column; }
   .char-panel { flex-direction: row; gap: 14px; padding: 12px; align-items: center; flex-wrap: wrap; }
   .char-stage { width: 96px; height: 96px; flex: 0 0 96px; }
-  .char-panel .char-info { flex: 1 1 260px; text-align: left; align-items: flex-start; gap: 7px; }
-  .char-panel .char-info { flex: 1 1 100%; }               /* 세로 화면: 계량·게이지가 한 줄에 꽉 차게 */
-  .char-panel .char-stage, .char-panel .char-evo, .char-panel .char-actions { flex: 0 0 auto; }
+  .char-panel .char-info { flex: 1 1 240px; text-align: left; align-items: flex-start; gap: 7px; }
+  .char-panel .char-evo, .char-panel .char-actions, .char-panel .char-adopt { flex: 0 0 auto; }
+  .char-panel .char-adopt { width: 100%; }
   .char-panel .evo-meter, .char-panel .today-meter { max-width: 440px; }
   .char-panel .stat-cards { max-width: 300px; }
   .char-panel .char-foot { justify-content: flex-start; }
