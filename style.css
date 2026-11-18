@@ -1866,7 +1866,7 @@ html[data-quiet="1"] .standby * { animation: none !important; }
 }
 
 /* 폰에서는 헤더가 화면을 덮지 않도록 붙박이를 풉니다 (스크롤해도 내용이 가려지지 않게) */
-@media (max-width: 767px) {
+@media (max-width: 860px) {
   .topbar { position: static; }
 }
 
