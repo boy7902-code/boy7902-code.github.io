@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=3" />
+<link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
 <div class="app">
@@ -47,6 +47,7 @@
     </div>
 
     <div class="top-actions">
+      <button class="btn sync-badge" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
       <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
       <button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button>
       <button class="btn icon" id="settingsBtn" title="설정" aria-label="설정">⚙️</button>
@@ -328,6 +329,23 @@
       </div>
     </div>
 
+    <div class="settings-section" id="syncSection">
+      <h4>☁️ 가족 실시간 동기화</h4>
+      <p class="settings-note">태블릿과 폰이 <b>같은 기록</b>을 함께 봅니다. 아래에 <b>동기화 주소</b>와 <b>가족 PIN</b>을 한 번만 넣으면 그 기기에서는 계속 자동으로 맞춰져요. 주소와 PIN은 이 기기에만 저장되고, 공개된 앱 코드에는 들어가지 않습니다.</p>
+      <label class="field">동기화 주소 (웹 앱 URL)
+        <input type="url" id="syncUrlInput" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" />
+      </label>
+      <label class="field">가족 PIN
+        <input type="password" id="syncPinInput" inputmode="numeric" placeholder="숫자 6자리" autocomplete="off" />
+      </label>
+      <div class="row wrap" style="margin-top:10px">
+        <button class="btn sm primary" id="syncConnectBtn">연결하고 동기화</button>
+        <button class="btn sm" id="syncNowBtn">지금 동기화</button>
+        <button class="btn sm ghost" id="syncOffBtn" style="color:var(--coral)">연결 해제</button>
+      </div>
+      <p class="settings-note" id="syncNote">아직 연결하지 않았어요. 지금은 이 기기에만 기록됩니다.</p>
+    </div>
+
     <div class="settings-section">
       <h4>💾 데이터</h4>
       <div class="row wrap">
@@ -432,6 +450,6 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

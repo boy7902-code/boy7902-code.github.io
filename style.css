@@ -131,6 +131,26 @@ html[data-quiet="1"] * { animation-duration: .001s !important; animation-iterati
 
 .top-actions { display: flex; gap: 8px; align-items: center; }
 
+/* ☁️ 동기화 상태 배지 */
+.sync-badge {
+  gap: 6px; padding: 0 12px; min-height: 38px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; white-space: nowrap;
+  background: var(--surface-2); color: var(--text-3); border-color: var(--border-strong);
+}
+.sync-badge[data-state="ok"] { color: #0f8a66; background: var(--mint-soft); border-color: transparent; }
+.sync-badge[data-state="busy"] { color: #9a6b00; background: var(--amber-soft); border-color: transparent; }
+.sync-badge[data-state="err"] { color: #c0392b; background: var(--coral-soft); border-color: transparent; }
+html[data-theme="dark"] .sync-badge[data-state="ok"] { color: #6fe3c0; }
+html[data-theme="dark"] .sync-badge[data-state="busy"] { color: #ffcf6b; }
+html[data-theme="dark"] .sync-badge[data-state="err"] { color: #ff9d8f; }
+.sync-badge .sync-word { line-height: 1; }
+#syncSection input#syncUrlInput { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+#syncSection label.field + label.field { margin-top: 8px; }
+
+@media (max-width: 860px) {
+  .sync-badge { min-height: 34px; padding: 0 10px; font-size: 11.5px; }
+}
+
 /* ============================ 날씨 ============================ */
 .weather {
   display: flex; align-items: center; gap: 14px;
@@ -235,7 +255,7 @@ button { font-family: inherit; cursor: pointer; }
 .btn.icon.sm { width: 30px; min-width: 30px; min-height: 30px; font-size: 13px; }
 .btn[disabled] { opacity: .45; pointer-events: none; }
 
-input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="url"], input[type="search"], select, textarea {
+input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="url"], input[type="search"], input[type="password"], select, textarea {
   font-family: inherit; font-size: 14px; color: var(--text);
   background: var(--surface-solid); border: 1px solid var(--border-strong);
   border-radius: var(--r-md); padding: 9px 11px; min-height: 40px; width: 100%;
