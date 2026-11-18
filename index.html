@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=50" />
+<link rel="stylesheet" href="style.css?v=51" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
@@ -53,6 +53,7 @@
 
     <div class="top-actions">
       <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
+      <button class="btn icon fs-btn" id="fullscreenBtn" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><span aria-hidden="true">⛶</span></button>
       <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 잠금 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 잠금</span></button>
       <button class="btn sync-badge parent-only" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
       <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
@@ -700,7 +701,9 @@
       <h4>1. 태블릿 홈 화면에 앱처럼 놓기</h4>
       <p class="settings-note">
         크롬에서 이 페이지를 연 뒤 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>(또는 '앱 설치')를 누르면
-        주소창 없는 전체 화면 앱으로 열립니다. 태블릿을 가로·세로 어느 쪽으로 돌려도 화면이 맞춰집니다.
+        주소창 없는 전체 화면 앱으로 열립니다. 태블릿을 가로·세로 어느 쪽으로 돌려도 화면이 맞춰집니다.<br />
+        홈 화면에 놓지 않고 지금 화면에서 바로 크게 보고 싶으면 상단의 <b>⛶</b>를 누르세요.
+        브라우저 주소창과 작업 표시줄이 사라지고, 다시 누르면 원래대로 돌아옵니다.
       </p>
     </div>
     <div class="settings-section">
@@ -875,7 +878,8 @@
 <script src="legacy-sync-guard.js?v=1"></script>
 <script src="parent-session-guard.js?v=1"></script>
 <script src="standby-guard.js?v=2"></script>
-<script src="app.js?v=v9-gcal"></script>
+<script src="fullscreen-guard.js?v=1"></script>
+<script src="app.js?v=v10-fullscreen"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=6"></script>
 </body>

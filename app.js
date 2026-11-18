@@ -5448,6 +5448,33 @@
     const { stage } = standbyPartnerStage();
     pokeReact($('#sbStage'), $('#sbSay'), stage ? stage.name : '');
   });
+  // ⛶ 전체 화면 — 주소창·작업 표시줄까지 가려 화면을 가장 넓게 (2026-11-19)
+  const fsBtn = $('#fullscreenBtn');
+  const fullscreenCtl = (fsBtn && window.FamilyFullscreen)
+    ? window.FamilyFullscreen.createFullscreenController({
+        doc: document,
+        onUnsupported: (msg) => toast(msg, '', 5200),
+      })
+    : null;
+
+  function syncFullscreenBtn() {
+    if (!fsBtn || !fullscreenCtl) return;
+    const on = fullscreenCtl.isOn();
+    fsBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    fsBtn.title = fullscreenCtl.label();
+    fsBtn.setAttribute('aria-label', on ? '전체 화면 나가기' : '전체 화면');
+  }
+
+  if (fsBtn && fullscreenCtl) {
+    // 브라우저가 화면을 바꾸는 데 잠깐 걸리므로 상태는 fullscreenchange에서 맞춥니다.
+    fsBtn.addEventListener('click', () => { fullscreenCtl.toggle().then(syncFullscreenBtn, syncFullscreenBtn); });
+    ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'].forEach((ev) =>
+      document.addEventListener(ev, syncFullscreenBtn));
+    // 일부 웹뷰는 이벤트를 안 보내므로 화면으로 돌아올 때도 한 번 더 맞춥니다.
+    document.addEventListener('visibilitychange', syncFullscreenBtn);
+    syncFullscreenBtn();
+  }
+
   // 🖼️ 대기화면 ↔ 홈
   if ($('#standbyBtn')) $('#standbyBtn').addEventListener('click', enterStandby);
   if ($('#standbyExit')) $('#standbyExit').addEventListener('click', exitStandby);

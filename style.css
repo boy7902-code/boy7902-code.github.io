@@ -1510,6 +1510,17 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
 .standby-btn:active { transform: scale(.98); }
 .standby-btn .standby-word { line-height: 1; }
 
+/* ---------------- 헤더의 ⛶ 전체 화면 버튼 (2026-11-19) ---------------- */
+.fs-btn { font-size: 16px; line-height: 1; }
+.fs-btn[aria-pressed="true"] { color: #0f8a66; background: var(--mint-soft); border-color: transparent; }
+html[data-theme="dark"] .fs-btn[aria-pressed="true"] { color: #6fe3c0; }
+
+/* 전체 화면일 때는 좌우 여백만 조금 남기고 화면을 더 넓게 씁니다 */
+html:fullscreen .app,
+html:-webkit-full-screen .app { padding-left: clamp(8px, 1vw, 18px); padding-right: clamp(8px, 1vw, 18px); }
+html:fullscreen .topbar,
+html:-webkit-full-screen .topbar { margin-bottom: 12px; }
+
 /* ---------------- 파트너 포켓몬: 숨쉬기 · 둥실둥실 · 까닥까닥 · 터치 반응 ----------------
    공식 일러스트(475px) 한 장을 CSS로 움직여 화질 손상 없이 살아 있게 만듭니다. */
 @keyframes pokeIdle {
