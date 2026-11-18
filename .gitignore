@@ -6,3 +6,6 @@ firestore-debug.log
 ui-debug.log
 # 태블릿 최종 스크린샷은 개인정보가 보이므로 공개 저장소에 올리지 않습니다
 screenshots/tablet-*.png
+# 작업 중 찍은 미리보기·검증 스크린샷
+screenshots/dex-*.png
+screenshots/live-*.png

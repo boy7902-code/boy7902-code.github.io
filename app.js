@@ -511,6 +511,8 @@
     links: [
       { id: uid(), title: '유튜브 뮤직 — 가족 플레이리스트', url: 'https://music.youtube.com/' },
     ],
+    // 🏫 학교 급식·시간표 — 학교 이름을 코드에 넣지 않고 이 기기 설정값으로만 그립니다
+    school: { name: '', cls: '', byDate: {} },
   });
 
   function mergeState(raw) {
@@ -521,6 +523,11 @@
     ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses'].forEach((k) => {
       if (!Array.isArray(out[k])) out[k] = base[k];
     });
+    // 🏫 학교 카드 데이터(이 기기 설정값) — 형식이 깨져 있어도 조용히 기본값으로 돌립니다
+    if (!out.school || typeof out.school !== 'object' || Array.isArray(out.school)) out.school = { name: '', cls: '', byDate: {} };
+    out.school.name = typeof out.school.name === 'string' ? out.school.name : '';
+    out.school.cls = typeof out.school.cls === 'string' ? out.school.cls : '';
+    if (!out.school.byDate || typeof out.school.byDate !== 'object' || Array.isArray(out.school.byDate)) out.school.byDate = {};
     out.v = 3;                     // 데이터 형식 3: 아이 포인트 기준 진화 + 경험치/잔액 분리 + 도감
     const prevV = Math.max(0, Math.round(+raw.v || 0));
     if (!out.points || typeof out.points !== 'object') out.points = { total: 0, byMember: {} };
@@ -1310,7 +1317,50 @@
     }
     if (W.now.apparent_temperature != null) chips.push(`<span class="wchip">체감 <b>${Math.round(W.now.apparent_temperature)}°</b></span>`);
     $('#wChips').innerHTML = chips.join('');
+    outfitGuide();
     if (standbyOn) renderStandby();
+  }
+
+  /* 🧥 아이 눈높이 한 줄 안내 — 기온·비·미세먼지에 따라 문장이 바뀝니다 */
+  function outfitGuide() {
+    const box = $('#outfitGuide');
+    if (!box) return;
+    const chips = [];
+    const now = W && W.now;
+    const d0 = W && W.daily && W.daily[0];
+    const feel = now && now.apparent_temperature != null ? now.apparent_temperature
+      : (d0 && d0.max != null && d0.min != null ? (d0.max + d0.min) / 2 : null);
+    if (feel != null) {
+      const steps = [
+        [28, '🩳', '더워요! 반팔·반바지'],
+        [23, '👕', '따뜻해요! 반팔에 얇은 겉옷'],
+        [20, '👔', '선선해요! 긴팔 한 장'],
+        [17, '🧥', '쌀쌀해요! 얇은 겉옷 챙겨요'],
+        [12, '🧥', '쌀쌀해요! 따뜻한 겉옷 챙기자'],
+        [5, '🧣', '추워요! 코트·목도리'],
+        [-99, '🧤', '매우 추워요! 두꺼운 외투·장갑'],
+      ];
+      const pick = steps.find((s) => feel >= s[0]) || steps[steps.length - 1];
+      chips.push({ cls: 'wear', ico: pick[1], text: pick[2] });
+    }
+    const snowCodes = [71, 73, 75, 77, 85, 86];
+    if (d0 && snowCodes.indexOf(d0.code) >= 0) {
+      chips.push({ cls: 'snow', ico: '❄️', text: '눈 소식! 미끄럼 조심' });
+    } else if (d0 && d0.pop != null && d0.pop >= 50) {
+      chips.push({ cls: 'rain', ico: '☔', text: `비 ${Math.round(d0.pop)}% · 우산 챙겨요` });
+    }
+    if (W && W.air) {
+      const g1 = pm10Grade(W.air.pm10);
+      const g2 = pm25Grade(W.air.pm25);
+      const worse = (g) => g && (g[1] === 'bad' || g[1] === 'worst');
+      if (g1) {
+        chips.push(worse(g1) || worse(g2)
+          ? { cls: 'dust bad', ico: '😷', text: '공기 나쁨 · 마스크 챙겨요' }
+          : { cls: 'dust good', ico: '😷', text: `공기 ${g1[0]}!` });
+      }
+    }
+    box.innerHTML = chips.map((c) => `<span class="og-chip ${c.cls}"><b class="og-ico" aria-hidden="true">${c.ico}</b>${esc(c.text)}</span>`).join('');
+    box.hidden = !chips.length;
   }
 
   function requestGeo() {
@@ -1346,75 +1396,173 @@
       .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   }
 
+  /* ---- 한 달 달력 상태 (이 기기에서만 유지) ---- */
+  const SCHED_UI = { y: null, m: null, sel: null, tab: 'cal' };
+  function schedEnsure() {
+    if (SCHED_UI.sel) return;
+    const t = new Date();
+    SCHED_UI.y = t.getFullYear();
+    SCHED_UI.m = t.getMonth();
+    SCHED_UI.sel = todayStr();
+  }
+  /* ---- 우리 집 위키의 생신·기념일 날짜를 달력에 표시 (예: '1월 12일', '10/20') ---- */
+  function wikiMarksOn(ds) {
+    const d = new Date(ds + 'T00:00:00');
+    const mm = d.getMonth() + 1;
+    const dd = d.getDate();
+    const hits = [];
+    (S.wiki || []).forEach((w) => {
+      const g = String(w.group || '');
+      if (!/생신|기념|생일/.test(g)) return;
+      const text = String(w.val || '') + ' ' + String(w.key || '');
+      let hit = false;
+      const re = /(\d{1,2})\s*월\s*(\d{1,2})\s*일/g;
+      let m;
+      while ((m = re.exec(text))) {
+        if (+m[1] === mm && +m[2] === dd) hit = true;
+      }
+      const re2 = /(?:^|[^\d])(\d{1,2})\s*[\/.\-]\s*(\d{1,2})(?:[^\d]|$)/g;
+      while (!hit && (m = re2.exec(text))) {
+        if (+m[1] === mm && +m[2] === dd) hit = true;
+      }
+      if (hit) hits.push(String(w.key || '기념일'));
+    });
+    return hits;
+  }
+
+  function setSchedTab(tab) {
+    SCHED_UI.tab = tab === 'wiki' ? 'wiki' : 'cal';
+    const card = $('#cardSchedule');
+    if (card) card.dataset.tab = SCHED_UI.tab;
+    $$('[data-schedtab]').forEach((b) => {
+      const on = b.dataset.schedtab === SCHED_UI.tab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    const cal = $('#schedPaneCal');
+    const wiki = $('#schedPaneWiki');
+    if (cal) cal.hidden = SCHED_UI.tab !== 'cal';
+    if (wiki) wiki.hidden = SCHED_UI.tab !== 'wiki';
+    if ($('#eventAddBtn')) $('#eventAddBtn').hidden = SCHED_UI.tab !== 'cal';
+    if ($('#wikiAddBtn')) $('#wikiAddBtn').hidden = SCHED_UI.tab !== 'wiki';
+    if ($('#scheduleSub') && SCHED_UI.tab === 'wiki') {
+      $('#scheduleSub').textContent = '생신 · 예방접종 · 집안 메모 · 연락처';
+    } else if (SCHED_UI.tab === 'cal') {
+      renderSchedule();
+    }
+    if (SCHED_UI.tab === 'wiki') renderWiki();
+  }
+  function schedShowMonth(y, m) {
+    const td = new Date(todayStr() + 'T00:00:00');
+    SCHED_UI.y = y;
+    SCHED_UI.m = m;
+    // 그 달에 오늘이 있으면 오늘을, 아니면 1일을 골라 둡니다
+    SCHED_UI.sel = fmtDate(td.getFullYear() === y && td.getMonth() === m ? td : new Date(y, m, 1));
+    renderSchedule();
+  }
+
   function renderSchedule() {
+    schedEnsure();
     const t = todayStr();
-    const list = eventsOn(t);
-    const box = $('#todayEvents');
-    $('#scheduleSub').textContent = list.length
-      ? `오늘 ${list.length}개 일정 · ${list.filter((e) => e.done).length}개 완료`
-      : '오늘은 일정이 없어요';
+    const sel = SCHED_UI.sel || t;
+    const todayList = eventsOn(t);
+    const selList = eventsOn(sel);
 
-    box.innerHTML = list.length
-      ? list.map((e) => {
+    // 카드 부제 — 오늘 기준 요약
+    const sub = $('#scheduleSub');
+    if (sub) {
+      sub.textContent = todayList.length
+        ? `오늘 ${todayList.length}개 일정 · ${todayList.filter((e) => e.done).length}개 완료 · 날짜를 누르면 그 날 일정`
+        : '오늘은 일정이 없어요 · 날짜를 눌러 그 날 일정 보기';
+    }
+
+    // ① 한 달 달력 그리드
+    const label = $('#calLabel');
+    if (label) label.textContent = `${SCHED_UI.y}년 ${SCHED_UI.m + 1}월`;
+    const grid = $('#calGrid');
+    if (grid) {
+      const pad = new Date(SCHED_UI.y, SCHED_UI.m, 1).getDay();
+      const lastDay = new Date(SCHED_UI.y, SCHED_UI.m + 1, 0).getDate();
+      const total = Math.ceil((pad + lastDay) / 7) * 7;
+      const cells = [];
+      for (let i = 0; i < total; i++) {
+        const d = new Date(SCHED_UI.y, SCHED_UI.m, 1 - pad + i);
+        const ds = fmtDate(d);
+        const evs = eventsOn(ds);
+        const wm = wikiMarksOn(ds);
+        const dow = d.getDay();
+        const cls = ['cal-cell',
+          d.getMonth() === SCHED_UI.m ? '' : 'out',
+          ds === t ? 'today' : '',
+          ds === sel ? 'sel' : '',
+          dow === 0 ? 'sun' : '', dow === 6 ? 'sat' : '',
+          evs.length ? 'has' : '',
+          wm.length ? 'wiki' : ''].filter(Boolean).join(' ');
+        const bars = evs.slice(0, 3).map((e) => {
           const m = memberById(e.member);
-          return `<div class="event" data-id="${e.id}">
-            <button class="check ${e.done ? 'on' : ''}" data-act="ev-toggle" data-id="${e.id}" aria-label="완료 표시">✓</button>
-            <div class="event-time">${esc(e.time || '종일')}</div>
-            <div class="event-main">
-              <div class="event-title ${e.done ? 'done' : ''}">${esc(e.title)}</div>
-              <div class="event-sub">
-                ${m ? `<span class="mdot" style="background:${esc(m.color)}"></span>${esc(m.name)}` : '가족 모두'}
+          return `<i style="background:${m ? esc(m.color) : 'var(--coral)'}"></i>`;
+        }).join('');
+        cells.push(`<button type="button" class="${cls}" data-act="cal-day" data-date="${ds}"
+            aria-label="${d.getMonth() + 1}월 ${d.getDate()}일 ${DAYS[dow]}요일 · 일정 ${evs.length}개${wm.length ? ' · ' + esc(wm.join(', ')) : ''}"
+            ${wm.length ? `title="${esc(wm.join(', '))}"` : ''}
+            ${ds === sel ? 'aria-pressed="true"' : ''}>
+            <span class="cal-num">${d.getDate()}${wm.length ? '<em class="cal-cake" aria-hidden="true">🎂</em>' : ''}</span>
+            <span class="cal-bars">${bars}</span>
+            ${evs.length > 3 ? `<span class="cal-more">+${evs.length - 3}</span>` : ''}
+          </button>`);
+      }
+      grid.innerHTML = cells.join('');
+    }
+
+    // ② 고른 날짜의 일정 — 확인 + 그 날 추가(＋)
+    const dayBox = $('#calDay');
+    if (dayBox) {
+      const d = new Date(sel + 'T00:00:00');
+      const isToday = sel === t;
+      const dayLabel = `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
+      const selMarks = wikiMarksOn(sel);
+      const rows = selList.length
+        ? selList.map((e) => {
+            const m = memberById(e.member);
+            return `<div class="event" data-id="${e.id}">
+              <button class="check ${e.done ? 'on' : ''}" data-act="ev-toggle" data-id="${e.id}" aria-label="완료 표시">✓</button>
+              <div class="event-time">${esc(e.time || '종일')}</div>
+              <div class="event-main">
+                <div class="event-title ${e.done ? 'done' : ''}">${esc(e.title)}</div>
+                <div class="event-sub">${m ? `<span class="mdot" style="background:${esc(m.color)}"></span>${esc(m.name)}` : '가족 모두'}</div>
               </div>
-            </div>
-            <button class="btn icon sm ghost" data-act="ev-del" data-id="${e.id}" aria-label="일정 삭제">✕</button>
-          </div>`;
-        }).join('')
-      : `<div class="shop-empty">오늘 일정이 없어요 · 위 <b>＋</b> 로 추가</div>`;
+              <button class="btn icon sm ghost" data-act="ev-del" data-id="${e.id}" aria-label="일정 삭제">✕</button>
+            </div>`;
+          }).join('')
+        : `<div class="shop-empty cal-empty">${isToday ? '오늘은 일정이 없어요' : '이 날은 일정이 없어요'} · <b>＋</b> 로 추가</div>`;
+      dayBox.innerHTML = `<div class="cal-day-head">
+          <b class="cal-day-date">${dayLabel}</b>
+          ${isToday ? '<span class="pill cal-today-pill">오늘</span>' : ''}
+          <span class="cal-day-count">${selList.length ? selList.length + '개' : ''}</span>
+          <button class="btn sm primary cal-add" data-act="cal-add" data-date="${sel}" title="${esc(dayLabel)}에 일정 추가">＋ 일정</button>
+        </div>
+        ${selMarks.length ? `<button type="button" class="cal-wiki-row" data-act="sched-wiki" title="우리 집 위키에서 보기">🎂 ${esc(selMarks.join(' · '))}<span class="cwr-go">📗</span></button>` : ''}
+        <div class="cal-day-list">${rows}</div>`;
+    }
 
-    // 주간 스트립
-    const start = new Date();
-    const days = [];
-    for (let i = 0; i < 7; i++) days.push(addDays(start, i));
-    $('#weekStrip').innerHTML = days.map((d, i) => {
-      const ds = fmtDate(d);
-      const evs = eventsOn(ds);
-      const fc = W && W.daily && W.daily.find((x) => x.date === ds);
-      const ico = fc ? wmo(fc.code)[0] : '';
-      const dow = d.getDay();
-      const cls = 'wday' + (i === 0 ? ' today' : '') + (dow === 0 ? ' sun' : '') + (dow === 6 ? ' sat' : '');
-      const label = i === 0 ? '오늘' : i === 1 ? '내일' : DAYS[dow];
-      const evHtml = evs.slice(0, 2).map((e) => {
-        const m = memberById(e.member);
-        return `<div class="wd-ev" style="border-left-color:${m ? m.color : 'var(--coral)'}">${esc(e.title)}</div>`;
-      }).join('');
-      const more = evs.length > 2 ? `<div class="wd-more">+${evs.length - 2}</div>` : '';
-      return `<div class="${cls}" data-act="wd-click" data-date="${ds}" title="${esc(ds)} 일정 추가">
-        <div class="wd-name">${label}</div>
-        <div class="wd-date">${d.getDate()}</div>
-        <div class="wd-ico">${ico}</div>
-        ${evHtml}${more}
-      </div>`;
-    }).join('');
-
-    // 다가오는 일정 (내일~14일)
+    // ③ 다가오는 일정 (내일 ~ 2주)
     const upcoming = S.events
       .filter((e) => e.date > t && e.date <= fmtDate(addDays(new Date(), 14)))
       .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
-      .slice(0, 4);
-    $('#upcomingEvents').innerHTML = upcoming.length
-      ? `<div class="wiki-group" style="margin-top:6px">다가오는 일정</div>` + upcoming.map((e) => {
-          const d = new Date(e.date + 'T00:00:00');
-          const m = memberById(e.member);
-          return `<div class="event" style="padding:6px 4px">
-            <div class="event-time" style="background:var(--lilac-soft);color:var(--lilac)">${d.getMonth() + 1}/${d.getDate()} ${esc(DAYS[d.getDay()])}</div>
-            <div class="event-main">
-              <div class="event-title">${esc(e.title)}</div>
-              <div class="event-sub">${esc(e.time || '종일')}${m ? ' · <span class="mdot" style="background:' + esc(m.color) + '"></span>' + esc(m.name) : ''}</div>
-            </div>
-            <button class="btn icon sm ghost" data-act="ev-del" data-id="${e.id}" aria-label="일정 삭제">✕</button>
-          </div>`;
-        }).join('')
-      : '';
+      .slice(0, 3);
+    const upBox = $('#upcomingEvents');
+    if (upBox) {
+      upBox.innerHTML = upcoming.length
+        ? `<div class="cal-up-label">다가오는 일정</div>` + upcoming.map((e) => {
+            const d = new Date(e.date + 'T00:00:00');
+            const m = memberById(e.member);
+            return `<button type="button" class="up-item" data-act="cal-day" data-date="${e.date}" title="${esc(e.date)} ${esc(e.title)}">
+              <span class="up-date"${m ? ` style="color:${esc(m.color)}"` : ''}>${d.getMonth() + 1}/${d.getDate()} ${DAYS[d.getDay()]}</span>
+              <span class="up-title">${esc(e.title)}</span>
+            </button>`;
+          }).join('')
+        : '';
+    }
   }
 
   async function addEvent(defaults = {}) {
@@ -1483,9 +1631,9 @@
     const n = nowMin == null ? minOf(hhmm()) : nowMin;
     if (d == null || n == null) return null;
     const left = d - n;
-    if (left > 0) return { cls: left <= 15 ? 'soon' : 'ok', text: `${due}까지 · ${durText(left)} 남음` };
-    if (left === 0) return { cls: 'soon', text: `${due}까지 · 지금 마감!` };
-    return { cls: 'late', text: `${due} 마감 · ${durText(-left)} 지났어요` };
+    if (left > 0) return { cls: left <= 15 ? 'soon' : 'ok', short: `${due}까지`, long: `${durText(left)} 남음`, text: `${due}까지 · ${durText(left)} 남음` };
+    if (left === 0) return { cls: 'soon', short: '지금 마감!', long: '', text: `${due}까지 · 지금 마감!` };
+    return { cls: 'late', short: `${due} 마감`, long: `${durText(-left)} 지났어요`, text: `${due} 마감 · ${durText(-left)} 지났어요` };
   }
 
   /* ---- 포인트 ---- */
@@ -1840,7 +1988,7 @@
     const di = (done || offday) ? null : dueInfo(c.due, nowMin);
     const chip = done
       ? doneBadge(c)
-      : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.text)}</span>` : '');
+      : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i></span>` : '');
     const pts = done ? earnOf(c) : base;
     const dl = daysLabel(c.days);
     return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}" data-id="${c.id}">
@@ -2003,6 +2151,7 @@
 
   /* ---- 포켓몬 도감: 카드 안의 완성 트로피 + 151종 전체 도감 모달 ---- */
   function renderDex() {
+    renderPlayground();   // 🏡 놀이방 — 포인트·파트너가 바뀌면 친구 구성도 따라 바뀝니다
     const box = $('#dexRow');
     if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/151`;
     if (!box) return;
@@ -2020,6 +2169,77 @@
         }).join('')
       : '<div class="shop-empty" style="padding:8px 4px">최종 진화(200P)를 마치면 그 포켓몬이 이곳에 영구히 쌓여요</div>';
     checkPokeImages();
+  }
+
+  /* ---- 🏡 내 포켓몬 놀이방: 도감에 남은 친구와 지금 파트너가 풀밭에서 놀아요 ---- */
+  const PLAY_MAX = 8;   // 풀밭이 답답해지지 않게 한 번에 8마리까지
+  const PLAY_SAY = ['같이 놀자!', '안녕! 반가워~', '오늘도 신나!', '미션 고마워!', '또 만났네!', '한 번 더 놀자!'];
+  let playSayIdx = 0;
+
+  // 놀이방에 나오는 친구: ① 지금 파트너 ② 도감을 마친 최종 진화 ③ 지나오며 만난 종
+  function playgroundMons() {
+    const out = [];
+    const seen = {};
+    const add = (id, name, tint) => {
+      const n = Math.round(+id || 0);
+      if (!(n > 0) || seen[n]) return;
+      seen[n] = 1;
+      out.push({ id: n, name: name || pokeInfo(n).name, tint: tint || pokeTint(n) });
+    };
+    const p = partnerOf(S.pokemon.key);
+    const st = stagesOf();
+    const cur = st[stageIndex(S.pokemon.xp)] || st[0];
+    if (cur) add(cur.id, cur.name, p.tint);
+    (S.pokemon.dex || []).forEach((d) => {
+      const fin = Math.round(+d.finalId || 0) || (finalStageOf(partnerOf(d.key)) || {}).id;
+      add(fin, d.finalName, d.tint);
+    });
+    const caught = caughtMap();
+    Object.keys(caught).sort((a, b) => String(caught[b] || '').localeCompare(String(caught[a] || '')))
+      .forEach((k) => add(k, '', ''));
+    // 좁은 화면(폰)에서는 친구가 답답하지 않게 6마리까지만
+    return out.slice(0, (typeof window !== 'undefined' && window.innerWidth < 720) ? 6 : PLAY_MAX);
+  }
+
+  function renderPlayground() {
+    const yard = $('#dexPlayYard');
+    if (!yard) return;
+    const mons = playgroundMons();
+    if ($('#dexPlayCount')) $('#dexPlayCount').textContent = `${mons.length}마리`;
+    if (!mons.length) {
+      yard.innerHTML = '<div class="dp-empty">아직 놀이방이 비었어요 — 미션을 끝내 포켓몬을 만나면 여기서 같이 놀아요 🐾</div>';
+      return;
+    }
+    const n = mons.length;
+    yard.innerHTML = mons.map((m, i) => {
+      const x = n === 1 ? 50 : 7 + (86 * i) / (n - 1);   // 풀밭 가로로 고르게
+      const dur = (5.6 + (i % 4) * 0.8).toFixed(2);      // 걷는 속도는 친구마다 조금씩
+      const lift = [0, 5, 2, 7, 1, 4, 6, 3][i % 8];      // 조금씩 앞·뒤로 서서 깊이감
+      return `<button type="button" class="dp-mon" data-act="play-poke" data-id="${m.id}" data-name="${esc(m.name)}"
+        style="--x:${x.toFixed(1)}%;--dur:${dur}s;--delay:${(-1.7 * i).toFixed(2)}s;--hop:${(1.05 + (i % 3) * 0.22).toFixed(2)}s;--hopdelay:${(-(i * 0.4)).toFixed(2)}s;--lift:${lift}px"
+        aria-label="${esc(m.name)} — 콕 누르면 같이 놀아요" title="${esc(m.name)} · 콕 누르면 좋아해요">
+        <span class="dp-bubble" aria-hidden="true"></span>
+        <span class="dp-hearts" aria-hidden="true"><i>❤️</i><i>💛</i><i>❤️</i></span>
+        ${pokeImg(m, 'dp-img', m.tint, { eager: true })}
+        <span class="dp-name">${esc(m.name)}</span>
+      </button>`;
+    }).join('');
+    checkPokeImages();
+  }
+
+  // 콕 누르면 두 번 점프 + 하트 + 말풍선 (상태는 바꾸지 않는 장난감입니다)
+  function playWithPoke(el) {
+    if (!el) return;
+    const b = el.querySelector('.dp-bubble');
+    if (b) {
+      playSayIdx = (playSayIdx + 1) % PLAY_SAY.length;
+      b.textContent = `${el.dataset.name || '친구'}! ${PLAY_SAY[playSayIdx]}`;
+    }
+    el.classList.remove('jump');
+    void el.offsetWidth;                 // 같은 친구를 연달아 눌러도 점프가 처음부터 다시
+    el.classList.add('jump');
+    clearTimeout(el._playTimer);
+    el._playTimer = setTimeout(() => el.classList.remove('jump'), 1500);
   }
 
   /* ---- 🏆 151 도감 모달: 획득 상태·실루엣·진화 단계 탐색 ---- */
@@ -2128,10 +2348,11 @@
     DEXUI.q = '';
     DEXUI.filter = 'all';
     if ($('#dexSearch')) $('#dexSearch').value = '';
-    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · 지금까지 ${caughtCount()}마리를 만났어요. 칸을 누르면 진화 계열과 자라는 모습을 볼 수 있어요.`;
+    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · ${caughtCount()}마리 만남`;
     renderDexFilters();
     renderDexGrid();
     renderDexSide();
+    renderDex();   // 🏆 내 포켓몬 도감(획득/미획득)과 🏡 놀이방 — 도감 페이지 안에서 함께 보여 줍니다
     $('#dexModal').hidden = false;
   }
 
@@ -2362,7 +2583,7 @@
       const di = dueInfo(el.dataset.due, nowMin);
       if (!di) return;
       el.className = 'due-chip ' + di.cls;
-      el.textContent = '⏰ ' + di.text;
+      el.innerHTML = `⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i>`;
     });
   }
 
@@ -2583,31 +2804,58 @@
   }
 
   /* ----------------------------------------------------------------- shopping */
-  let shopTab = 'buy';
+  /* 사고 싶은 것 카드 안의 탭: wish(사고 싶은 것) · buy(장보기) · fridge(냉장고) */
+  let shopTab = 'wish';
   function renderShopping() {
     $$('[data-shoptab]').forEach((b) => {
       const on = b.dataset.shoptab === shopTab;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', String(on));
     });
+    const isShop = shopTab === 'buy' || shopTab === 'fridge';
+    const wishPane = $('#wishPane');
+    const shopPane = $('#shopPane');
+    if (wishPane) wishPane.hidden = isShop;
+    if (shopPane) shopPane.hidden = !isShop;
+    const card = $('#cardWish');
+    if (card) card.dataset.tab = shopTab;
+
     const items = S.shopping.filter((x) => x.cat === shopTab);
     const box = $('#shopList');
-    box.innerHTML = items.length
-      ? items.map((x) => `<div class="shop-item ${x.done ? 'done' : ''}">
+    if (box) {
+      box.innerHTML = items.length
+        ? items.map((x) => `<div class="shop-item ${x.done ? 'done' : ''}">
           <button class="check ${x.done ? 'on' : ''}" data-act="shop-toggle" data-id="${x.id}" aria-label="구매 완료">✓</button>
           <div class="shop-text">${esc(x.text)}</div>
           <button class="btn icon sm ghost" data-act="shop-del" data-id="${x.id}" aria-label="삭제">✕</button>
         </div>`).join('')
-      : `<div class="shop-empty">${shopTab === 'buy' ? '살 것이 없어요. 위에서 추가해 보세요.' : '냉장고 메모가 비어 있어요.'}</div>`;
+        : `<div class="shop-empty">${shopTab === 'buy' ? '살 것이 없어요. 위에서 추가해 보세요.' : '냉장고 메모가 비어 있어요.'}</div>`;
+    }
+    if ($('#shopInput')) {
+      $('#shopInput').placeholder = shopTab === 'buy' ? '예: 우유, 계란, 사과' : '예: 김치 — 이번 주 안에 먹기';
+    }
+    // 카드 부제·배지: 지금 탭에 맞춰 바꿔 줍니다
     const left = S.shopping.filter((x) => x.cat === 'buy' && !x.done).length;
-    $('#shopSub').textContent = left ? `장볼 것 ${left}개 남았어요` : '장보기 목록이 비었어요';
+    if ($('#wishBadge')) {
+      $('#wishBadge').textContent = left ? `🛒 ${left}` : '';
+      $('#wishBadge').hidden = !left;
+    }
+    if ($('#wishSub')) {
+      const waiting = (S.wishlist || []).filter((w) => !w.boughtAt).length;
+      const can = (S.wishlist || []).filter((w) => !w.boughtAt && +w.need > 0 && balancePts() >= +w.need).length;
+      $('#wishSub').textContent = shopTab === 'wish'
+        ? `🪙 선물 코인 ${balancePts()}P · 사고 싶은 것 ${waiting}개${can ? ` · 지금 살 수 있는 것 ${can}개` : ''}`
+        : (shopTab === 'buy'
+          ? (left ? `장볼 것 ${left}개 남았어요` : '장보기 목록이 비었어요')
+          : '냉장고에 있는 것을 적어 둬요');
+    }
   }
 
   function addShopItem() {
     const inp = $('#shopInput');
     const v = inp.value.trim();
     if (!v) { inp.focus(); return; }
-    S.shopping.unshift({ id: uid(), cat: shopTab, text: v, done: false });
+    S.shopping.unshift({ id: uid(), cat: shopTab === 'fridge' ? 'fridge' : 'buy', text: v, done: false });
     inp.value = '';
     save(); renderShopping();
   }
@@ -2749,7 +2997,7 @@
   /* ------------------------------------------------------------------ letters */
   const LETTER_MAX = 30;
   const LETTER_W = 1000;
-  const LETTER_H = 400;
+  const LETTER_H = 580;
 
   const canvas = $('#letterCanvas');
   const ctx = canvas.getContext('2d');
@@ -2760,7 +3008,7 @@
   let canvasDirty = false;
 
   const PEN_COLORS = ['#2b3a55', '#e5484d', '#f5a623', '#21a179', '#4f95ff', '#9b7bf0'];
-  const PEN_WIDTHS = [4, 8, 14];
+  const PEN_WIDTHS = [6, 12, 22];
   const EMOJIS = ['⭐', '❤️', '🌸', '🌈', '🐻', '🎈', '🍀', '☀️', '🎉', '🐣'];
 
   function canvasPoint(e) {
@@ -2791,7 +3039,7 @@
   }
   function stampEmoji(p) {
     ctx.globalCompositeOperation = 'source-over';
-    ctx.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.font = '86px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(pen.emoji, p.x, p.y);
@@ -2969,6 +3217,96 @@
           </div>
         </div>`).join('') + '</div>';
     }).join('');
+  }
+
+  /* -------------------------------------------------------------------- school */
+  function schoolToday() {
+    const sc = S.school || {};
+    return (sc.byDate && sc.byDate[todayStr()]) || null;
+  }
+  function listOf(v) {
+    return String(v || '').split(/[,·\n\/]/).map((x) => x.trim()).filter(Boolean).slice(0, 8);
+  }
+  function renderSchool() {
+    const box = $('#schoolBody');
+    if (!box) return;
+    const sc = S.school || {};
+    const name = String(sc.name || '').trim();
+    const cls = String(sc.cls || '').trim();
+    const today = schoolToday();
+    const sub = $('#schoolSub');
+    if (sub) sub.textContent = [name, cls].filter(Boolean).join(' · ') || '급식 · 시간표';
+    if (!name && !today) {
+      box.innerHTML = '<div class="shop-empty">🏫 설정에서 학교를 적고 오늘 급식·시간표를 넣으면 여기에 보여요</div>';
+      return;
+    }
+    const meal = today ? listOf(today.meal) : [];
+    const tt = today ? listOf(today.timetable) : [];
+    const chips = (arr, empty, extra) => arr.length
+      ? arr.map((x) => `<span class="sch-chip ${extra || ''}">${esc(x)}</span>`).join('')
+      : `<span class="sch-none">${empty}</span>`;
+    box.innerHTML = `<div class="sch-row">
+        <span class="sch-tag meal">🍚 급식</span>
+        <div class="sch-chips">${chips(meal, '오늘 급식이 아직 없어요')}</div>
+      </div>
+      <div class="sch-row">
+        <span class="sch-tag time">📚 ${esc(cls || '시간표')}</span>
+        <div class="sch-chips">${chips(tt, '오늘 시간표가 아직 없어요', 'time')}</div>
+      </div>`;
+  }
+
+  function saveSchoolDay(patch) {
+    if (!S.school) S.school = { name: '', cls: '', byDate: {} };
+    if (!S.school.byDate) S.school.byDate = {};
+    const key = todayStr();
+    if (!S.school.byDate[key]) S.school.byDate[key] = { meal: '', timetable: '' };
+    Object.assign(S.school.byDate[key], patch);
+    save();
+    renderSchool();
+  }
+
+  async function editSchoolCard() {
+    const today = schoolToday() || { meal: '', timetable: '' };
+    const r = await askModal({
+      title: '오늘 학교',
+      hint: '학교 이름·반은 이 기기에, 급식·시간표는 오늘 날짜 몫으로 저장됩니다.',
+      fields: [
+        { name: 'name', label: '학교 이름', value: S.school.name || '', placeholder: '예: ○○초등학교' },
+        { name: 'cls', label: '반', value: S.school.cls || '', placeholder: '예: 1학년 2반' },
+        { name: 'meal', label: '오늘 급식', type: 'textarea', value: today.meal || '', placeholder: '비빔밥, 계란실파국, 닭윙구이, 백김치' },
+        { name: 'timetable', label: '오늘 시간표', type: 'textarea', value: today.timetable || '', placeholder: '국어, 국어, 즐거운생활, 즐거운생활' },
+      ],
+      okText: '저장',
+    });
+    if (!r) return;
+    S.school.name = (r.name || '').trim();
+    S.school.cls = (r.cls || '').trim();
+    saveSchoolDay({ meal: r.meal || '', timetable: r.timetable || '' });
+    renderSettings();
+    toast('오늘 학교 정보를 저장했어요', 'mint');
+  }
+
+  async function editSchoolDay(which) {
+    const today = schoolToday() || { meal: '', timetable: '' };
+    const isMeal = which === 'meal';
+    const cur = isMeal ? (today.meal || '') : (today.timetable || '');
+    const r = await askModal({
+      title: isMeal ? '오늘 급식' : '오늘 시간표',
+      hint: isMeal ? '급식 식단을 쉼표나 줄바꿈으로 나눠 적어 주세요.' : '오늘 수업을 순서대로 적어 주세요.',
+      fields: [{
+        name: 'v',
+        label: isMeal ? '급식 식단' : '시간표',
+        type: 'textarea',
+        value: cur,
+        placeholder: isMeal ? '비빔밥, 계란실파국, 닭윙구이, 백김치' : '국어, 국어, 즐거운생활, 즐거운생활',
+      }],
+      okText: '저장',
+      extraAction: cur ? { label: '지우기', act: 'del' } : null,
+    });
+    if (r === 'del') { saveSchoolDay(isMeal ? { meal: '' } : { timetable: '' }); toast('지웠어요'); return; }
+    if (!r) return;
+    saveSchoolDay(isMeal ? { meal: r.v || '' } : { timetable: r.v || '' });
+    toast('오늘 학교 정보를 저장했어요', 'mint');
   }
 
   async function editWiki(id) {
@@ -3333,6 +3671,8 @@
         <button class="btn icon sm ghost" data-act="member-edit" data-id="${m.id}" aria-label="이름 변경">✎</button>
       </span>`).join('');
     $('#quietToggle').checked = !!S.quiet;
+    if ($('#schoolNameInput')) $('#schoolNameInput').value = (S.school && S.school.name) || '';
+    if ($('#schoolClassInput')) $('#schoolClassInput').value = (S.school && S.school.cls) || '';
     if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.pokemon.key).label} 계열`;
     try {
       const bytes = new Blob([JSON.stringify(S)]).size;
@@ -3712,6 +4052,7 @@
     renderParentBtn();
     renderFreeDay();
     renderSchedule();
+    renderSchool();
     renderMissions();
     renderWish();
     renderShopping();
@@ -3737,8 +4078,20 @@
         });
       } else if (act === 'ev-edit') {
         asParent('일정 수정은 보호자만 할 수 있어요.', () => editEvent(id));
-      } else if (act === 'wd-click' && !t.closest('[data-act="wd-click"]').dataset.ignore) {
-        asParent('일정 추가는 보호자만 할 수 있어요.', () => addEvent({ date: t.dataset.date }));
+      } else if (act === 'cal-day') {
+        // 달력에서 날짜를 고르면 그 날 일정이 아래에 펼쳐집니다
+        const ds = t.dataset.date;
+        if (ds) {
+          SCHED_UI.sel = ds;
+          const d = new Date(ds + 'T00:00:00');
+          SCHED_UI.y = d.getFullYear();
+          SCHED_UI.m = d.getMonth();
+          renderSchedule();
+        }
+      } else if (act === 'cal-add') {
+        asParent('일정 추가는 보호자만 할 수 있어요.', () => addEvent({ date: t.dataset.date || SCHED_UI.sel }));
+      } else if (act === 'sched-wiki') {
+        setSchedTab('wiki');
       } else if (act === 'chore-toggle') {
         const rect = t.getBoundingClientRect();
         const res = toggleMission(id);
@@ -3760,6 +4113,8 @@
         });
       } else if (act === 'dex-open') {
         openDex(+t.dataset.id || 0);
+      } else if (act === 'play-poke') {
+        playWithPoke(t);
       } else if (act === 'use-del') {
         asParent('포인트 사용 내역은 보호자만 되돌릴 수 있어요.', () => deletePointUse(id));
       } else if (act === 'shop-toggle') {
@@ -3802,7 +4157,39 @@
     if (e.target.closest('#weather')) refreshWeather(true);
   });
 
-  $('#eventAddBtn').addEventListener('click', () => asParent('일정 추가는 보호자만 할 수 있어요.', () => addEvent()));
+  $('#eventAddBtn').addEventListener('click', () => asParent('일정 추가는 보호자만 할 수 있어요.', () => {
+    schedEnsure();
+    addEvent({ date: SCHED_UI.sel || todayStr() });
+  }));
+  if ($('#calPrev')) $('#calPrev').addEventListener('click', () => {
+    schedEnsure();
+    const m = SCHED_UI.m - 1;
+    schedShowMonth(SCHED_UI.y + (m < 0 ? -1 : 0), (m + 12) % 12);
+  });
+  if ($('#calNext')) $('#calNext').addEventListener('click', () => {
+    schedEnsure();
+    const m = SCHED_UI.m + 1;
+    schedShowMonth(SCHED_UI.y + (m > 11 ? 1 : 0), m % 12);
+  });
+  if ($('#calToday')) $('#calToday').addEventListener('click', () => {
+    const d = new Date();
+    schedShowMonth(d.getFullYear(), d.getMonth());
+  });
+  if ($('#schoolEditBtn')) $('#schoolEditBtn').addEventListener('click', () => asParent('학교 정보는 보호자만 바꿀 수 있어요.', editSchoolCard));
+  if ($('#schoolSaveBtn')) $('#schoolSaveBtn').addEventListener('click', () => {
+    if (!S.school) S.school = { name: '', cls: '', byDate: {} };
+    S.school.name = ($('#schoolNameInput').value || '').trim();
+    S.school.cls = ($('#schoolClassInput').value || '').trim();
+    save(); renderSchool(); renderSettings(); toast('학교 이름·반을 저장했어요', 'mint');
+  });
+  if ($('#schoolMealBtn')) $('#schoolMealBtn').addEventListener('click', () => editSchoolDay('meal'));
+  if ($('#schoolTimeBtn')) $('#schoolTimeBtn').addEventListener('click', () => editSchoolDay('timetable'));
+  if ($('#schoolClearBtn')) $('#schoolClearBtn').addEventListener('click', () => {
+    if (S.school && S.school.byDate && S.school.byDate[todayStr()]) {
+      delete S.school.byDate[todayStr()];
+      save(); renderSchool(); renderSettings(); toast('오늘 학교 기록을 지웠어요');
+    }
+  });
   $('#choreAddBtn').addEventListener('click', () => asParent('미션 추가는 보호자만 할 수 있어요.', addMission));
   $('#stickerResetBtn').addEventListener('click', () => asParent('포인트 초기화는 보호자만 할 수 있어요.', resetPoints));
   $('#pointUseBtn').addEventListener('click', () => asParent('포인트 사용은 보호자만 할 수 있어요.', usePoints));
@@ -3885,7 +4272,10 @@
   $('#shopAddBtn').addEventListener('click', () => asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem));
   $('#shopInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); asParent('장보기 목록은 보호자만 바꿀 수 있어요.', addShopItem); } });
   if ($('#shopMicBtn')) attachVoiceInput({ input: $('#shopInput'), btn: $('#shopMicBtn') });   // 장보기도 말로 적기
-  $$('[data-shoptab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.shoptab; renderShopping(); }));
+  $$('[data-shoptab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.shoptab; renderShopping(); renderWish(); }));
+  // 가족 일정 카드 안의 달력 · 우리 집 위키 탭
+  $$('[data-schedtab]').forEach((b) => b.addEventListener('click', () => setSchedTab(b.dataset.schedtab)));
+  setSchedTab('cal');
 
   $('#swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-pen]');

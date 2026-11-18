@@ -229,6 +229,7 @@ html[data-theme="dark"] .wchip.worst { color: #ff9c8f; }
 .card.timer { grid-column: span 4; }
 .card.wish { grid-column: span 4; }
 .card.wiki { grid-column: span 8; }
+.card.school { grid-column: span 4; }
 .card.span-6 { grid-column: span 6; }
 .card.span-8 { grid-column: span 8; }
 .card.tall { min-height: 420px; }
@@ -661,6 +662,7 @@ html[data-theme="dark"] .levelup-card.dex h4 { color: #ffd97a; }
 }
 .due-chip.soon { background: var(--amber-soft); color: #a86a00; }
 .due-chip.late { background: var(--coral-soft); color: #c23b2c; }
+.due-chip .dc-long { font-style: normal; opacity: .85; }
 html[data-theme="dark"] .due-chip { color: #8fbaff; }
 html[data-theme="dark"] .due-chip.soon { color: #ffcf7a; }
 html[data-theme="dark"] .due-chip.late { color: #ff9c8f; }
@@ -1018,7 +1020,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
 @media (max-width: 860px) {
   .grid { grid-template-columns: 1fr; }
   .card, .card.span-6, .card.span-8, .card.schedule, .card.chores, .card.shopping,
-  .card.letters, .card.timer, .card.wish, .card.wiki { grid-column: span 1; }
+  .card.letters, .card.timer, .card.wish, .card.wiki, .card.school { grid-column: span 1; }
   .chore-wrap { flex-direction: column; }
   .char-panel { flex: 0 0 auto; flex-direction: row; gap: 14px; padding: 12px; align-items: flex-start; flex-wrap: wrap; }
   .char-stage { width: 96px; height: 96px; flex: 0 0 96px; }
@@ -1192,14 +1194,15 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
 /* 기본(세로·좁은 화면)에서는 열 묶음을 풀어 카드가 예전처럼 흐르게 합니다 */
 @media (max-width: 1023px) {
   .col { display: contents; }
-  /* 열 묶음을 풀어도 카드 순서는 예전 그대로 (일정 → 미션 → 장보기 → 편지 → 타이머 → 위시 → 위키) */
+  /* 열 묶음을 풀어도 카드 순서는 왼쪽→오른쪽 그대로 (일정 → 학교 → 미션 → 편지 → 장보기 → 타이머 → 위시 → 위키) */
   #cardSchedule { order: 1; }
-  #cardChores { order: 2; }
-  #cardShopping { order: 3; }
+  #cardSchool { order: 2; }
+  #cardChores { order: 3; }
   #cardLetters { order: 4; }
-  #cardTimer { order: 5; }
-  #cardWish { order: 6; }
-  #cardWiki { order: 7; }
+  #cardShopping { order: 5; }
+  #cardTimer { order: 6; }
+  #cardWish { order: 7; }
+  #cardWiki { order: 8; }
 }
 
 /* 링크 묶음: 기본은 세로로 쌓고(추가 버튼은 한 줄 전체) */
@@ -1243,10 +1246,14 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .weather-desc { font-size: 10.5px; }
   .weather-meta { flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
   .weather-place { display: none; }
+  .outfit-guide { order: 4; flex: 0 0 auto; gap: 4px; max-width: 34%; }
+  .top-actions { order: 5; }
+  .og-chip { font-size: 10px; padding: 2px 8px; gap: 3px; }
+  .og-chip .og-ico { font-size: 11px; }
   .weather-chips { flex-wrap: nowrap; overflow: hidden; gap: 4px; }
   .weather-chips .wchip:last-child { display: none; }   /* 폭이 모자라면 맨 뒤(체감) 칩은 숨깁니다 */
   .wchip { font-size: 10px; padding: 2px 7px; }
-  .top-actions { order: 4; margin-left: 0; gap: 5px; flex: 0 0 auto; }
+  .top-actions { margin-left: 0; gap: 5px; flex: 0 0 auto; }
   .top-actions .btn { min-height: 34px; }
   .top-actions .btn.icon { width: 34px; min-width: 34px; font-size: 14px; }
   .parent-badge, .sync-badge { padding: 0 9px; font-size: 11px; min-height: 34px; }
@@ -1272,10 +1279,21 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .card-body { gap: 5px; min-height: 0; }
   .shop-empty { font-size: 11px; padding: 8px 4px; }
 
-  /* ---------------- 좌측 열: 일정 + 위키 ---------------- */
-  .col-left > .card.schedule { flex: 0 1 auto; }
-  .col-left > .card.wiki { flex: 1 1 auto; }
-  .card.schedule .card-body { overflow-y: auto; overflow-x: hidden; gap: 4px; padding-right: 2px; }
+  /* ---------------- 좌측 열: 한 달 달력(크게) + 오늘 학교 + 위키(컴팩트) ---------------- */
+  .col-left > .card.schedule { flex: 1 1 0; min-height: 0; }
+  .col-left > .card.school { flex: 0 0 auto; }
+  .card.school .sch-chips { max-height: none; }
+  .card.school .sch-row { gap: 5px; }
+  .col-left > .card.wiki { flex: 0 0 auto; max-height: 116px; }
+  .card.schedule .card-body { overflow-y: auto; overflow-x: hidden; gap: 5px; padding-right: 2px; }
+  .cal-grid { grid-auto-rows: minmax(0, 1fr); }
+  .cal-num { font-size: 11.5px; }
+  .cal-cell { padding: 2px 1px; border-radius: 8px; gap: 1px; }
+  .cal-dows { font-size: 9px; }
+  .cal-day-date { font-size: 11px; }
+  .cal-day .event { padding: 2px 3px; }
+  .card.school .card-body { gap: 3px; }
+  .card.school .sch-chips { max-height: 46px; overflow: hidden; }
   .event { padding: 4px 3px; gap: 6px; }
   .event-time { min-width: 42px; font-size: 10px; padding: 3px 3px; border-radius: 7px; }
   .event-title { font-size: 11.5px; }
@@ -1380,8 +1398,8 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   /* ---------------- 우측 열: 타이머 · 위시 · 장보기 · 편지 ---------------- */
   .col-right > .card.timer { flex: 0 0 auto; }
   .col-right > .card.wish { flex: 1 1 0; }
-  .col-right > .card.shopping { flex: 1 1 0; }
   .col-right > .card.letters { flex: 1.45 1 0; }
+  .col-right > .card.shopping { flex: 1 1 0; }
 
   .card.timer .card-body { gap: 4px; }
   .timer-shell { flex-direction: row; gap: 10px; align-items: center; }
@@ -1569,6 +1587,7 @@ html[data-theme="dark"] .poke-say { background: #232c45; color: #eef2fb; border-
 .dex-fchip {
   border: 1px solid var(--border-strong); background: var(--surface-solid); color: var(--text-2);
   font-size: 11.5px; font-weight: 800; padding: 7px 10px; border-radius: 999px; cursor: pointer;
+  white-space: nowrap;
 }
 .dex-fchip b { font-weight: 900; color: var(--text-3); }
 .dex-fchip.on { background: var(--lilac-soft); border-color: var(--lilac); color: var(--lilac); }
@@ -1988,4 +2007,552 @@ html[data-quiet="1"] .standby * { animation: none !important; }
 @media (max-width: 420px) {
   .fb-card { flex-wrap: wrap; }
   .fb-card-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+}
+
+/* ==========================================================================
+   2026-11-18 개편 — 한 달(월간) 일정 달력 · 오늘 학교 카드 · 옷차림/미세먼지 한 줄 안내
+   ========================================================================== */
+
+/* ---------------- 헤더: 아이 눈높이 한 줄 안내 ---------------- */
+.outfit-guide {
+  display: flex; align-items: center; gap: 5px; flex-wrap: nowrap;
+  min-width: 0; overflow: hidden;
+}
+.outfit-guide[hidden] { display: none; }
+.og-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; letter-spacing: -.01em;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto;
+}
+.og-chip .og-ico { font-size: 12px; line-height: 1; flex: 0 0 auto; }
+.og-chip.wear { background: var(--sky-soft); border-color: transparent; color: #2b6fd0; }
+.og-chip.rain, .og-chip.snow { background: var(--lilac-soft); border-color: transparent; color: #6b4bd6; }
+.og-chip.dust.good { background: var(--mint-soft); border-color: transparent; color: #0f8f6f; }
+.og-chip.dust.bad { background: var(--coral-soft); border-color: transparent; color: #c23b2c; }
+html[data-theme="dark"] .og-chip.wear { color: #9cc4ff; }
+html[data-theme="dark"] .og-chip.rain, html[data-theme="dark"] .og-chip.snow { color: #c3aaff; }
+html[data-theme="dark"] .og-chip.dust.good { color: #67e3bd; }
+html[data-theme="dark"] .og-chip.dust.bad { color: #ff9c8f; }
+
+/* ---------------- 한 달 달력 ---------------- */
+.cal-top { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.cal-label { font-size: 13.5px; font-weight: 900; letter-spacing: -.02em; margin-left: 2px; white-space: nowrap; }
+.cal-nav { width: 26px; min-width: 26px; min-height: 26px; }
+.cal-today-btn { margin-left: auto; min-height: 26px; font-size: 11px; padding: 0 9px; border-radius: 8px; }
+.cal-dows {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
+  font-size: 10px; font-weight: 800; color: var(--text-3); text-align: center;
+}
+.cal-dows .sun { color: var(--coral); }
+.cal-dows .sat { color: var(--sky); }
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(46px, auto); gap: 3px;
+  flex: 1 1 auto; min-height: 0;
+}
+.cal-cell {
+  position: relative; display: flex; flex-direction: column; align-items: stretch;
+  gap: 2px; padding: 3px 2px 2px;
+  border-radius: 9px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text); font: inherit; text-align: center; overflow: hidden;
+  transition: background .15s ease, border-color .15s ease;
+}
+.cal-cell:hover { background: var(--surface-solid); }
+.cal-num { font-size: 12px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.cal-bars { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 0 1px; }
+.cal-bars i { display: block; height: 3px; border-radius: 2px; opacity: .92; }
+.cal-more { font-size: 8px; font-weight: 900; color: var(--text-3); line-height: 1; }
+.cal-cell.out { opacity: .34; }
+.cal-cell.sun .cal-num { color: var(--coral); }
+.cal-cell.sat .cal-num { color: var(--sky); }
+.cal-cell.today { background: linear-gradient(160deg, var(--sky-soft), var(--surface-2)); border-color: rgba(79,149,255,.5); }
+.cal-cell.today .cal-num { color: #1c62c8; font-weight: 900; }
+.cal-cell.sel { border-color: var(--sky); box-shadow: inset 0 0 0 2px rgba(79,149,255,.26); }
+.cal-cell.today.sel { background: linear-gradient(160deg, var(--sky-soft), rgba(79,149,255,.16)); }
+html[data-theme="dark"] .cal-cell.today .cal-num { color: #9cc4ff; }
+
+/* 고른 날짜의 일정 */
+.cal-day { display: flex; flex-direction: column; gap: 3px; min-height: 0; flex: 0 0 auto; max-height: 30%; overflow: hidden; }
+.cal-day-head { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.cal-day-date { font-size: 12px; font-weight: 900; letter-spacing: -.02em; white-space: nowrap; }
+.pill.cal-today-pill { background: var(--sky-soft); border-color: transparent; color: #2b6fd0; font-size: 9.5px; padding: 1px 6px; }
+.cal-day-count { font-size: 10px; font-weight: 800; color: var(--text-3); white-space: nowrap; }
+.cal-add { margin-left: auto; min-height: 25px; font-size: 10.5px; padding: 0 8px; border-radius: 8px; white-space: nowrap; }
+.cal-day-list { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; }
+.cal-empty { font-size: 10.5px; }
+
+/* 다가오는 일정 */
+.cal-up { display: flex; align-items: center; gap: 4px; overflow-x: auto; min-height: 0; }
+.cal-up:empty { display: none; }
+.cal-up-label { font-size: 9.5px; font-weight: 800; color: var(--text-3); white-space: nowrap; flex: 0 0 auto; }
+.up-item {
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  padding: 2px 8px; border-radius: 999px; font: inherit;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: 10px; font-weight: 700; color: var(--text-2); white-space: nowrap;
+}
+.up-item:hover { background: var(--surface-solid); }
+.up-date { font-weight: 900; }
+.up-title { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------- 오늘 학교 (급식 · 시간표) ---------------- */
+.card.school .card-body { gap: 5px; min-height: 0; }
+.sch-row { display: flex; align-items: flex-start; gap: 5px; min-width: 0; }
+.sch-tag {
+  flex: 0 0 auto; font-size: 9.5px; font-weight: 900; letter-spacing: -.02em;
+  padding: 3px 6px; border-radius: 7px; white-space: nowrap;
+}
+.sch-tag.meal { background: var(--amber-soft); color: #a86a00; }
+.sch-tag.time { background: var(--sky-soft); color: #2b6fd0; }
+.sch-chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.sch-chip {
+  font-size: 10.5px; font-weight: 700; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 7px; white-space: nowrap;
+}
+.sch-chip.time { background: var(--sky-soft); border-color: transparent; color: #2b6fd0; }
+.sch-none { font-size: 10px; font-weight: 700; color: var(--text-3); }
+html[data-theme="dark"] .sch-tag.meal, html[data-theme="dark"] .sch-tag.time,
+html[data-theme="dark"] .sch-chip.time { color: #9cc4ff; }
+
+/* 태블릿 가로: 달력 칸이 카드 높이에 정확히 맞도록 마지막 줄 잘림 방지 (위 기본 규칙보다 뒤에 와서 이깁니다) */
+@media (min-width: 1024px) {
+  .cal-grid { grid-auto-rows: minmax(0, 1fr); }
+}
+
+/* ==========================================================================
+   2026-11-18 2차 레이아웃 개편
+   ① 우리 집 위키 → 가족 일정 카드 안 탭   ② 장보기·냉장고 → 사고 싶은 것 카드 안 탭
+   ③ 내 포켓몬 도감 → 151 도감 모달로 이동 ④ 가운데(미션) 열 확대 ⑤ 손글씨 캔버스 확대
+   ========================================================================== */
+/* ---- 카드 안 탭 · 숨김 규칙은 화면 폭과 상관없이 항상 적용합니다 ---- */
+.merge-tabs {
+  display: flex; gap: 3px; padding: 3px; margin-bottom: 6px;
+  border-radius: 11px; background: var(--surface-2);
+  border: 1px solid var(--border); flex: 0 0 auto;
+}
+.merge-tabs button {
+  flex: 1 1 0; min-width: 0; min-height: 30px; padding: 0 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  border: none; background: transparent; border-radius: 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: -.02em; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background .16s, color .16s;
+}
+.merge-tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 2px 6px rgba(23, 35, 73, .1); }
+html[data-theme="dark"] .merge-tabs button.on { background: #2b3550; }
+.merge-pane[hidden] { display: none !important; }
+.card-head .card-tools .btn[hidden] { display: none !important; }
+.card-title .ttl-badge {
+  display: inline-flex; align-items: center; margin-left: 4px; padding: 0 6px;
+  font-size: 10px; font-weight: 900; border-radius: 999px;
+  color: #a8680a; background: var(--amber-soft);
+}
+.card-title .ttl-badge[hidden] { display: none !important; }
+.wiki-pane-note {
+  flex: 0 0 auto; font-size: 11px; line-height: 1.35; font-weight: 700; color: var(--text-3);
+  background: var(--mint-soft); border-radius: 9px; padding: 6px 9px;
+}
+.cal-num { position: relative; }
+.cal-cake { position: absolute; top: -3px; right: -5px; font-size: 9px; font-style: normal; line-height: 1; }
+.cal-wiki-row {
+  display: flex; align-items: center; gap: 5px; margin: 2px 0 5px;
+  padding: 5px 9px; border-radius: 9px; cursor: pointer;
+  font-size: 11.5px; font-weight: 800; text-align: left;
+  color: #a8680a; background: var(--amber-soft); border: 1px dashed rgba(240, 161, 60, .55);
+}
+.cal-wiki-row .cwr-go { margin-left: auto; font-size: 12px; opacity: .8; }
+/* ============================ 🏡 내 포켓몬 놀이방 ============================ */
+.dex-play {
+  flex: 0 0 auto; position: relative; overflow: hidden;
+  margin: 0 0 8px; padding: 6px 9px 0; border-radius: 14px;
+  background: linear-gradient(180deg, #eaf5ff 0%, #f5fbef 58%, #d9f2c4 100%);
+  border: 1px solid rgba(112, 176, 104, .38);
+}
+/* 하늘의 구름 두 개 — 배경 장식이라 읽어 주지 않습니다 */
+.dex-play::before, .dex-play::after {
+  content: ''; position: absolute; height: 12px; border-radius: 999px; background: #fff; opacity: .8;
+  box-shadow: 12px -5px 0 -2px #fff, 22px 2px 0 -3px #fff; pointer-events: none;
+}
+.dex-play::before { width: 38px; top: 26px; left: 22%; }
+.dex-play::after { width: 30px; top: 40px; right: 17%; opacity: .62; }
+.dp-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; position: relative; z-index: 5; }
+.dp-title { font-size: 12px; font-weight: 900; letter-spacing: -.02em; color: #2f6b3a; }
+.dp-count { font-size: 9.5px; }
+.dp-hint { margin-left: auto; font-size: 9.5px; font-weight: 800; color: #6d9066; }
+.dp-yard {
+  position: relative; height: 94px; margin-top: 1px;
+  background:
+    radial-gradient(circle at 91% 6%, #ffe9a3 0 15px, rgba(255, 233, 163, 0) 17px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 0 58%, rgba(190, 231, 160, .55) 58%, rgba(168, 220, 132, .8) 100%);
+}
+/* 지평선 아래 풀밭 결 */
+.dp-yard::before {
+  content: ''; position: absolute; left: -9px; right: -9px; bottom: 0; height: 46px; pointer-events: none;
+  background:
+    repeating-linear-gradient(86deg, rgba(84, 158, 64, .26) 0 2px, transparent 2px 11px),
+    repeating-linear-gradient(93deg, rgba(126, 196, 96, .32) 0 2px, transparent 2px 15px);
+  border-top: 2px solid rgba(126, 190, 96, .55);
+}
+.dp-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 12px; text-align: center; font-size: 10.5px; font-weight: 800; color: #5f7f58; }
+
+/* 한 마리 — 풀밭 위를 좌우로 천천히 걸어 다닙니다 (걷기: 바깥, 통통 뛰기: 그림) */
+.dp-mon {
+  position: absolute; bottom: calc(2px + var(--lift, 0px)); left: var(--x, 50%); width: 48px; margin-left: -24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  border: 0; background: none; padding: 0; cursor: pointer; z-index: 2; -webkit-tap-highlight-color: transparent;
+  animation: dpWalk var(--dur, 6s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+.dp-mon:focus-visible { outline: 2px solid var(--lilac); outline-offset: 2px; border-radius: 12px; }
+.dp-img {
+  width: 42px; height: 42px; object-fit: contain;
+  filter: drop-shadow(0 5px 5px rgba(38, 78, 28, .24)); transform-origin: 50% 92%;
+  animation: dpHop var(--hop, 1.2s) ease-in-out var(--hopdelay, 0s) infinite;
+}
+.dp-name {
+  font-size: 7.5px; font-weight: 900; color: #35632c; line-height: 1.1;
+  max-width: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .8);
+}
+.dp-mon:hover .dp-img { filter: drop-shadow(0 6px 8px rgba(38, 78, 28, .32)) brightness(1.05); }
+@keyframes dpWalk { from { transform: translateX(-16px); } to { transform: translateX(16px); } }
+@keyframes dpHop {
+  0%, 56%, 100% { transform: translateY(0) scale(1, 1); }
+  28% { transform: translateY(-5px) scale(1.02, .98); }
+}
+/* 콕 누르면 두 번 점프 */
+.dp-mon.jump .dp-img { animation: dpJump .58s cubic-bezier(.3, 1.5, .45, 1) 2; }
+@keyframes dpJump {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  16% { transform: translateY(0) scale(1.12, .88); }
+  52% { transform: translateY(-21px) scale(.95, 1.07); }
+  84% { transform: translateY(0) scale(1.06, .94); }
+}
+/* 하트 — 점프할 때 머리 위로 톡톡 */
+.dp-hearts { position: absolute; left: 50%; bottom: 34px; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.dp-hearts i { position: absolute; left: 0; top: 0; font-style: normal; opacity: 0; }
+.dp-hearts i:nth-child(1) { --dx: -16px; left: -8px; font-size: 14px; }
+.dp-hearts i:nth-child(2) { --dx: -2px; left: 2px; font-size: 12px; }
+.dp-hearts i:nth-child(3) { --dx: 10px; left: 8px; font-size: 10px; }
+.dp-mon.jump .dp-hearts i { animation: dpHeart 1.05s ease-out forwards; }
+.dp-mon.jump .dp-hearts i:nth-child(2) { animation-delay: .16s; }
+.dp-mon.jump .dp-hearts i:nth-child(3) { animation-delay: .32s; }
+@keyframes dpHeart {
+  0% { opacity: 0; transform: translate(0, 6px) scale(.4); }
+  22% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, -14px), -46px) scale(1.2); }
+}
+/* 말풍선 */
+.dp-bubble {
+  position: absolute; bottom: 50px; left: 50%; z-index: 6;
+  padding: 2px 6px; border-radius: 9px; background: #fff; color: #2f4a2c;
+  font-size: 8.5px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(40, 70, 30, .22); pointer-events: none;
+  opacity: 0; transform: translate(-50%, 6px) scale(.86);
+  transition: opacity .16s ease, transform .22s cubic-bezier(.2, 1.4, .4, 1);
+}
+.dp-bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -4px; width: 0; height: 0; margin-left: -4px;
+  border: 4px solid transparent; border-top-color: #fff; border-bottom: 0;
+}
+.dp-bubble:empty { display: none; }
+.dp-mon.jump .dp-bubble { opacity: 1; transform: translate(-50%, -2px) scale(1); }
+.dp-mon:first-child .dp-bubble { left: 0; transform: translate(0, 6px) scale(.86); }
+.dp-mon:first-child.jump .dp-bubble { transform: translate(0, -2px) scale(1); }
+.dp-mon:last-child .dp-bubble { left: auto; right: 0; transform: translate(0, 6px) scale(.86); }
+.dp-mon:last-child.jump .dp-bubble { transform: translate(0, -2px) scale(1); }
+html[data-theme="dark"] .dex-play { background: linear-gradient(180deg, #1d2938 0%, #1f2f28 58%, #24392a 100%); border-color: rgba(120, 190, 140, .3); }
+html[data-theme="dark"] .dp-title { color: #8fe0a4; }
+html[data-theme="dark"] .dp-hint { color: #8bb894; }
+html[data-theme="dark"] .dp-name { color: #cfebcf; text-shadow: none; }
+html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::after { opacity: .12; }
+
+.dex-mine {
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px;
+  padding: 9px 11px; margin-bottom: 8px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.dex-mine-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; flex-wrap: wrap; }
+.dex-mine-hint { margin-left: auto; font-size: 10.5px; font-weight: 700; color: var(--text-3); }
+.dex-mine .dex-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+@media (max-width: 1023px) {
+  .card.letters .canvas-shell { min-height: 190px; }
+}
+
+@media (min-width: 1024px) {
+
+  /* ---------------- 3열 비율: 가운데 아이 미션을 가장 넓게 ---------------- */
+  .grid { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.4fr) minmax(0, 1fr); }
+
+  /* ---------------- 카드 안 탭 (달력·위키 / 사고싶은것·장보기·냉장고) ---------------- */
+  .merge-tabs {
+    display: flex; gap: 3px; padding: 3px; margin-bottom: 5px;
+    border-radius: 11px; background: var(--surface-2);
+    border: 1px solid var(--border); flex: 0 0 auto;
+  }
+  .merge-tabs button {
+    flex: 1 1 0; min-width: 0; min-height: 26px; padding: 0 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+    border: none; background: transparent; border-radius: 8px;
+    font-size: 11px; font-weight: 800; letter-spacing: -.02em; color: var(--text-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .16s, color .16s;
+  }
+  .merge-tabs button.on {
+    background: var(--surface); color: var(--text);
+    box-shadow: 0 2px 6px rgba(23, 35, 73, .1);
+  }
+  html[data-theme="dark"] .merge-tabs button.on { background: #2b3550; }
+  .merge-pane[hidden] { display: none !important; }
+
+  .card-title .ttl-badge {
+    display: inline-flex; align-items: center; margin-left: 4px; padding: 0 6px;
+    font-size: 9.5px; font-weight: 900; border-radius: 999px;
+    color: #a8680a; background: var(--amber-soft);
+  }
+  .card-title .ttl-badge[hidden] { display: none !important; }
+  .card-head .card-tools .btn[hidden] { display: none !important; }
+
+  /* ---------------- 왼쪽 열: 가족 일정(달력 + 우리 집 위키) · 오늘 학교 ---------------- */
+  .col-left > .card.schedule { flex: 1 1 0; min-height: 0; }
+  .col-left > .card.school { flex: 0 0 auto; }
+  .card.school .sch-chips { max-height: none; }
+  .card.school .sch-row { gap: 5px; }
+  .card.schedule .card-tools .btn.icon.sm[id="wikiAddBtn"] { font-size: 10px; width: auto; min-width: 30px; padding: 0 5px; }
+
+  .card.schedule .sched-body { flex: 1 1 auto; min-height: 0; }
+  .wiki-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; gap: 6px; }
+  .wiki-pane-note {
+    flex: 0 0 auto; font-size: 10px; line-height: 1.3; font-weight: 700; color: var(--text-3);
+    background: var(--mint-soft); border-radius: 9px; padding: 5px 8px;
+  }
+  #wikiList { display: flex; flex-direction: column; gap: 5px; columns: auto; }
+  .wiki-col { display: flex; flex-direction: column; gap: 4px; break-inside: avoid; }
+  .wiki-group { font-size: 10px; margin: 2px 0 0; }
+  .wiki-item {
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 6px 9px; margin: 0; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .wiki-key { font-size: 11.5px; flex: 0 0 33%; }
+  .wiki-val { font-size: 11.5px; line-height: 1.35; }
+  .wiki-tools { flex: 0 0 auto; }
+  .wiki-tools .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
+
+  /* 달력 위키 표시(🎂) */
+  .cal-num { position: relative; }
+  .cal-cake { position: absolute; top: -3px; right: -4px; font-size: 8px; font-style: normal; line-height: 1; }
+  .cal-cell.wiki { box-shadow: inset 0 0 0 1.5px rgba(255, 138, 96, .5); }
+  .card.schedule .cal-up { overflow: hidden; }
+  .card.schedule .up-item { max-width: 33%; font-size: 9.5px; padding: 1px 6px; }
+  .card.schedule .up-item .up-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-wiki-row {
+    display: flex; align-items: center; gap: 5px; margin: 2px 0 4px;
+    padding: 4px 8px; border-radius: 9px; cursor: pointer;
+    font-size: 10.5px; font-weight: 800; text-align: left;
+    color: #a8680a; background: var(--amber-soft); border: 1px dashed rgba(240, 161, 60, .55);
+  }
+  .cal-wiki-row .cwr-go { margin-left: auto; font-size: 11px; opacity: .8; }
+
+  /* ---------------- 가운데 열: 글자는 그대로, 칸을 넓혀 미션이 한눈에 (3차) ---------------- */
+  .card.chores .card-tools { gap: 4px; }
+  .card.chores .dex-open-btn { font-size: 10px; padding: 4px 10px; }
+
+  /* 파트너 영역은 높이만 졸여서 미션 칸 자리를 비웁니다 */
+  .char-panel { flex: 0 0 auto; padding: 6px 10px; gap: 10px; border-radius: 14px; }
+  .char-stage { width: 92px; height: 92px; flex: 0 0 92px; }
+  .char-info { gap: 3px; }
+  .char-info .char-level { font-size: 14px; }
+  .char-info .poke-say { font-size: 10px; }
+  .evo-meter { gap: 2px; }
+  .evo-meter-label { font-size: 9px; }
+  .evo-meter-pct { font-size: 12px; }
+  .evo-bar { height: 9px; }
+  .evo-next { font-size: 9.5px; }
+  .evo-next b { font-size: 10.5px; }
+  .stat-cards { gap: 6px; }
+  .stat-card { padding: 3px 7px 4px; border-radius: 10px; gap: 1px; }
+  .stat-card .stat-ico { font-size: 12px; }
+  .stat-card .stat-label { font-size: 8.5px; }
+  .stat-card .stat-value { font-size: 15px; }
+  .stat-card .stat-value em { font-size: 9px; }
+  .today-meter { padding: 3px 8px 4px; gap: 3px; border-radius: 10px; }
+  .today-meter-head { font-size: 8.5px; }
+  .today-meter-pct { font-size: 10px; }
+  .today-meter-num { font-size: 9.5px; }
+  .today-meter-num b { font-size: 11px; }
+  .today-bar { height: 6px; }
+  .today-hint { font-size: 8.5px; }
+  .char-foot { gap: 0 6px; }
+  .char-count { font-size: 9.5px; }
+  .char-count b { font-size: 11px; }
+  .char-today { font-size: 9px; }
+  .char-aside { width: 128px; gap: 3px; }
+  .char-evo .evo { width: 26px; height: 26px; border-radius: 8px; }
+  .char-evo .evo .evo-img { width: 22px; height: 22px; }
+  .char-partner-btn { min-height: 21px; font-size: 9.5px; border-radius: 7px; }
+  .char-adopt { min-height: 21px; font-size: 9px; border-radius: 7px; }
+
+  /* 미션 한 칸을 납짝하게 — 가로 폭은 그대로 두고 세로만 줄입니다 */
+  .mission-area { gap: 4px; }
+  .member-stats { gap: 3px; }
+  .mstat { font-size: 10px; padding: 1px 8px; gap: 4px; border-radius: 7px; }
+  .mstat-name { max-width: 84px; }
+  .chore-list { gap: 3px; }
+  .chore { padding: 3px 9px; gap: 9px; border-radius: 11px; }
+  .chore-check { width: 31px; height: 31px; flex: 0 0 31px; font-size: 15px; border-radius: 9px; }
+  .chore-title { font-size: 13px; }
+  .chore-meta { font-size: 9.5px; gap: 2px 5px; margin-top: 0; }
+  .days-chip, .due-chip, .done-badge { font-size: 8.5px; padding: 0 6px; }
+  .pts { font-size: 10.5px; padding: 2px 7px; border-radius: 7px; }
+  .chore-tools { gap: 1px; }
+  .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
+  .chore-off > summary { font-size: 10px; padding: 1px 2px; }
+  .chore-off-list { gap: 3px; margin-top: 3px; }
+  .hist-entry.btn { min-height: 23px; font-size: 10.5px; border-radius: 8px; padding: 0 9px; }
+  .hist-entry .pill { font-size: 9px; padding: 0 6px; }
+  .log-box { border-radius: 9px; padding: 0 8px; }
+  .log-box summary { font-size: 10px; padding: 1px 2px; gap: 5px; }
+  .log-box summary .pill { font-size: 9px; padding: 0 6px; }
+  .log-list { max-height: 62px; }
+  .log-row, .use-row { font-size: 10px; padding: 2px; }
+  .sticker-row span { font-size: 12px; }
+  #stickerResetBtn { min-height: 22px; font-size: 9.5px; }
+
+  /* ---------------- 오른쪽 열: 타이머 → 사고 싶은 것(+장보기) → 손글씨 ---------------- */
+  .col-right > .card.timer { flex: 0 0 auto; padding-bottom: 8px; }
+  .card.timer .timer-ring { flex: 0 0 66px; width: 66px; height: 66px; }
+  .card.timer .timer-digits { font-size: 14px; }
+  .card.timer .preset { min-height: 22px; font-size: 10px; }
+  .card.timer .timer-side .btn { min-height: 24px; font-size: 10.5px; }
+  .card.timer .link-row { margin-top: 0; }
+  .card.timer .link-item { padding: 2px 6px; }
+  .card.timer .link-item a { font-size: 10px; }
+  .col-right > .card.wish { flex: 0.74 1 0; min-height: 0; }
+  .col-right > .card.letters { flex: 1.6 1 0; min-height: 0; padding: 8px 10px 7px; }
+
+  .card.wish .wish-body { flex: 1 1 auto; min-height: 0; }
+  .card.wish .shop-body { flex: 1 1 auto; min-height: 0; }
+  /* 사고 싶은 것: 한 항목을 두 줄(제목 / 상태·게이지)로 접어 좁은 카드에도 여러 개가 보이게 */
+  .card.wish .wish-main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 64px;
+    column-gap: 7px; row-gap: 2px; align-items: center;
+  }
+  .card.wish .wish-top { grid-column: 1 / -1; }
+  .card.wish .wish-state { grid-column: 1; grid-row: 2; }
+  .card.wish .wish-bar { grid-column: 2; grid-row: 2; }
+  .wish-balance { padding: 5px 9px; border-radius: 10px; font-size: 11px; }
+  .wish-balance b { font-size: 14px; }
+  /* 태블릿에서는 잔액을 카드 부제 한 줄로 옮겨 목록 자리를 넓힙니다 */
+  .card.wish .wish-balance { display: none; }
+  .card.wish .wish-item { padding: 3px 7px; gap: 5px; border-radius: 10px; }
+  .card.wish .wish-title { line-height: 1.15; }
+  .card.wish .wish-main { row-gap: 1px; }
+  .wish-title { font-size: 11.5px; }
+  .wish-need { font-size: 10.5px; }
+  .wish-state { font-size: 9.5px; }
+  .wish-tag { font-size: 8.5px; padding: 0 5px; }
+  .card.wish .wish-bar { height: 5px; }
+  .card.wish .wish-tools .btn { min-height: 20px; font-size: 9.5px; padding: 0 3px; }
+  .card.wish .wish-tools .btn.icon.sm { width: 18px; min-width: 18px; min-height: 18px; font-size: 9px; }
+  .card.wish .merge-tabs { margin-bottom: 4px; }
+  .card.wish .merge-tabs button { min-height: 24px; font-size: 10.5px; }
+  .card.shopping-shop .shop-body .row { gap: 5px; }
+  .card.wish #shopInput { min-height: 30px; font-size: 12px; border-radius: 9px; }
+  .card.wish #shopAddBtn { flex: 0 0 auto; min-width: 46px; min-height: 30px; max-height: 30px; font-size: 11px; border-radius: 9px; white-space: nowrap; }
+  .card.wish #shopInput { max-height: 30px; }
+  .card.wish .shop-body .row { align-items: center; }
+  .card.wish .shop-item { padding: 3px 2px; gap: 7px; }
+  .card.wish .shop-text { font-size: 11.5px; }
+  .card.wish .shop-item .check { width: 24px; height: 24px; flex: 0 0 24px; font-size: 12px; border-radius: 7px; }
+  .card.wish .shop-item .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
+  .card.wish #shopList { gap: 0; }
+
+  /* 손글씨: 캔버스가 카드 폭 전체를 쓰고, 도구는 아래 한 줄 */
+  .card.letters .card-body {
+    display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1 1 auto;
+  }
+  .card.letters .canvas-shell {
+    flex: 0 0 auto; min-height: 200px; display: flex; align-items: stretch;
+  }
+  .card.letters #letterCanvas { width: 100%; height: auto; display: block; }
+  .card.letters .canvas-hint { font-size: 13px; }
+  .card.letters .tools {
+    flex: 0 0 auto; gap: 6px; flex-wrap: nowrap; align-items: center;
+    overflow: hidden; padding: 3px 4px; border-radius: 10px; background: var(--surface-2);
+  }
+  .card.letters .swatches { gap: 4px; flex: 0 0 auto; }
+  .card.letters .sw { width: 18px; height: 18px; }
+  .card.letters .widths { gap: 5px; flex: 0 0 auto; }
+  .card.letters .wbtn { width: 20px; height: 20px; border-radius: 6px; }
+  .card.letters #eraserBtn { flex: 0 0 auto; min-width: 42px; min-height: 22px; font-size: 9.5px; padding: 0 5px; border-radius: 7px; white-space: nowrap; }
+  .card.letters .emojis { flex: 1 1 0; }
+  .card.letters .emojis { flex: 1 1 auto; min-width: 0; max-height: none; flex-wrap: nowrap; overflow-x: auto; gap: 3px; }
+  .card.letters .emo { width: 22px; height: 22px; font-size: 13px; border-radius: 6px; flex: 0 0 22px; }
+  .card.letters .row.wrap { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+  .card.letters #letterAuthor { flex: 0 0 96px; width: 96px; max-width: 96px !important; min-height: 28px; font-size: 11px; }
+  .card.letters #letterSendBtn { min-height: 28px; font-size: 11.5px; }
+  .card.letters #letterCount { font-size: 9.5px; }
+  .card.letters .gallery { flex: 0 0 auto; max-height: 30px; overflow-y: auto; overflow-x: hidden; }
+  .card.letters .gallery .shop-empty { display: none; }   /* 편지가 없을 때는 빈 안내 대신 '저장된 편지 0장' 알약으로 알려 줍니다 */
+
+  /* ---------------- 헤더 시계: 더 크고 시원하게 ---------------- */
+  .clock { gap: 9px; }
+  .clock-time { font-size: 30px; }
+  .clock-date { font-size: 12px; }
+  .brand-title { font-size: 15.5px; }
+
+  /* ---------------- 도감 모달: 내 포켓몬 도감(획득/미획득) ---------------- */
+  .dex-mine {
+    flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px;
+    padding: 6px 9px; margin-bottom: 6px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  /* 검색·필터를 한 줄로 모아 151 도감에 자리를 더 줍니다 */
+  .dex-modal .dex-tools { flex-wrap: nowrap; margin-bottom: 7px; }
+  .dex-modal .dex-tools input { min-width: 0; }
+  .dex-modal .dex-filter { flex: 0 0 auto; }
+  .dex-modal .dex-fchip { flex: 0 0 auto; padding: 6px 9px; font-size: 11px; }
+  .dex-mine-head { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .dex-mine-hint { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--text-3); }
+  .dex-mine .dex-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+
+  /* ---------------- 도감 모달 상단: 🏡 포켓몬 놀이방 ---------------- */
+  .dex-play { padding: 7px 12px 0; border-radius: 16px; margin-bottom: 9px; }
+  .dp-title { font-size: 12.5px; }
+  .dp-hint { font-size: 10px; }
+  .dp-yard { height: 118px; }
+  .dp-img { width: 62px; height: 62px; }
+  .dp-mon { width: 74px; margin-left: -37px; bottom: calc(4px + var(--lift, 0px)); }
+  .dp-name { font-size: 9px; max-width: 72px; }
+  .dp-bubble { bottom: 70px; font-size: 10.5px; padding: 3px 8px; border-radius: 10px; }
+  .dp-hearts { bottom: 58px; }
+  .dp-hearts i:nth-child(1) { --dx: -22px; left: -12px; font-size: 17px; }
+  .dp-hearts i:nth-child(2) { --dx: -2px; left: 2px; font-size: 14px; }
+  .dp-hearts i:nth-child(3) { --dx: 15px; left: 12px; font-size: 12px; }
+  /* 놀이방이 생긴 만큼 151 도감·상세는 조금 더 짧게 구르게 — 모달이 화면 밖으로 넘치지 않습니다 */
+  .dex-modal .dex-grid, .dex-modal .dex-side { max-height: min(58vh, calc(92vh - 430px)); }
+  .dex-modal .dx-hero { width: 104px; height: 104px; }
+
+  /* ======================================================================
+     3차: 거실 태블릿에서는 글자를 덜어 내고 숫자·그림만 남깁니다
+     ====================================================================== */
+  /* 카드 제목 아래 설명문·긴 안내문은 숨김 */
+  .card-sub,
+  .card .hint,
+  .evo-next,
+  .today-hint,
+  .card.letters .canvas-hint,
+  .wiki-pane-note,
+  .free-day-banner .fd-sub { display: none; }
+
+  /* 목표 시간은 핵심 숫자만 (예: ⏰ 08:00 마감) — '14시간 9분 지났어요'는 숨김 */
+  .due-chip .dc-long { display: none; }
+
+  /* 도감 모달 안내문도 한 줄로 */
+  .dex-modal-head .hint { font-size: 11px; }
+  .dex-mine-hint, .dx-tip { display: none; }
+  .dp-hint { font-size: 9.5px; }
 }
