@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="우리 가족 대시보드">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9d7f"/>
+      <stop offset="0.55" stop-color="#ff7a6b"/>
+      <stop offset="1" stop-color="#f26a8d"/>
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fff1ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <circle cx="118" cy="112" r="46" fill="#ffffff" opacity=".16"/>
+  <circle cx="410" cy="404" r="66" fill="#ffffff" opacity=".12"/>
+  <path d="M256 118 L406 236 L406 372 Q406 392 386 392 L126 392 Q106 392 106 372 L106 236 Z" fill="url(#roof)"/>
+  <path d="M256 96 L432 236 Q442 244 433 254 Q424 264 412 256 L256 132 L100 256 Q88 264 79 254 Q70 244 80 236 Z" fill="#ffffff"/>
+  <path d="M256 208 C236 176 186 190 186 232 C186 272 232 302 256 326 C280 302 326 272 326 232 C326 190 276 176 256 208 Z" fill="#ff7a6b"/>
+  <rect x="300" y="300" width="52" height="92" rx="14" fill="#ffd7cc"/>
+</svg>

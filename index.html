@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·할 일·편지함·장보기·가계부를 한 화면에." />
+<meta name="theme-color" content="#f4f7ff" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>우리 가족 대시보드</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+
+  <!-- ======================= 상단 ======================= -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🏡</div>
+      <div>
+        <div class="brand-title">우리 가족 대시보드</div>
+        <div class="brand-sub" id="brandSub">오늘도 좋은 하루</div>
+      </div>
+    </div>
+
+    <div class="clock">
+      <div class="clock-time" id="clockTime">--:--</div>
+      <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
+    </div>
+
+    <div class="weather" id="weather" title="탭하면 날씨를 새로 고칩니다">
+      <div class="weather-now">
+        <div class="weather-icon" id="wIcon">🌤️</div>
+        <div>
+          <div class="weather-temp" id="wTemp">—<small>°</small></div>
+          <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
+        </div>
+      </div>
+      <div class="weather-meta">
+        <div class="weather-chips" id="wChips"></div>
+        <div class="weather-place" id="wPlace">위치 확인 중…</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
+      <button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button>
+      <button class="btn icon" id="settingsBtn" title="설정" aria-label="설정">⚙️</button>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <!-- ======================= 1. 일정 ======================= -->
+    <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
+      <div class="card-head">
+        <div class="card-ico sky" aria-hidden="true">📅</div>
+        <div>
+          <div class="card-title" id="tSchedule">오늘 · 이번 주 일정</div>
+          <div class="card-sub" id="scheduleSub">가족 일정을 터치로 추가하세요</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="eventAddBtn" title="일정 추가" aria-label="일정 추가">＋</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="todayEvents"></div>
+        <div class="week" id="weekStrip" aria-label="이번 주 일정"></div>
+        <div id="upcomingEvents"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 2. 할 일 & 캐릭터 ======================= -->
+    <section class="card chores" id="cardChores" aria-labelledby="tChores">
+      <div class="card-head">
+        <div class="card-ico mint" aria-hidden="true">⭐</div>
+        <div>
+          <div class="card-title" id="tChores">가족 미션 &amp; 칭찬 포인트</div>
+          <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chore-wrap">
+          <div class="char-panel">
+            <div class="char-stage" id="charStage"></div>
+            <div class="char-info" id="charInfo">
+              <div class="char-level" id="charLevel">알</div>
+              <div class="char-count" id="charCount">누적 <b>0P</b></div>
+              <div class="char-today" id="charToday">오늘 +0P</div>
+              <div class="char-bar"><i id="charBar" style="width:0%"></i></div>
+              <div class="char-next" id="charNext">아기 공룡까지 30P</div>
+            </div>
+          </div>
+          <div class="mission-area">
+            <div class="member-stats" id="memberStats"></div>
+            <div class="chore-list" id="choreList"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:2px">
+          <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
+          <button class="btn sm ghost" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">포인트 초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= 3. 장보기 & 냉장고 ======================= -->
+    <section class="card shopping" id="cardShopping" aria-labelledby="tShopping">
+      <div class="card-head">
+        <div class="card-ico amber" aria-hidden="true">🛒</div>
+        <div>
+          <div class="card-title" id="tShopping">장보기 &amp; 냉장고 메모</div>
+          <div class="card-sub" id="shopSub">살 것과 있는 것을 나눠 적어요</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="shop-tabs" role="tablist">
+          <button role="tab" data-shoptab="buy" class="on" aria-selected="true">🛒 장보기</button>
+          <button role="tab" data-shoptab="fridge" aria-selected="false">🧊 냉장고</button>
+        </div>
+        <div class="row">
+          <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
+          <button class="btn primary" id="shopAddBtn">추가</button>
+        </div>
+        <div id="shopList"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 4. 편지함 ======================= -->
+    <section class="card letters span-8" id="cardLetters" aria-labelledby="tLetters">
+      <div class="card-head">
+        <div class="card-ico lilac" aria-hidden="true">✏️</div>
+        <div>
+          <div class="card-title" id="tLetters">손글씨 &amp; 스티커 편지함</div>
+          <div class="card-sub">손가락이나 펜으로 그리고 편지함에 보내세요</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
+          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="canvas-shell">
+          <canvas id="letterCanvas" width="1000" height="400" aria-label="손글씨 편지 캔버스"></canvas>
+          <div class="canvas-hint" id="canvasHint">여기에 손가락으로 편지를 써 보세요 ✍️</div>
+        </div>
+        <div class="tools">
+          <div class="swatches" id="swatches" aria-label="펜 색"></div>
+          <div class="widths" id="widths" aria-label="펜 굵기"></div>
+          <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
+          <div class="emojis" id="emojiBar" aria-label="스티커"></div>
+        </div>
+        <div class="row wrap">
+          <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
+          <button class="btn primary" id="letterSendBtn">💌 편지함에 보내기</button>
+          <span class="pill" id="letterCount">저장된 편지 0장</span>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </div>
+    </section>
+
+    <!-- ======================= 5. 타이머 & 음악 ======================= -->
+    <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+      <div class="card-head">
+        <div class="card-ico coral" aria-hidden="true">⏳</div>
+        <div>
+          <div class="card-title" id="tTimer">타이머 &amp; 음악</div>
+          <div class="card-sub">밥 먹기·공부 시간 재기</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="timer-shell">
+          <div class="timer-ring" id="timerRing" style="--p:0">
+            <div class="timer-face">
+              <div class="timer-digits" id="timerDigits">15:00</div>
+              <div class="timer-state" id="timerState">준비</div>
+            </div>
+          </div>
+          <div class="timer-side">
+            <div class="presets" id="presets"></div>
+            <div class="row">
+              <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
+              <button class="btn" id="timerResetBtn" title="초기화">↺</button>
+            </div>
+          </div>
+        </div>
+        <div class="links" id="linkList" style="margin-top:4px"></div>
+        <button class="btn sm block ghost" id="linkAddBtn">＋ 가족 플레이리스트 · 유튜브 링크 추가</button>
+      </div>
+    </section>
+
+    <!-- ======================= 6. 위키 ======================= -->
+    <section class="card wiki span-6" id="cardWiki" aria-labelledby="tWiki">
+      <div class="card-head">
+        <div class="card-ico mint" aria-hidden="true">📗</div>
+        <div>
+          <div class="card-title" id="tWiki">우리 집 위키</div>
+          <div class="card-sub">생신 · 예방접종 · 집안 메모</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="wikiAddBtn" title="항목 추가" aria-label="위키 항목 추가">＋</button>
+        </div>
+      </div>
+      <div class="card-body" id="wikiList"></div>
+    </section>
+
+    <!-- ======================= 7. 가계부 ======================= -->
+    <section class="card budget span-6" id="cardBudget" aria-labelledby="tBudget">
+      <div class="card-head">
+        <div class="card-ico sky" aria-hidden="true">💰</div>
+        <div>
+          <div class="card-title" id="tBudget">이번 달 가계부</div>
+          <div class="card-sub" id="budgetSub">예산과 고정비·변동비</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="budgetEditBtn" title="예산 설정" aria-label="예산 설정">✎</button>
+        </div>
+      </div>
+      <div class="card-body" id="budgetBody"></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span class="grow">
+      <b>이 대시보드의 모든 내용은 이 기기 브라우저에만 저장됩니다.</b> 서버로 보내지 않고, 인터넷이 끊겨도 그대로 남아요.
+      날씨만 무료 날씨 서비스(Open-Meteo)에서 실시간으로 받아옵니다.
+    </span>
+    <button class="btn sm" id="exportBtn">⬇︎ 백업 내보내기</button>
+    <button class="btn sm" id="importBtn">⬆︎ 백업 불러오기</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden />
+  </footer>
+</div>
+
+<!-- ======================= 모달: 공통 입력 ======================= -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">입력</h3>
+    <p class="hint" id="modalHint"></p>
+    <form class="modal-fields" id="modalFields"></form>
+    <div class="modal-actions">
+      <button class="btn" type="button" data-modal-cancel>취소</button>
+      <button class="btn primary" type="button" data-modal-ok>확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 모달: 편지 보기 ======================= -->
+<div class="modal" id="letterModal" hidden>
+  <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="letterModalTitle">
+    <h3 id="letterModalTitle">편지</h3>
+    <p class="hint" id="letterModalMeta"></p>
+    <div class="letter-view"><img id="letterModalImg" alt="손글씨 편지" /></div>
+    <div class="modal-actions">
+      <button class="btn" type="button" id="letterModalDelete">삭제</button>
+      <button class="btn" type="button" id="letterModalDownload">이미지로 저장</button>
+      <button class="btn primary" type="button" id="letterModalClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 모달: 설정 ======================= -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <h3 id="settingsTitle">⚙️ 설정</h3>
+    <p class="hint">설정은 이 기기에만 저장됩니다.</p>
+
+    <div class="settings-section">
+      <h4>📍 날씨 위치</h4>
+      <div class="row">
+        <button class="btn sm primary" id="geoBtn">현재 위치 사용</button>
+        <span class="pill" id="locPill">—</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="search" id="cityInput" class="grow" placeholder="동네·도시 이름 (예: 기흥, 수원, 강남)" />
+        <button class="btn" id="citySearchBtn">검색</button>
+      </div>
+      <div class="search-results" id="cityResults"></div>
+      <details style="margin-top:10px">
+        <summary style="font-size:12px;color:var(--text-3);font-weight:700;cursor:pointer">위도·경도 직접 입력</summary>
+        <div class="row" style="margin-top:8px">
+          <input type="number" id="latInput" step="0.0001" placeholder="위도 37.5665" />
+          <input type="number" id="lonInput" step="0.0001" placeholder="경도 126.9780" />
+          <button class="btn sm" id="coordBtn">적용</button>
+        </div>
+      </details>
+      <p class="settings-note">위치를 찾을 수 없으면 서울 기준으로 표시됩니다. 위치 정보는 날씨 조회에만 쓰이고 저장되지 않는 서비스로 전송됩니다.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>👨‍👩‍👧 가족 구성원</h4>
+      <div class="row wrap" id="memberList"></div>
+      <button class="btn sm ghost" id="memberAddBtn" style="margin-top:8px">＋ 구성원 추가</button>
+      <p class="settings-note">일정에 표시될 이름입니다. 여기 적은 이름도 이 기기에만 저장됩니다.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>🎨 화면</h4>
+      <div class="row wrap">
+        <button class="btn sm" id="themeLight">☀️ 밝게</button>
+        <button class="btn sm" id="themeDark">🌙 어둡게</button>
+        <label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
+          <input type="checkbox" id="quietToggle" style="width:18px;height:18px;min-height:0" /> 절전 모드(애니메이션 끄기)
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>💾 데이터</h4>
+      <div class="row wrap">
+        <button class="btn sm" id="exportBtn2">⬇︎ 백업 내보내기</button>
+        <button class="btn sm" id="importBtn2">⬆︎ 백업 불러오기</button>
+        <button class="btn sm" id="resetAllBtn" style="color:var(--coral)">모두 지우기</button>
+      </div>
+      <p class="settings-note" id="storageNote"></p>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="settingsClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 모달: 사용 안내 ======================= -->
+<div class="modal" id="helpModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <h3 id="helpTitle">📖 이렇게 쓰세요</h3>
+    <div class="settings-section">
+      <h4>1. 태블릿 홈 화면에 앱처럼 놓기</h4>
+      <p class="settings-note">
+        크롬에서 이 페이지를 연 뒤 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>(또는 '앱 설치')를 누르면
+        주소창 없는 전체 화면 앱으로 열립니다. 태블릿을 가로·세로 어느 쪽으로 돌려도 화면이 맞춰집니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>2. 날씨 위치 한 번만 정하기</h4>
+      <p class="settings-note">
+        처음 열면 위치 사용을 물어봅니다. <b>허용</b>을 누르면 우리 동네 날씨가 나옵니다.
+        나중에 바꾸려면 <b>⚙️ 설정 → 날씨 위치</b>에서 동네 이름으로 검색하세요.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>3. 모든 기록은 이 기기에 저장</h4>
+      <p class="settings-note">
+        일정·미션·편지·장보기·위키·가계부는 브라우저 저장소에 자동 저장됩니다.
+        기기를 바꾸거나 기록을 옮기려면 <b>백업 내보내기</b>로 파일을 받아 두세요.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>4. 미션 &amp; 포인트</h4>
+      <p class="settings-note">
+        가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 포인트(+P)가 그 사람 몫으로 쌓입니다.
+        카드 위쪽에는 구성원별 <b>오늘 완료 수·오늘 포인트·누적 포인트</b>가 표시되고,
+        미션은 <b>＋</b>로 추가하거나 ✎로 포인트를 바꿀 수 있어요. 누적 포인트가 쌓이면 캐릭터가 자랍니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>5. 편지함</h4>
+      <p class="settings-note">
+        편지 캔버스에 손가락으로 쓰고 색·굵기·이모지 스티커를 골라 꾸민 뒤
+        <b>편지함에 보내기</b>를 누르면 아래 갤러리에 그림으로 저장됩니다.
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="helpClose">알겠어요</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+<div id="confetti" aria-hidden="true"></div>
+<div class="levelup" id="levelup" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
