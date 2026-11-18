@@ -460,6 +460,24 @@
     SY.timer = setInterval(() => { if (!document.hidden) syncTick(); }, SYNC_POLL_MS);
   }
 
+  // 창을 닫거나 앱을 바꾸는 순간에도 마지막 변경분을 보내 두기 (응답은 다음에 조회로 확인)
+  function syncFlushBeacon() {
+    if (!SY.cfg || !SY.dirty) return;
+    const { patch, empty } = buildPatch(SY.snapshot || {}, S);
+    if (empty) return;
+    const body = JSON.stringify({ pin: SY.cfg.pin, baseRev: SY.cfg.rev || 0, patch, device: SY.cfg.device });
+    try {
+      const blob = new Blob([body], { type: 'text/plain;charset=utf-8' });
+      if (navigator.sendBeacon && navigator.sendBeacon(SY.cfg.url, blob)) { SY.dirty = false; return; }
+    } catch (e) { /* noop */ }
+    try {
+      fetch(SY.cfg.url, {
+        method: 'POST', mode: 'no-cors', keepalive: true,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body,
+      });
+    } catch (e) { /* noop */ }
+  }
+
   function syncServerUrl(raw) {
     const s = String(raw || '').trim().replace(/[?#].*$/, '');
     if (/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/i.test(s)) return s;
@@ -2576,8 +2594,10 @@
     toast('이 기기는 이미 가족 동기화에 연결돼 있어요 ☁️', 'mint', 2600);
   }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && SY.cfg) setTimeout(() => { syncTick(); }, 400);
+    if (document.hidden) { if (SY.cfg) syncFlushBeacon(); return; }
+    if (SY.cfg) setTimeout(() => { syncTick(); }, 400);
   });
+  window.addEventListener('pagehide', () => { if (SY.cfg) syncFlushBeacon(); });
   window.addEventListener('focus', () => { if (SY.cfg) syncTick(); });
   window.addEventListener('online', () => { if (SY.cfg) syncTick(); });
 
