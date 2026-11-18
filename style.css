@@ -830,7 +830,7 @@ html[data-theme="dark"] .wish-item.bought .wish-state { color: #c3aaff; }
 .letter-tools { display: flex; gap: 2px; padding: 0 4px 6px; }
 
 /* ============================ 위키 ============================ */
-#wikiList { columns: 2; column-gap: 22px; }   /* 항목이 한 묶음뿐이어도 두 단으로 채워집니다 */
+#wikiList { display: block; columns: 2; column-gap: 22px; }   /* 항목이 한 묶음뿐이어도 두 단으로 채워집니다 */
 .wiki-col { display: block; min-width: 0; }
 .wiki-item { break-inside: avoid; }
 .wiki-item { margin-bottom: 6px; }
