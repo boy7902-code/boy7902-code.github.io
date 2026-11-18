@@ -1853,10 +1853,10 @@
     const done = xp >= FINAL_P;
 
     if (syncCaught()) save();     // 지나온 단계는 도감에 '만난 종'으로 남깁니다
+    // 말풍선(#charSay)은 그림을 가리지 않도록 index.html에서 그림 옆(이름 줄)에 따로 둡니다
     $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint, { eager: true })
       + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '')
-      + (stage.shiny ? '<span class="poke-shiny" aria-hidden="true">✨</span>' : '')
-      + '<span class="poke-say" id="charSay" aria-live="polite"></span>';
+      + (stage.shiny ? '<span class="poke-shiny" aria-hidden="true">✨</span>' : '');
     $('#charStage').title = `${stage.name} · 톡톡 누르면 반응해요`;
     $('#charLevel').textContent = stage.name;
     if ($('#charLevel')) $('#charLevel').classList.toggle('shiny', !!stage.shiny);
