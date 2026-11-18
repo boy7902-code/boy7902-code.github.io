@@ -3523,6 +3523,10 @@
   /* ------------------------------------------- 🖼️ 대기화면 (거실 디지털 액자) */
   let standbyOn = false;
   let standbyTimer = null;
+  const STANDBY_IDLE_MS = 2 * 60 * 1000;
+  let standbyIdleTimer = null;
+  let screenWakeLock = null;
+  let wakeLockRequest = null;
   let sbPokeKey = '';
   let sbWxSig = '';
   let sbMissionSig = '';
@@ -3617,6 +3621,8 @@
 
   function enterStandby() {
     if (standbyOn) return;
+    clearTimeout(standbyIdleTimer);
+    standbyIdleTimer = null;
     standbyOn = true;
     sbPokeKey = '';
     sbWxSig = '';
@@ -3638,7 +3644,54 @@
     const el = $('#standby');
     if (el) el.hidden = true;
     document.body.classList.remove('standby-on');
+    resetStandbyIdleTimer();
   }
+
+  function resetStandbyIdleTimer() {
+    clearTimeout(standbyIdleTimer);
+    standbyIdleTimer = null;
+    if (document.hidden || standbyOn) return;
+    standbyIdleTimer = setTimeout(() => {
+      standbyIdleTimer = null;
+      enterStandby();
+    }, STANDBY_IDLE_MS);
+  }
+
+  function requestScreenWakeLock() {
+    const api = window.navigator && window.navigator.wakeLock;
+    if (!api || typeof api.request !== 'function' || document.hidden || screenWakeLock || wakeLockRequest) return;
+    wakeLockRequest = api.request('screen').then((lock) => {
+      if (document.hidden) { lock.release().catch(() => {}); return null; }
+      screenWakeLock = lock;
+      lock.addEventListener('release', () => {
+        if (screenWakeLock === lock) screenWakeLock = null;
+      }, { once: true });
+      return lock;
+    }).catch(() => null).finally(() => { wakeLockRequest = null; });
+    return wakeLockRequest;
+  }
+
+  function releaseScreenWakeLock() {
+    const lock = screenWakeLock;
+    screenWakeLock = null;
+    if (lock && !lock.released) lock.release().catch(() => {});
+  }
+
+  function handleStandbyActivity(event) {
+    if (standbyOn) {
+      // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
+      if (event.type === 'keydown' && event.key === 'Escape') return;
+      exitStandby();
+    } else {
+      resetStandbyIdleTimer();
+    }
+    requestScreenWakeLock();
+  }
+
+  ['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach((type) => {
+    document.addEventListener(type, handleStandbyActivity, { passive: true, capture: true });
+  });
+  document.addEventListener('scroll', handleStandbyActivity, { passive: true, capture: true });
 
   /* --------------------------------------------------------------------- theme */
   function applyTheme() {
@@ -4666,11 +4719,26 @@
   // 레거시 PIN 동기화는 자동 시작하지 않습니다. Firebase 시작은 위 fbBootWait()가 담당합니다.
   renderSyncBadge();
   renderLegacySyncInfo();
+  resetStandbyIdleTimer();
+  requestScreenWakeLock();
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { if (SY.cfg) syncFlushBeacon(); return; }
+    if (document.hidden) {
+      clearTimeout(standbyIdleTimer);
+      standbyIdleTimer = null;
+      releaseScreenWakeLock();
+      if (SY.cfg) syncFlushBeacon();
+      return;
+    }
+    resetStandbyIdleTimer();
+    requestScreenWakeLock();
     if (SY.cfg) setTimeout(() => { syncTick(); }, 400);
   });
-  window.addEventListener('pagehide', () => { if (SY.cfg) syncFlushBeacon(); });
+  window.addEventListener('pagehide', () => {
+    clearTimeout(standbyIdleTimer);
+    standbyIdleTimer = null;
+    releaseScreenWakeLock();
+    if (SY.cfg) syncFlushBeacon();
+  });
   window.addEventListener('focus', () => { if (SY.cfg) syncTick(); });
   window.addEventListener('online', () => { if (SY.cfg) syncTick(); });
 
@@ -4701,7 +4769,7 @@
       caught: Object.keys(S.pokemon.caught || {}).map(Number).sort((a, b) => a - b),
     }),
     lines: () => ({ gen1: GEN1_LINES.length, extra: EXTRA_LINES.length, total: LINES.length, species: POKE_NOS.length }),
-    standby: () => ({ on: standbyOn, text: standbyOn ? ($('#sbTime') || {}).textContent : '' }),
+    standby: () => ({ on: standbyOn, text: standbyOn ? ($('#sbTime') || {}).textContent : '', idleTimeoutMs: STANDBY_IDLE_MS, screenAwake: !!(screenWakeLock && !screenWakeLock.released) }),
     pokemonStatus: () => $$('img[data-poke]').map((i) => ({
       name: i.dataset.pokeName || i.alt, id: i.dataset.poke,
       ok: i.naturalWidth > 0, width: i.naturalWidth,
