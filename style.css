@@ -492,6 +492,37 @@ html[data-theme="dark"] .levelup-card.dex h4 { color: #ffd97a; }
 html[data-theme="dark"] .due-chip { color: #8fbaff; }
 html[data-theme="dark"] .due-chip.soon { color: #ffcf7a; }
 html[data-theme="dark"] .due-chip.late { color: #ff9c8f; }
+
+/* ---- 요일 반복(매일·평일·주말) ---- */
+.days-chip {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+  background: var(--lilac-soft); color: #5c45c0; white-space: nowrap;
+}
+.days-chip.all { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+html[data-theme="dark"] .days-chip { color: #c9b8ff; }
+html[data-theme="dark"] .days-chip.all { color: var(--text-2); }
+.days-field { display: flex; flex-direction: column; gap: 6px; }
+.day-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.day-toggle {
+  width: 34px; height: 30px; border-radius: 9px;
+  border: 1px solid var(--border-strong); background: var(--surface-solid); color: var(--text-3);
+  font-size: 11.5px; font-weight: 800;
+  transition: background .18s, color .18s, border-color .18s;
+}
+.day-toggle.on { background: var(--lilac-soft); border-color: var(--lilac); color: var(--lilac); }
+.day-sum { font-size: 11px; font-weight: 800; color: var(--text-3); }
+.chore.offday { opacity: .6; }
+.chore.offday .chore-check { border-style: dashed; }
+.chore-off { border-top: 1px dashed var(--border); padding-top: 6px; }
+.chore-off > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 800; color: var(--text-3); padding: 3px 2px;
+}
+.chore-off > summary::-webkit-details-marker { display: none; }
+.chore-off > summary::before { content: '▸'; font-size: 10px; }
+.chore-off[open] > summary::before { content: '▾'; }
+.chore-off-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .done-badge {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap;

@@ -13,6 +13,34 @@
   const uid = () => Math.random().toString(36).slice(2, 10);
   const pad = (n) => String(n).padStart(2, '0');
   const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];   // 화면에 보여 주는 순서(월~일), 값은 0=일 … 6=토
+  /* 미션 요일 반복 — days: [] = 매일, [0..6] = 그 요일에만 (0=일, 1=월 … 6=토) */
+  function normDays(v) {
+    if (!Array.isArray(v)) return [];
+    const set = [];
+    v.forEach((n) => { const d = parseInt(n, 10); if (d >= 0 && d <= 6 && set.indexOf(d) < 0) set.push(d); });
+    set.sort((a, b) => a - b);
+    return set.length >= 7 ? [] : set;          // 7일을 다 고르면 '매일'과 같습니다
+  }
+  const daysOf = (m) => normDays(m && m.days);
+  function parseDays(v) {
+    if (Array.isArray(v)) return normDays(v);
+    return normDays(String(v == null ? '' : v).split(',').map((x) => parseInt(x, 10)).filter((n) => n >= 0 && n <= 6));
+  }
+  const sameDays = (a, b) => a.length === b.length && a.every((n, i) => n === b[i]);
+  const missionOnDay = (m, dow) => { const d = daysOf(m); return !d.length || d.indexOf(dow) >= 0; };
+  function daysLabel(v) {
+    const d = normDays(Array.isArray(v) ? v : parseDays(v));
+    if (!d.length) return '매일';
+    if (sameDays(d, [1, 2, 3, 4, 5])) return '월~금';
+    if (sameDays(d, [0, 6])) return '주말';
+    const runs = [];
+    d.forEach((n) => {
+      const last = runs[runs.length - 1];
+      if (last && n === last[1] + 1) last[1] = n; else runs.push([n, n]);
+    });
+    return runs.map(([a, b]) => (a === b ? DAYS[a] : (b - a === 1 ? `${DAYS[a]}·${DAYS[b]}` : `${DAYS[a]}~${DAYS[b]}`))).join('·');
+  }
   const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const todayStr = () => fmtDate(new Date());
   const addDays = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
@@ -59,12 +87,12 @@
       { id: uid(), date: fmtDate(addDays(new Date(), 3)), time: '10:00', title: '주말 나들이', member: '', done: false },
     ],
     missions: [
-      { id: uid(), title: '아침 먹기', points: 5, due: '08:00', bonus: 3, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '씻기 · 양치하기', points: 3, due: '08:10', bonus: 2, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '옷 입기', points: 3, due: '07:50', bonus: 2, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '가방 챙기기', points: 4, due: '08:20', bonus: 3, member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '분리수거 내놓기', points: 3, due: '21:00', bonus: 2, member: 'm1', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '설거지하기', points: 3, due: '', bonus: 0, member: 'm2', doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '아침 먹기', points: 5, due: '08:00', bonus: 3, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '씻기 · 양치하기', points: 3, due: '08:10', bonus: 2, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '옷 입기', points: 3, due: '07:50', bonus: 2, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '가방 챙기기', points: 4, due: '08:20', bonus: 3, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '분리수거 내놓기', points: 3, due: '21:00', bonus: 2, member: 'm1', days: [], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '설거지하기', points: 3, due: '', bonus: 0, member: 'm2', days: [1, 3, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
     ],
     logs: [],
     points: { total: 0, byMember: {} },
@@ -122,6 +150,7 @@
       if (m.doneOn && typeof m.earned !== 'number') m.earned = m.points;   // 예전 기록은 기본 포인트만 받은 것으로 본다
       m.earned = Math.max(0, Math.round(+m.earned || 0));
       m.goalMet = !!m.goalMet;
+      m.days = normDays(m.days);      // 요일 정보가 없던 예전 기록은 '매일([])'로 그대로 동작합니다
     });
     out.logs = out.logs.filter((l) => l && typeof l === 'object' && l.date && l.at);
     out.logs = keepLogs(out.logs);
@@ -1402,6 +1431,38 @@
   }
   function closeHistory() { const m = $('#historyModal'); if (m) m.hidden = true; }
 
+  // 미션 카드 한 장 — 오늘 차례인 미션과 '오늘 쉬는 미션'이 같은 모양을 씁니다
+  function choreCardHtml(c, t, nowMin, offday = false) {
+    const done = c.doneOn === t;
+    const m = memberById(c.member);
+    const base = basePtsOf(c);
+    const bonus = bonusPtsOf(c);
+    const di = (done || offday) ? null : dueInfo(c.due, nowMin);
+    const chip = done
+      ? doneBadge(c)
+      : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.text)}</span>` : '');
+    const pts = done ? earnOf(c) : base;
+    const dl = daysLabel(c.days);
+    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}" data-id="${c.id}">
+            <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
+            <div class="chore-main">
+              <div class="chore-top">
+                <span class="chore-title">${esc(c.title)}</span>
+                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
+              </div>
+              <div class="chore-meta">
+                <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
+                <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
+                ${chip}
+              </div>
+            </div>
+            <div class="chore-tools">
+              <button class="btn icon sm ghost" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
+              <button class="btn icon sm ghost" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
+            </div>
+          </div>`;
+  }
+
   function renderMissions() {
     const t = todayStr();
     const p = partnerOf(S.pokemon.key);
@@ -1417,13 +1478,15 @@
     $('#charLevel').textContent = stage.name;
 
     const doneList = S.missions.filter((x) => x.doneOn === t);
+    const dowToday = new Date().getDay();
+    const todayCount = S.missions.filter((x) => missionOnDay(x, dowToday)).length;
     $('#charCount').innerHTML = `누적 경험치 <b>${totalXp}P</b>`;
     $('#charToday').textContent = `아이 오늘 +${kidTodayPts()}P`;
     if ($('#charBalance')) $('#charBalance').innerHTML = `사용 가능 <b>${bal}P</b>`;
     const tick = $('#charTick');
     if (tick) tick.textContent = `현재 파트너 ${xp}P / ${FINAL_P}P`;
     const log = renderLog();
-    $('#choreSub').textContent = `오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met} · 미션 ${S.missions.length}개`;
+    $('#choreSub').textContent = `오늘 할 미션 ${todayCount}개 · 오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met}`;
     const thisMonth = todayStr().slice(0, 7);
     const monthCount = histAllLogs().filter((l) => l.date.slice(0, 7) === thisMonth).length;
     if ($('#histBtnPill')) $('#histBtnPill').textContent = monthCount ? `이번 달 ${monthCount}건` : '이번 달 기록 없음';
@@ -1464,42 +1527,29 @@
         <span class="mstat-total">누적 ${s.total}P</span>
       </div>`).join('');
 
-    // 미션 목록
+    // 미션 목록 — 오늘 요일에 해당하는 미션만 위에 보이고, 오늘 쉬는 미션은 아래에 접어 둡니다
     const order = {};
     S.members.forEach((m, i) => { order[m.id] = i; });
     order[''] = 99;
     const nowMin = minOf(hhmm());
+    const dow = new Date().getDay();
     const list = S.missions.slice().sort((a, b) => (order[a.member] ?? 50) - (order[b.member] ?? 50));
-    $('#choreList').innerHTML = list.length
-      ? list.map((c) => {
-          const done = c.doneOn === t;
-          const m = memberById(c.member);
-          const base = basePtsOf(c);
-          const bonus = bonusPtsOf(c);
-          const di = done ? null : dueInfo(c.due, nowMin);
-          const chip = done
-            ? doneBadge(c)
-            : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.text)}</span>` : '');
-          const pts = done ? earnOf(c) : base;
-          return `<div class="chore ${done ? 'done' : ''}" data-id="${c.id}">
-            <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
-            <div class="chore-main">
-              <div class="chore-top">
-                <span class="chore-title">${esc(c.title)}</span>
-                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
-              </div>
-              <div class="chore-meta">
-                <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
-                ${chip}
-              </div>
-            </div>
-            <div class="chore-tools">
-              <button class="btn icon sm ghost" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
-              <button class="btn icon sm ghost" data-act="chore-del" data-id="${c.id}" aria-label="삭제">✕</button>
-            </div>
-          </div>`;
-        }).join('')
-      : `<div class="shop-empty">미션을 추가해 보세요</div>`;
+    if (!list.length) {
+      $('#choreList').innerHTML = `<div class="shop-empty">미션을 추가해 보세요</div>`;
+    } else {
+      const todayList = list.filter((c) => missionOnDay(c, dow));
+      const offList = list.filter((c) => !missionOnDay(c, dow));
+      const todayHtml = todayList.length
+        ? todayList.map((c) => choreCardHtml(c, t, nowMin)).join('')
+        : `<div class="shop-empty">${DAYS[dow]}요일은 할 미션이 없어요 — 오늘은 푹 쉬어요 🌴</div>`;
+      const offHtml = offList.length
+        ? `<details class="chore-off"${$('#choreOff') && $('#choreOff').open ? ' open' : ''}>
+            <summary>😴 오늘은 ${DAYS[dow]}요일이라 쉬는 미션 <span class="pill">${offList.length}개</span></summary>
+            <div class="chore-off-list">${offList.map((c) => choreCardHtml(c, t, nowMin, true)).join('')}</div>
+          </details>`
+        : '';
+      $('#choreList').innerHTML = todayHtml + offHtml;
+    }
 
     // 10P마다 별 하나 (아이 누적 경험치 기준)
     const stars = Math.min(Math.floor(totalXp / 10), 24);
@@ -1810,6 +1860,12 @@
 
   // 목표 시간 빠른 선택 (태블릿에서 두 번 탭으로 지정)
   const TIME_QUICK = ['없음', '07:30', '08:00', '08:30', '09:00', '17:00', '18:00', '20:00', '21:00', '22:00'];
+  // 요일 빠른 선택
+  const DAY_QUICKS = [
+    { key: 'all', label: '매일', days: [] },
+    { key: 'weekday', label: '평일(월~금)', days: [1, 2, 3, 4, 5] },
+    { key: 'weekend', label: '주말(토·일)', days: [0, 6] },
+  ];
 
   function missionMemberOptions() {
     return S.members.map((m) => ({ value: m.id, label: m.name })).concat([{ value: '', label: '공용(모두)' }]);
@@ -1818,17 +1874,19 @@
   async function addMission() {
     const r = await askModal({
       title: '미션 추가',
-      hint: '목표 시간을 비우거나 [없음]을 고르면 시간 보너스 없이 기본 포인트만 쌓여요.',
+      hint: '언제 하는 미션인지(매일·평일·주말 또는 요일별)를 고르면 그 요일에만 오늘 미션으로 나와요. 목표 시간을 비우거나 [없음]을 고르면 시간 보너스 없이 기본 포인트만 쌓입니다.',
       fields: [
         { name: 'title', label: '미션', placeholder: '예: 신발 정리하기' },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: 3 },
+        { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: (S.members[S.members.length - 1] || {}).id || '' },
+        { name: 'days', label: '언제 하는 미션인가요?', type: 'days', value: [] },
         { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: '', quick: TIME_QUICK },
         { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: 3 },
-        { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: (S.members[S.members.length - 1] || {}).id || '' },
       ],
       okText: '추가',
     });
     if (!r || !r.title.trim()) return;
+    const days = parseDays(r.days);
     S.missions.push({
       id: uid(),
       title: r.title.trim(),
@@ -1836,10 +1894,12 @@
       due: r.due || '',
       bonus: r.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0,
       member: r.member || '',
+      days,
       doneOn: null, doneAt: '', earned: 0, goalMet: false,
     });
     save(); renderMissions();
-    toast(r.due ? `미션을 추가했어요 · ${r.due}까지 +${Math.max(0, Math.round(+r.bonus || 0))}P 보너스` : '미션을 추가했어요', 'mint');
+    const dl = daysLabel(days);
+    toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due}까지 +${Math.max(0, Math.round(+r.bonus || 0))}P 보너스` : `미션을 추가했어요 · ${dl}`), 'mint');
   }
 
   async function editMission(id) {
@@ -1847,13 +1907,14 @@
     if (!c) return;
     const r = await askModal({
       title: '미션 수정',
-      hint: '목표 시간과 보너스 포인트를 바꾸면 오늘 완료 기록도 새 기준으로 다시 계산됩니다.',
+      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 목표 시간과 보너스 포인트를 바꾸면 오늘 완료 기록도 새 기준으로 다시 계산됩니다.',
       fields: [
         { name: 'title', label: '미션', value: c.title },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: basePtsOf(c) },
+        { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: c.member || '' },
+        { name: 'days', label: '언제 하는 미션인가요?', type: 'days', value: daysOf(c) },
         { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: c.due || '', quick: TIME_QUICK },
         { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: bonusPtsOf(c) || 3 },
-        { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: c.member || '' },
       ],
       okText: '저장',
       extraAction: { label: '삭제', act: 'del' },
@@ -1880,6 +1941,7 @@
     c.due = r.due || '';
     c.bonus = c.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0;
     c.member = r.member || '';
+    c.days = parseDays(r.days);
 
     // 오늘 이미 끝낸 미션이면 실제 완료 시각을 새 목표 시간과 다시 비교해 포인트를 맞춰 준다
     if (wasDone) {
@@ -2313,6 +2375,18 @@
         if (f.type === 'textarea') {
           return `<label class="field">${esc(f.label)}<textarea name="${esc(f.name)}" id="${id}" rows="3" placeholder="${esc(f.placeholder || '')}">${esc(f.value ?? '')}</textarea></label>`;
         }
+        if (f.type === 'days') {
+          const cur = normDays(f.value);
+          const onDay = (n) => (cur.length ? cur.indexOf(n) >= 0 : true);   // 비어 있으면 매일 = 7일 모두 켜짐
+          return `<div class="field">${esc(f.label)}
+            <span class="days-field" data-daysfield="${esc(f.name)}">
+              <input type="hidden" name="${esc(f.name)}" id="${id}" value="${cur.join(',')}">
+              <span class="quick-row">${DAY_QUICKS.map((q) => `<button type="button" class="qchip${sameDays(cur, q.days) ? ' on' : ''}" data-dayquick="${q.key}">${esc(q.label)}</button>`).join('')}</span>
+              <span class="day-row">${DAY_ORDER.map((n) => `<button type="button" class="day-toggle${onDay(n) ? ' on' : ''}" data-day="${n}" aria-pressed="${onDay(n) ? 'true' : 'false'}">${DAYS[n]}</button>`).join('')}</span>
+              <span class="day-sum" data-daysum>${esc(daysLabel(cur))}</span>
+            </span>
+          </div>`;
+        }
         return `<label class="field">${esc(f.label)}<input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.type === 'number' ? ' inputmode="numeric"' : ''}>${f.quick && f.quick.length
           ? `<span class="quick-row">${f.quick.map((v) => `<button type="button" class="qchip" data-quick="${esc(f.name)}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</span>`
           : ''}</label>`;
@@ -2327,6 +2401,46 @@
           el.value = b.dataset.val === '없음' ? '' : b.dataset.val;
           $$('[data-quick]', modal).forEach((o) => o.classList.toggle('on', o === b));
         };
+      });
+
+      // 요일 빠른 선택·개별 토글 — 숨은 입력에 '1,2,3' 형태로 담아 둡니다
+      $$('[data-daysfield]', modal).forEach((box) => {
+        const input = $('#mf_' + box.dataset.daysfield);
+        if (!input) return;
+        const setDays = (arr) => {
+          const d = normDays(arr);
+          input.value = d.join(',');
+          const active = d.length ? d : [0, 1, 2, 3, 4, 5, 6];
+          $$('.day-toggle', box).forEach((b) => {
+            const on = active.indexOf(+b.dataset.day) >= 0;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          $$('[data-dayquick]', box).forEach((b) => {
+            const q = DAY_QUICKS.find((x) => x.key === b.dataset.dayquick);
+            b.classList.toggle('on', !!q && sameDays(d, q.days));
+          });
+          const sum = $('[data-daysum]', box);
+          if (sum) sum.textContent = daysLabel(d);
+        };
+        $$('[data-dayquick]', box).forEach((b) => {
+          b.onclick = (ev) => {
+            ev.preventDefault();
+            const q = DAY_QUICKS.find((x) => x.key === b.dataset.dayquick);
+            if (q) setDays(q.days);
+          };
+        });
+        $$('.day-toggle', box).forEach((b) => {
+          b.onclick = (ev) => {
+            ev.preventDefault();
+            const cur = parseDays(input.value);
+            const base = cur.length ? cur.slice() : [0, 1, 2, 3, 4, 5, 6];
+            const n = +b.dataset.day;
+            const i = base.indexOf(n);
+            if (i >= 0) { if (base.length === 1) return; base.splice(i, 1); } else base.push(n);
+            setDays(base);
+          };
+        });
       });
 
       const actions = $('.modal-actions', modal);
