@@ -4455,6 +4455,11 @@
       </section>
 
       <section class="ev-sec">
+        <h4>⑥🏆 이번 달 상장</h4>
+        <div class="ev-row"><button type="button" class="btn sm primary" data-act="ev-mvp">🏆 상장 보기</button></div>
+      </section>
+
+      <section class="ev-sec">
         <h4>⑦🎰 가족 쿠폰 뽑기 <span class="ev-note">${gachaStep()}P마다 1장</span></h4>
         <div class="ev-gacha">
           <div class="gacha-wheel" id="gachaWheel" aria-hidden="true"><span>🎁</span></div>
@@ -4467,10 +4472,7 @@
         <div class="ev-draws">${draws.length ? draws.map((d) => `<span class="ev-chip">🎉 ${esc(d.label)} <em>${esc(fmtMD(d.date))}</em></span>`).join('') : '<span class="ev-note">아직 뽑은 쿠폰이 없어요</span>'}</div>
       </section>
 
-      <section class="ev-sec">
-        <h4>⑥🏆 이번 달 상장</h4>
-        <div class="ev-row"><button type="button" class="btn sm primary" data-act="ev-mvp">🏆 상장 보기</button></div>
-      </section>`;
+`;
   }
 
   function renderEventBadge() {
@@ -4522,7 +4524,7 @@
         ${st.topTitle ? `<span>🏅 가장 많이 한 미션 <b>${esc(st.topTitle)}</b> (${st.topCount}회)</span>` : '<span>이번 달 기록을 모으는 중이에요</span>'}
         ${st.bestDay ? `<span>📅 제일 바빴던 날 <b>${esc(fmtMD(st.bestDay))}</b></span>` : ''}
       </div>
-      <div class="mvp-sign">우리 가족 대시보드 · ${esc(appTitle())}</div>
+      <div class="mvp-sign">${esc(appTitle())}</div>
     </div>`;
     checkPokeImages();
   }
