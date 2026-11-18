@@ -238,3 +238,70 @@ test('only parent sessions subscribe to private parent PIN snapshots', async () 
   childSync.startSubscriptions();
   assert.equal(childSdk.listeners.some((entry) => entry.ref && entry.ref.path && entry.ref.path.endsWith('/private/parent_config')), false);
 });
+
+test('event center is stored in the existing child_state doc path and only a parent may write it', async () => {
+  const { sdk, writes } = fakeSdk();
+  const auth = { currentUser: userWithRole('parent-user', 'parent') };
+  const sync = createFamilySync({ sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+
+  const result = await sync.pushEventCenter({
+    combo: { on: true, bonus: 3 },
+    doubleDays: [{ id: 'd1', date: '2026-11-20', label: '생일' }],
+    secret: { date: '2026-11-18', title: '안마 5분', points: 4, opened: false, done: false },
+    stamps: { baseball: { n: 3, done: 1 }, reading: { n: 0, done: 0 } },
+    gacha: { step: 50, rewards: [{ id: 'g1', label: '아이스크림', weight: 30 }], draws: [] },
+    ignored: 'drop-me',
+  });
+  assert.equal(result.ok, true);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, 'households/main/child_state/event_center');
+  assert.equal(writes[0].data.updatedAt, 'server-time');
+  assert.equal(writes[0].data.combo.bonus, 3);
+  assert.equal(writes[0].data.stamps.baseball.n, 3);
+  assert.equal('ignored' in writes[0].data, false);
+
+  const childSdk = fakeSdk();
+  const childAuth = { currentUser: userWithRole('child-user', 'child') };
+  const childSync = createFamilySync({ sdk: childSdk.sdk, auth: childAuth, db: {} });
+  await childSync.applyAuthUser(childAuth.currentUser);
+  const deniedResult = await childSync.pushEventCenter({ combo: { on: false } });
+  assert.equal(deniedResult.ok, false);
+  assert.equal(childSdk.writes.length, 0);
+  assert.equal(deniedResult.denied[0].id, 'event_center');
+});
+
+test('bonus points are written as a parent-created log document that settlement can count', async () => {
+  const { sdk, writes } = fakeSdk();
+  const auth = { currentUser: userWithRole('parent-user', 'parent') };
+  const sync = createFamilySync({ sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+
+  const res = await sync.writeBonusLog({ date: '2026-11-18', at: '19:05', mid: 'combo_m-1_2026-11-18', title: '🔥 3일 연속!', points: 3 });
+  assert.equal(res.ok, true);
+  assert.equal(writes[0].path, 'households/main/logs/2026-11-18_combo_m-1_2026-11-18_m3');
+  assert.equal(writes[0].data.member, 'm3');
+  assert.equal(writes[0].data.earned, 3);
+  assert.equal(writes[0].data.settled, false);
+  assert.equal(writes[0].data.due, '');
+  assert.equal(res.id, '2026-11-18_combo_m-1_2026-11-18_m3');
+
+  const childSdk = fakeSdk();
+  const childAuth = { currentUser: userWithRole('child-user', 'child') };
+  const childSync = createFamilySync({ sdk: childSdk.sdk, auth: childAuth, db: {} });
+  await childSync.applyAuthUser(childAuth.currentUser);
+  const denied = await childSync.writeBonusLog({ date: '2026-11-18', mid: 'x', title: 'x', points: 3 });
+  assert.equal(denied.ok, false);
+  assert.equal(childSdk.writes.length, 0);
+});
+
+test('every signed-in role subscribes to the event center document', async () => {
+  for (const role of ['parent', 'child']) {
+    const probe = fakeSdk();
+    const auth = { currentUser: userWithRole(`${role}-user`, role) };
+    const sync = createFamilySync({ sdk: probe.sdk, auth, db: {} });
+    await sync.applyAuthUser(auth.currentUser);
+    sync.startSubscriptions();
+    assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/event_center'));
+  }
+});

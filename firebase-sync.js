@@ -23,6 +23,8 @@ export const FINAL_P = 200;              // 최종 진화 기준 경험치 (앱�
 export const FAMILY_ROOT = 'households/main';
 export const SUMMARY_PATH = `${FAMILY_ROOT}/stats/summary`;
 export const PARTNER_PATH = `${FAMILY_ROOT}/child_state/partner`;
+/** 🎪 이벤트 설정·상태 — 기존 규칙(child_state/{docId} = 가족 읽기 · 부모 쓰기)을 그대로 씁니다 */
+export const EVENT_CENTER_PATH = `${FAMILY_ROOT}/child_state/event_center`;
 export const PARENT_CONFIG_PATH = `${FAMILY_ROOT}/private/parent_config`;
 export const FAMILY_PATH = FAMILY_ROOT;
 /** Firestore 는 빈 필드명('')을 허용하지 않습니다. 공용 미션 몫(byMember[''])은 '_shared' 로 저장합니다. */
@@ -83,6 +85,24 @@ export function stageIndexOf(xp, mins) {
 /* ────────────────────────────── 문서 모양 ────────────────────────────── */
 /** 로그 문서 ID = `{date}_{mid}_{member}` — 같은 날 같은 미션(같은 완료자)의 중복 생성을 서버가 막습니다 */
 export const logDocId = (log) => `${log.date}_${log.mid}_${log.member || KID_ID}`;
+
+/**
+ * 🎪 이벤트 센터 문서 모양 — Firestore 는 undefined/빈 필드명을 거부하므로
+ * 화면이 보내온 값에서 허용한 키만 골라 JSON 으로 한 번 정리합니다.
+ */
+export function eventCenterDoc(data = {}) {
+  const pick = (v) => (v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : null);
+  const doc = {
+    combo: pick(data.combo),
+    doubleDays: Array.isArray(data.doubleDays) ? pick(data.doubleDays.slice(0, 40)) : [],
+    secret: pick(data.secret),
+    stamps: pick(data.stamps),
+    gacha: pick(data.gacha),
+  };
+  Object.keys(doc).forEach((k) => { if (doc[k] == null) delete doc[k]; });
+  if (doc.gacha && Array.isArray(doc.gacha.draws)) doc.gacha.draws = doc.gacha.draws.slice(-300);
+  return doc;
+}
 
 /** 미션 문서 — '정의'만 저장합니다. 오늘 완료 여부는 logs 에서 계산합니다. */
 export function missionDocOf(m, { stamp } = {}) {
@@ -567,6 +587,8 @@ export function createFamilySync(deps = {}) {
       push('pendingLogs'), fail('pendingLogs')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('stats/summary')), push('summary'), fail('summary')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/partner')), push('partner'), fail('partner')));
+    // 🎪 이벤트 센터 — 가족 모두 읽고(부모만 씀) 아이 화면에도 비밀 상자·도장판이 보입니다
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/event_center')), push('eventCenter'), fail('eventCenter')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
       unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
@@ -634,6 +656,55 @@ export function createFamilySync(deps = {}) {
     } catch (e) {
       if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e, { date: log.date, settled: log.settled === true }) };
+    }
+  }
+
+  /* ---- 🎪 이벤트 센터 저장 (부모 기기) ----
+     경로: households/main/child_state/event_center
+     규칙: match /households/{hh}/child_state/{docId} → read: isFamily(), write: isParent()
+     → 부모는 setDoc 가능, 아이 기기는 읽기만 (쓰기는 보내기 전에 막고 이유를 돌려줍니다) */
+  async function pushEventCenter(data = {}) {
+    const session = activeSession({ r: 'parent' });
+    if (!session || role !== 'parent') {
+      return { ok: false, cancelled: true, denied: [{ collection: 'child_state', id: 'event_center', reason: '이벤트 설정은 보호자 기기에서만 저장할 수 있어요' }] };
+    }
+    try {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      await sdk.setDoc(docRef(pathOf('child_state/event_center')), { ...eventCenterDoc(data), updatedAt: sdk.serverTimestamp() });
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: true };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  /* ---- 🎁 이벤트 보너스 포인트 → logs 문서 (정산에 함께 합산) ----
+     부모 create 는 규칙에서 모양 검사를 더하지 않습니다(아이 create 만 교차 검증).
+     문서 ID = {date}_{mid}_m3 → 같은 날 같은 보너스가 두 번 들어가지 않습니다. */
+  async function writeBonusLog({ date, at, mid, title, points } = {}) {
+    const session = activeSession();
+    if (!session || (session.role !== 'parent' && session.role !== 'child')) return { ok: false, cancelled: true, error: sessionChanged() };
+    if (session.role !== 'parent') {
+      return { ok: false, denied: [{ collection: 'logs', reason: '보너스 포인트는 보호자 기기에서 넣을 수 있어요' }] };
+    }
+    const day = isDateStr(date) ? date : kstTodayStr(nowFn());
+    const when = isHhmm(at) ? at : kstHhmm(nowFn());
+    const pts = intOf(points);
+    if (!pts) return { ok: false, error: { kind: 'validation', title: '포인트 없음', message: '보너스 포인트가 0이에요.' } };
+    const id = String(mid || `bonus_${day}`).slice(0, 60);
+    const payload = {
+      id, date: day, at: when, mid: id, title: String(title || '보너스').slice(0, 60),
+      member: kidId, base: pts, bonus: 0, earned: pts, due: '', goalMet: false,
+      settled: false, createdAt: sdk.serverTimestamp(), createdBy: session.uid,
+    };
+    try {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      await sdk.setDoc(docRef(pathOf(`logs/${logDocId(payload)}`)), payload);
+      return { ok: true, id: logDocId(payload) };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
     }
   }
 
@@ -1039,6 +1110,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
+    pushEventCenter, writeBonusLog,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
