@@ -3526,7 +3526,8 @@
     return (sc.byDate && sc.byDate[todayStr()]) || null;
   }
   function listOf(v) {
-    return String(v || '').split(/[,·\n\/]/).map((x) => x.trim()).filter(Boolean).slice(0, 8);
+    // 줄바꿈·쉼표로만 나눕니다 — '자율·자치활동'이나 '수육/쌈장' 같은 이름이 쪼개지지 않게
+    return String(v || '').split(/[,\n]/).map((x) => x.trim()).filter(Boolean).slice(0, 8);
   }
   function renderSchool() {
     const box = $('#schoolBody');
@@ -3586,6 +3587,8 @@
   function schoolSyncMaybe(force) {
     const fb = fbReady();
     if (!fb || !fb.on || fb.role !== 'parent' || !fb.sync || typeof fb.sync.pushSchool !== 'function') return;
+    // 첫 구독(서버 문서 도착) 전에는 올리지 않습니다 — 빈 값이 서버의 급식·시간표를 덮어쓰는 일을 막습니다
+    if (!fb.readyData) return;
     const payload = schoolDocPayload();
     const sig = schoolSigOf(payload);
     if (!force && sig === schoolSyncedSig) return;
@@ -5993,9 +5996,11 @@
       const doc = docs[0] || null;
       if (doc) applySchoolDoc(doc);
       else if (FB.role === 'parent' && !FB.schoolSeeded) {
-        FB.schoolSeeded = true;
         const sc = S.school || {};
-        if (String(sc.name || '').trim() || String(sc.cls || '').trim() || Object.keys(sc.byDate || {}).length) schoolSyncMaybe(true);
+        if (String(sc.name || '').trim() || String(sc.cls || '').trim() || Object.keys(sc.byDate || {}).length) {
+          FB.schoolSeeded = true;
+          schoolSyncMaybe(true);
+        }
       }
     }
     else fbMergeCollection(key, docs);
@@ -6003,6 +6008,7 @@
     if (!FB.readyData && [...FB.requiredData].every((required) => FB.received.has(required))) {
       FB.readyData = true;
       FB.snap = fbSnapOf();
+      schoolSyncMaybe();          // 서버 문서를 다 받은 뒤에만 이 기기의 학교 정보를 비교해 올립니다
     }
     fbRecalc();
   }

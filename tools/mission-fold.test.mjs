@@ -21,3 +21,9 @@ test('the mission card hint explains the completed fold', async () => {
   const html = await read('index.html');
   assert.match(html, /오늘 끝낸 미션은 목록에서 사라져 아래 <b>[^<]*<\/b> 접힘 줄로 내려가고, 펼치면 체크를 되돌릴 수 있습니다/);
 });
+
+test('the school sync never pushes before the first server snapshot arrives', async () => {
+  const app = await read('app.js');
+  assert.match(app, /if \(!fb\.readyData\) return;\s*\n\s*const payload = schoolDocPayload\(\);/);
+  assert.match(app, /schoolSyncMaybe\(\); {10}\/\/ 서버 문서를 다 받은 뒤에만/);
+});
