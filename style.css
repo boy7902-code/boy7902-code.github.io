@@ -1857,6 +1857,9 @@ html[data-quiet="1"] .standby * { animation: none !important; }
   .char-actions { flex-wrap: wrap; }
   .char-foot { justify-content: flex-start; }
   .evo-meter, .today-meter, .stat-cards { max-width: none; width: 100%; }
+  /* 요일 칸은 좁아 일정 제목이 '가…'로 잘리므로, 색 막대로만 표시합니다(태블릿과 같은 방식) */
+  .wd-ev { font-size: 0; height: 4px; padding: 0; border-left-width: 3px; border-radius: 2px; margin-top: 1px; min-width: 0; max-width: 100%; }
+  .wd-more { font-size: 8.5px; }
   /* 마감 시각 안내가 폰에서 잘리지 않게 두 줄로 접힙니다 */
   .chore-meta .due-chip { white-space: normal; line-height: 1.3; text-align: left; }
 }
