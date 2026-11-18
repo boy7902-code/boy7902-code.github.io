@@ -1,15 +1,14 @@
 /* ============================================================================
-   우리 가족 대시보드 — Firebase Auth + Firestore 연동 모듈 (초안 · 로컬 검증판)
+   우리 가족 대시보드 — Firebase Auth + Firestore 연동 모듈 (공개 사이트에서 실제 사용 중)
 
-   ⚠️ 이 파일은 `work/firebase-design-test/app-draft/` 안의 테스트 사본에서만 씁니다.
-      실제 공개 사이트(`work/family-dashboard/`)·Firebase 프로젝트·Apps Script 는
-      건드리지 않습니다.
+   · 공개 사이트(`work/family-dashboard/`)가 이 모듈로 family-bcfe4 프로젝트와 붙습니다.
+   · 에뮬레이터 테스트(`work/firebase-design-test/`)도 같은 파일을 그대로 씁니다.
+   · 이전에 쓰던 Apps Script 웹 앱 동기화는 이 모듈로 완전히 대체되었습니다.
 
    설계 원칙
    1) 브라우저 코드에는 관리자 비밀키(Service Account)도, 가족 이메일 목록도 넣지 않습니다.
       - 부모/아이 구분은 **서버 Custom Claims(`claims.role`)** 만 믿습니다.
-      - `firebaseConfig` 는 공개되어도 되는 값(apiKey·projectId 등)뿐이고,
-        이 초안에서는 에뮬레이터/플레이스홀더 값만 씁니다.
+      - `firebaseConfig` 는 공개되어도 되는 값(apiKey·projectId 등)뿐입니다.
    2) 앱(app.js)은 이 모듈에 **Firebase SDK 함수 묶음(sdk)** 을 넘겨 줍니다.
       - 브라우저: firebase-boot.js 가 gstatic CDN 의 모듈을 넘깁니다.
       - Node 테스트: `firebase/firestore` 모듈을 그대로 넘깁니다.
@@ -813,10 +812,20 @@ export function createFamilySync(deps = {}) {
     if (r !== 'parent') return { ok: false, reason: 'not-parent', written: 0, verified: { matched: 0, mismatched: [] } };
     if (!backup || !Array.isArray(backup.chunks)) return { ok: false, reason: 'bad-backup', written: 0, verified: { matched: 0, mismatched: [] } };
     let written = 0;
+    let currentPath = '';
     try {
       for (const chunk of backup.chunks) {
         for (const rec of chunk.records) {
-          await sdk.setDoc(docRef(rec.path), fromPlain(rec.data, sdk));
+          currentPath = rec.path;
+          const target = docRef(rec.path);
+          let data = fromPlain(rec.data, sdk);
+          // 이미 있는 문서를 덮어쓸 때는 '만든 시각'을 그대로 둡니다
+          // (shopping·letters 규칙이 createdBy·createdAt 불변을 요구하기 때문)
+          const existing = await sdk.getDoc(target);
+          const prev = snapExists(existing) ? existing.data() : null;
+          if (prev && prev.createdAt) data = { ...data, createdAt: prev.createdAt };
+          if (prev && prev.createdBy) data = { ...data, createdBy: prev.createdBy };
+          await sdk.setDoc(target, data);
           written += 1;
         }
       }
@@ -836,7 +845,7 @@ export function createFamilySync(deps = {}) {
       }
       return { ok: mismatched.length === 0, written, verified: { matched, mismatched } };
     } catch (e) {
-      return { ok: false, reason: 'write-failed', error: classifyFirestoreError(e), written, verified: { matched: 0, mismatched: [] } };
+      return { ok: false, reason: 'write-failed', error: { ...classifyFirestoreError(e), path: currentPath }, written, verified: { matched: 0, mismatched: [] } };
     }
   }
 

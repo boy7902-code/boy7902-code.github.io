@@ -695,9 +695,9 @@
   }
 
   /* ============================================================ 가족 동기화
-     태블릿·폰이 같은 기록을 보도록, 비공개 구글 시트(Apps Script 웹 앱)와
-     '변경분(patch)'만 주고받습니다. 동기화 주소와 가족 PIN 은 이 기기에만
-     저장되고, 공개 저장소 코드에는 들어가지 않습니다. */
+     태블릿·폰이 같은 기록을 보도록 '변경분(patch)'만 주고받습니다.
+     지금 기본 동기화는 Firebase(firebase-sync.js)이고, 이 localStorage 기반
+     경로는 로그인 전·오프라인일 때 화면이 그대로 동작하게 남겨 둔 옛 방식입니다. */
   const SYNCKEY = 'family-dashboard:sync';
   const SYNC_POLL_MS = 30000;          // 화면이 보이는 동안 30초마다 확인
   const SYNC_ARRAYS = ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses', 'wishlist'];
@@ -1107,6 +1107,7 @@
      PIN은 코드에 박지 않고 상태(state.parentPin)에서만 읽습니다 — 기본값 '0000'. */
   const PARENT_MS = 5 * 60 * 1000;      // 부모 모드 유지 시간 — 5분 뒤 자동 잠금
   let parentAt = 0;
+  let parentSynced = null;              // Firebase 쪽에서 채우는 후크(부모 모드 변화 → 설정 화면 갱신)
 
   const parentPinOf = () => (/^\d{4,12}$/.test(String(S.parentPin || '')) ? String(S.parentPin) : '0000');
   const parentUnlocked = () => !!parentAt && (Date.now() - parentAt) < PARENT_MS;
@@ -1116,6 +1117,7 @@
     const b = $('#parentBtn');
     const on = parentUnlocked();
     document.body.dataset.parent = on ? 'on' : 'off';
+    if (parentSynced) parentSynced();      // Firebase 준비 뒤에만 연결되는 후크(정산 버튼 표시)
     if (!b) return;
     b.dataset.state = on ? 'on' : 'off';
     b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">부모 모드</span>`;
@@ -3330,6 +3332,7 @@
   function openSettings() {
     renderSettings();
     fillSyncInputs();
+    fbSyncInfo();
     $('#settingsModal').hidden = false;
   }
 
@@ -4081,9 +4084,10 @@
   });
 
   /* =======================================================================
-     🔥 Firebase 연동 초안 (테스트 사본 전용)
+     🔥 Firebase 연동 (지금 공개 사이트에서 실제로 쓰는 가족 동기화)
      ───────────────────────────────────────────────────────────────────────
-     · 로그인: Google 계정을 redirect 방식으로 받습니다(모바일 권장).
+     · 로그인: Google 계정을 팝업으로 받습니다(서드파티 쿠키를 막는 브라우저에서도 동작).
+             팝업이 차단되거나 지원되지 않을 때만 redirect 로 넘어갑니다.
      · 권한: 서버 Custom Claims(role) 만 믿습니다. role 이 없는 계정이면
              즉시 signOut + 모든 onSnapshot 리스너 해제 + 안내 화면(차단).
      · 읽기: missions·members·events·wiki·links·pointUses·wishlist·shopping·letters
@@ -4091,13 +4095,14 @@
      · 쓰기: save() 가 만든 변경분(diff)만 firebase-sync.pushPatch 로 보냅니다.
              아이 기기는 오늘·본인 로그, 위시 추가/본인 것 삭제, 장보기·편지 등
              허용된 것만 보내고 나머지는 보내기 전에 막습니다.
+     · 정산: 보호자 기기 + 부모 모드가 열렸을 때만 '미정산 기록 정산' 버튼이 보입니다.
      · 계산: 포인트·경험치는 저장하지 않고 summary + 미정산 로그로 매번 계산.
      · 백업: role === 'parent' 일 때만. 아이 기기에서는 진입 자체를 막습니다.
      · 모듈이 없거나(오프라인) 로그인 전이면 기존 localStorage 모드로 그대로 동작합니다.
      ======================================================================= */
   const FB = {
     on: false, role: '', uid: '', sync: null, core: null,
-    blocked: false, busy: false, timer: null, snap: null,
+    blocked: false, busy: false, settling: false, timer: null, snap: null,
     summary: null, partner: {}, monthLogs: [], pendingLogs: [],
     notedDenied: '', pill: null, gate: null, card: null,
     deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
@@ -4110,9 +4115,7 @@
     el.className = 'fb-pill';
     el.id = 'fbPill';
     el.innerHTML = '<span class="fb-dot"></span><span class="fb-text">로컬 모드</span>';
-    el.addEventListener('click', () => {
-      if (!FB.on && window.FamilySyncBoot && window.FamilySyncBoot.signIn) window.FamilySyncBoot.signIn();
-    });
+    el.addEventListener('click', () => { if (!FB.on) fbSignIn(); });
     document.body.appendChild(el);
     FB.pill = el;
     return el;
@@ -4123,6 +4126,82 @@
     el.querySelector('.fb-text').textContent = text;
     el.title = kind === 'on' ? '가족 기록이 실시간으로 오갑니다' : '아직 Firebase 에 연결되지 않았어요 · 눌러서 로그인';
   }
+
+  /* ---- 로그인 / 로그아웃 / 설정 화면 상태 ---- */
+  function fbSignIn() {
+    const boot = window.FamilySyncBoot;
+    if (!boot || !boot.signIn) { toast('로그인 모듈을 아직 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.', 'coral', 3200); return; }
+    fbStatus('로그인 창을 여는 중…', 'busy');
+    Promise.resolve(boot.signIn()).then((r) => {
+      if (!r || r.cancelled) { fbStatus('로그인 전 · 눌러서 로그인', 'off'); return; }
+      if (r.redirected) fbStatus('로그인 확인 중…', 'busy');
+    }).catch((e) => {
+      const code = (e && e.code) || '';
+      fbStatus('로그인 전 · 눌러서 로그인', 'off');
+      if (code === 'auth/unauthorized-domain') toast('이 주소에서는 로그인할 수 없어요. 관리자에게 도메인 승인을 요청해 주세요.', 'coral', 5200);
+      else if (code === 'auth/blocked-by-popup-policy' || code === 'auth/popup-blocked') toast('팝업이 막혔어요. 브라우저의 팝업 차단을 꺼 주세요.', 'coral', 4600);
+      else toast('로그인하지 못했어요 (' + (code || '알 수 없는 오류') + ')', 'coral', 4600);
+    });
+  }
+  async function fbSignOut() {
+    const boot = window.FamilySyncBoot;
+    if (!boot || !boot.signOut) return;
+    try { await boot.signOut(); toast('로그아웃했어요 · 이 기기 기록만 따로 보입니다', '', 2800); }
+    catch (e) { toast('로그아웃하지 못했어요. 잠시 뒤 다시 시도해 주세요.', 'coral', 3400); }
+    fbStatus('로그인 전 · 눌러서 로그인', 'off');
+    fbSyncInfo();
+  }
+
+  /* ---- 설정 화면: 로그인 상태 문구 + (보호자·부모 모드) 미정산 정산 버튼 ---- */
+  function fbSyncInfo() {
+    const n = (FB.pendingLogs || []).length;
+    const note = $('#fbSyncNote');
+    if (note) {
+      note.textContent = !FB.on
+        ? (FB.blocked ? '이 계정에는 가족 권한(role)이 없어 읽기를 막았어요 · 보호자에게 이 계정의 가족 권한을 요청해 주세요.' : '아직 Firebase에 연결되지 않았어요 · 로그인하면 가족 기록을 함께 씁니다.')
+        : (FB.role === 'parent' ? `보호자 기기로 연결됨 · 미정산 기록 ${n}건` : `아이 기기로 연결됨 · 정산은 보호자만 할 수 있어요 (미정산 ${n}건)`);
+    }
+    const inBtn = $('#fbSignInBtn');
+    const outBtn = $('#fbSignOutBtn');
+    if (inBtn) inBtn.hidden = !!FB.on;
+    if (outBtn) outBtn.hidden = !FB.on;
+
+    const canSettle = FB.on && FB.role === 'parent' && parentUnlocked();
+    const row = $('#fbSettleRow');
+    const btn = $('#fbSettleBtn');
+    if (row) row.hidden = !canSettle;
+    if (btn) {
+      btn.disabled = !n || !!FB.settling;
+      btn.textContent = FB.settling ? '정산하는 중…' : (n > 0 ? `✅ 미정산 기록 ${n}건 정산하기` : '✅ 정산할 기록이 없어요');
+    }
+    const sn = $('#fbSettleNote');
+    if (sn) {
+      sn.hidden = !canSettle;
+      sn.textContent = canSettle
+        ? (n > 0 ? '정산하면 아이 화면의 포인트·경험치가 확정되고, 정산된 기록은 아이가 취소할 수 없어요.' : '지금은 정산할 기록이 없어요. 아이가 미션을 끝내면 이 버튼이 살아납니다.')
+        : '';
+    }
+  }
+
+  async function fbSettleNow() {
+    if (!FB.on || FB.role !== 'parent' || !FB.sync || !FB.sync.settleUnsettled) return;
+    if (FB.settling) return;
+    const n = (FB.pendingLogs || []).length;
+    if (!n) { toast('정산할 기록이 없어요', '', 2200); return; }
+    FB.settling = true; fbSyncInfo();
+    try {
+      const r = await FB.sync.settleUnsettled({ by: FB.uid });
+      if (r && r.ok) toast(`✅ ${r.count}건 정산 완료 · +${r.total}P 확정`, 'mint', 3600);
+      else toast('정산하지 못했어요 — ' + ((r && r.message) || '잠시 뒤 다시 시도해 주세요.'), 'coral', 4600);
+    } catch (e) {
+      toast('정산하지 못했어요 — 잠시 뒤 다시 시도해 주세요.', 'coral', 4600);
+    } finally { FB.settling = false; fbSyncInfo(); }
+  }
+
+  parentSynced = fbSyncInfo;              // 부모 모드가 열리고 잠길 때 설정 화면을 다시 그립니다
+  if ($('#fbSignInBtn')) $('#fbSignInBtn').addEventListener('click', fbSignIn);
+  if ($('#fbSignOutBtn')) $('#fbSignOutBtn').addEventListener('click', fbSignOut);
+  if ($('#fbSettleBtn')) $('#fbSettleBtn').addEventListener('click', fbSettleNow);
 
   /* ---- 차단/안내 화면 ---- */
   function fbGate(show, info = {}) {
@@ -4148,7 +4227,7 @@
     const box = el.querySelector('.fb-actions');
     box.innerHTML = '';
     const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn; box.appendChild(b); };
-    if (window.FamilySyncBoot && window.FamilySyncBoot.signIn) mk('다른 계정으로 로그인', 'primary', () => window.FamilySyncBoot.signIn());
+    if (window.FamilySyncBoot && window.FamilySyncBoot.signIn) mk('다른 계정으로 로그인', 'primary', () => fbSignIn());
     mk('이 기기만 쓰기', 'ghost', () => { FB.blocked = false; fbGate(false); fbStatus('로컬 모드', 'off'); toast('이 기기 기록만 따로 쓰고 있어요', '', 2600); });
     el.hidden = false;
   }
@@ -4239,6 +4318,7 @@
     // 서버에서 받은 값은 다시 보내지 않습니다(에코 방지) — localStorage 에만 조용히 반영
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
     FB.snap = fbSnapOf();
+    fbSyncInfo();
     renderMissions();
     if (typeof renderLog === 'function') renderLog();
     if (typeof renderDex === 'function') renderDex();
@@ -4327,7 +4407,7 @@
     window.addEventListener('family-sync-error', (e) => fbOnError(e.detail));
     fbStatus('로그인 확인 중…', 'busy');
     boot.sync.watchAuthState(async (user) => {
-      if (!user) { if (FB.blocked) return; fbStatus('로그인 전 · 눌러서 로그인', 'off'); return; }
+      if (!user) { if (FB.blocked) return; fbStatus('로그인 전 · 눌러서 로그인', 'off'); fbSyncInfo(); return; }
       const r = await boot.sync.applyAuthUser(user);
       if (r.state === 'ready') {
         FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
@@ -4340,7 +4420,18 @@
         fbOnError(r);
       }
     });
-    if (boot.sync.getRedirectResult) boot.sync.getRedirectResult().catch(() => {});
+    /* redirect 로 돌아온 경우: 결과를 조용히 삼키지 않고 이유를 보여 줍니다 */
+    if (boot.sync.getRedirectResult) {
+      boot.sync.getRedirectResult().then((r) => {
+        if (r && r.user) fbStatus('로그인 확인 중…', 'busy');
+      }).catch((e) => {
+        const code = (e && e.code) || '';
+        fbStatus('로그인 전 · 눌러서 로그인', 'off');
+        if (code && code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+          toast('로그인을 마무리하지 못했어요 (' + code + ') · 다시 시도해 주세요.', 'coral', 5200);
+        }
+      });
+    }
     return true;
   }
   function fbBootWait(tries = 0) {

@@ -13,7 +13,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="style.css?v=39" />
-<!-- 🔥 테스트 사본 전용: Firebase 공개 설정(에뮬레이터 플레이스홀더) — 비밀키·이메일 없음 -->
+<!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
 <body>
@@ -483,20 +483,17 @@
     </div>
 
     <div class="settings-section" id="syncSection">
-      <h4>☁️ 가족 실시간 동기화</h4>
-      <p class="settings-note">태블릿과 폰이 <b>같은 기록</b>을 함께 봅니다. 아래에 <b>동기화 주소</b>와 <b>가족 PIN</b>을 한 번만 넣으면 그 기기에서는 계속 자동으로 맞춰져요. 주소와 PIN은 이 기기에만 저장되고, 공개된 앱 코드에는 들어가지 않습니다.</p>
-      <label class="field">동기화 주소 (웹 앱 URL)
-        <input type="url" id="syncUrlInput" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" />
-      </label>
-      <label class="field">가족 PIN
-        <input type="password" id="syncPinInput" inputmode="numeric" placeholder="숫자 6자리" autocomplete="off" />
-      </label>
+      <h4>☁️ 가족 실시간 동기화 (Firebase)</h4>
+      <p class="settings-note">태블릿과 폰이 <b>같은 기록</b>을 함께 봅니다. Google 계정으로 한 번만 로그인하면 그 기기에서는 계속 자동으로 맞춰져요. 보호자 계정은 모든 기록을 다루고, 아이 계정은 오늘의 미션·장보기·편지만 다룹니다.</p>
+      <p class="settings-note" id="fbSyncNote">로그인 상태를 확인하는 중이에요…</p>
       <div class="row wrap" style="margin-top:10px">
-        <button class="btn sm primary" id="syncConnectBtn">연결하고 동기화</button>
-        <button class="btn sm" id="syncNowBtn">지금 동기화</button>
-        <button class="btn sm ghost" id="syncOffBtn" style="color:var(--coral)">연결 해제</button>
+        <button class="btn sm primary" id="fbSignInBtn">Google 계정으로 로그인</button>
+        <button class="btn sm ghost" id="fbSignOutBtn">로그아웃</button>
       </div>
-      <p class="settings-note" id="syncNote">아직 연결하지 않았어요. 지금은 이 기기에만 기록됩니다.</p>
+      <div class="row wrap" id="fbSettleRow" style="margin-top:12px" hidden>
+        <button class="btn sm" id="fbSettleBtn">✅ 미정산 기록 정산하기</button>
+      </div>
+      <p class="settings-note" id="fbSettleNote" hidden></p>
     </div>
 
     <div class="settings-section">

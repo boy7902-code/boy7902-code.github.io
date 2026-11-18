@@ -249,7 +249,9 @@ service cloud.firestore {
     match /households/{hh}/shopping/{itemId} {
       allow read: if isFamily();
       allow create: if isFamily() && shoppingCreate();
-      allow update, delete: if isParent()
+      allow update: if (isParent() || (isFamily() && resource.data.createdBy == request.auth.uid))
+        && shoppingUpdate();
+      allow delete: if isParent()
         || (isFamily() && resource.data.createdBy == request.auth.uid);
     }
 
@@ -264,10 +266,28 @@ service cloud.firestore {
         && d.createdAt == request.time;
     }
 
+    /* 수정 검증: 값·길이 규칙은 그대로, 만든 사람(createdBy)·만든 시각(createdAt)·id 는
+       바꿀 수 없습니다(다른 사람 항목을 가로채거나 기록을 위조하는 길을 막습니다).
+       · 예전 문서에 그 필드가 아예 없을 수 있어, '있을 때만 같아야 한다'로 씁니다. */
+    function shoppingUpdate() {
+      let d = request.resource.data;      // 수정 뒤 문서
+      let p = resource.data;              // 수정 전 문서
+      return d.keys().hasAll(['id', 'cat', 'text', 'done', 'createdBy', 'createdAt'])
+        && d.keys().hasOnly(['id', 'cat', 'text', 'done', 'createdBy', 'createdAt'])
+        && d.cat in ['buy', 'fridge']
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 80
+        && d.done is bool
+        && (!p.keys().hasAll(['id']) || d.id == p.id)
+        && (!p.keys().hasAll(['createdBy']) || d.createdBy == p.createdBy)
+        && (!p.keys().hasAll(['createdAt']) || d.createdAt == p.createdAt);
+    }
+
     match /households/{hh}/letters/{letterId} {
       allow read: if isFamily();
       allow create: if isFamily() && letterCreate();
-      allow update, delete: if isParent()
+      allow update: if (isParent() || (isFamily() && resource.data.createdBy == request.auth.uid))
+        && letterUpdate();
+      allow delete: if isParent()
         || (isFamily() && resource.data.createdBy == request.auth.uid);
     }
 
@@ -281,6 +301,21 @@ service cloud.firestore {
         && d.when is string && d.when.size() <= 20
         && d.createdBy == request.auth.uid
         && d.createdAt == request.time;
+    }
+
+    /* 수정 검증: 그림·작성자·시각의 길이 한도를 그대로 지키고,
+       만든 사람·만든 시각·id 는 바꿀 수 없습니다. */
+    function letterUpdate() {
+      let d = request.resource.data;
+      let p = resource.data;
+      return d.keys().hasAll(['id', 'img', 'author', 'when', 'createdBy', 'createdAt'])
+        && d.keys().hasOnly(['id', 'img', 'author', 'when', 'createdBy', 'createdAt'])
+        && d.img is string && d.img.size() > 32 && d.img.size() <= 700000
+        && d.author is string && d.author.size() <= 20
+        && d.when is string && d.when.size() <= 20
+        && (!p.keys().hasAll(['id']) || d.id == p.id)
+        && (!p.keys().hasAll(['createdBy']) || d.createdBy == p.createdBy)
+        && (!p.keys().hasAll(['createdAt']) || d.createdAt == p.createdAt);
     }
   }
 }
