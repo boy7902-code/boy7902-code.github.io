@@ -6127,9 +6127,16 @@
     if (boot.sync.getRedirectResult) {
       boot.sync.getRedirectResult().then((r) => {
         if (r && r.user) fbStatus('로그인 확인 중…', 'busy');
+        /* 캘린더 연결이 redirect 로 다녀온 경우: 돌아온 결과에서 토큰을 이어받아 바로 읽습니다 */
+        const cal = boot.calendar;
+        if (cal && typeof cal.consumeRedirect === 'function') {
+          const got = cal.consumeRedirect(r);
+          if (got) { GCAL.on = true; GCAL.at = 0; gcalLoad({ force: true }); }
+        }
       }).catch((e) => {
         const code = (e && e.code) || '';
         fbStatus('로그인 전 · 눌러서 로그인', 'off');
+        if (boot.calendar && typeof boot.calendar.consumeRedirect === 'function') boot.calendar.consumeRedirect(null);
         if (code && code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
           toast('로그인을 마무리하지 못했어요 (' + code + ') · 다시 시도해 주세요.', 'coral', 5200);
         }

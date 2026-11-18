@@ -47,10 +47,16 @@ const QUIET_CODES = ['auth/popup-closed-by-user'];
    액세스 토큰은 1시간이면 만료되므로, 화면은 만료를 확인해 스스로 다시 연결을 시도합니다. */
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 const TOKEN_MARGIN_MS = 60 * 1000;
+const REDIRECT_FLAG = 'family-dashboard:gcal-redirect';   // redirect 로 다녀오는 중인지 표시(이 탭에만)
 
 function tokenFromCredential(cred) {
   const resp = (cred && cred._tokenResponse) || {};
-  const token = (cred && cred.accessToken) || resp.oauthAccessToken || '';
+  /* modular SDK 의 공식 경로를 먼저 확인합니다 — 팝업·redirect 결과 모두 여기로 옵니다. */
+  let oauthCred = null;
+  try {
+    oauthCred = cred ? authSdk.GoogleAuthProvider.credentialFromResult(cred) : null;
+  } catch (e) { oauthCred = null; }
+  const token = (oauthCred && oauthCred.accessToken) || (cred && cred.accessToken) || resp.oauthAccessToken || '';
   const seconds = Number(resp.oauthExpireTime || (cred && cred.expiresIn) || 0);
   const expiresAt = Date.now() + (seconds > 0 ? seconds * 1000 : 55 * 60 * 1000);
   return token ? { token, expiresAt: expiresAt - TOKEN_MARGIN_MS } : null;
@@ -88,17 +94,34 @@ const calendar = {
     this.token = ''; this.expiresAt = 0;
     try { sessionStorage.removeItem('family-dashboard:gcal-token'); } catch (e) { /* noop */ }
   },
+  /** redirect 로 돌아왔을 때 getRedirectResult 결과에서 '일정 읽기' 토큰을 이어받습니다. */
+  consumeRedirect(cred) {
+    let pending = false;
+    try { pending = sessionStorage.getItem(REDIRECT_FLAG) === '1'; } catch (e) { /* noop */ }
+    if (!pending) return null;
+    try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) { /* noop */ }
+    const info = tokenFromCredential(cred);
+    return info ? this.adopt(info) : null;
+  },
   /** 사용자가 누를 때만 실행 — Google 팝업에서 '일정 읽기'를 허용받아 토큰을 받습니다. */
   async connect() {
     if (!auth.currentUser) return { ok: false, reason: 'signed-out' };
     let cred;
     try {
-      cred = await authSdk.reauthenticateWithPopup(auth, calendarProvider());
+      /* reauthenticate 계열의 첫 인자는 auth 가 아니라 로그인한 사용자 객체입니다. */
+      cred = await authSdk.reauthenticateWithPopup(auth.currentUser, calendarProvider());
     } catch (e) {
       const code = (e && e.code) || '';
       if (QUIET_CODES.includes(code)) return { ok: false, reason: 'cancelled', code };
       if (REDIRECT_CODES.includes(code)) {
-        await authSdk.signInWithRedirect(auth, calendarProvider());
+        if (!auth.currentUser) return { ok: false, reason: 'signed-out' };
+        try {
+          try { sessionStorage.setItem(REDIRECT_FLAG, '1'); } catch (e2) { /* 저장 못 하면 돌아온 뒤 다시 눌러야 합니다 */ }
+          await authSdk.reauthenticateWithRedirect(auth.currentUser, calendarProvider());
+        } catch (e2) {
+          try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e3) { /* noop */ }
+          return { ok: false, reason: 'error', code: (e2 && e2.code) || code, message: (e2 && e2.message) || '' };
+        }
         return { ok: false, reason: 'redirected', code };
       }
       return { ok: false, reason: 'error', code, message: (e && e.message) || '' };
