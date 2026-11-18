@@ -830,8 +830,9 @@ html[data-theme="dark"] .wish-item.bought .wish-state { color: #c3aaff; }
 .letter-tools { display: flex; gap: 2px; padding: 0 4px 6px; }
 
 /* ============================ 위키 ============================ */
-#wikiList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 22px; align-items: start; }
-.wiki-col { display: flex; flex-direction: column; min-width: 0; }
+#wikiList { columns: 2; column-gap: 22px; }   /* 항목이 한 묶음뿐이어도 두 단으로 채워집니다 */
+.wiki-col { display: block; min-width: 0; }
+.wiki-item { break-inside: avoid; }
 .wiki-item { margin-bottom: 6px; }
 .wiki-group { font-size: 11px; font-weight: 800; color: var(--text-3); letter-spacing: .04em; margin: 6px 0 2px; }
 .wiki-item {
@@ -1009,7 +1010,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .brand { order: 1; }
   .top-actions { order: 3; }
   .timer-shell { flex-direction: column; }
-  #wikiList { grid-template-columns: 1fr; }
+  #wikiList { columns: 1; }
 }
 /* ============================ 월간·연간 달성 현황 ============================ */
 .hist-entry {
