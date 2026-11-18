@@ -3241,13 +3241,13 @@ html[data-theme="dark"] .mvp-kpi { background: rgba(255, 255, 255, .08); }
   #tabLetters #letterCount { font-size: 10px; white-space: nowrap; }
   #tabLetters .gallery {
     grid-area: gallery; display: flex; flex-wrap: nowrap; gap: 8px;
-    overflow-x: auto; overflow-y: hidden; align-items: flex-start; max-height: 92px;
+    overflow-x: auto; overflow-y: hidden; align-items: flex-start; height: 92px; max-height: 92px;
   }
   #tabLetters .letter-card { flex: 0 0 152px; padding: 5px; gap: 3px; }
   #tabLetters .letter-card img { height: 46px; object-fit: cover; border-radius: 6px; }
   #tabLetters .letter-meta { font-size: 10px; }
   #tabLetters .letter-tools { display: none; }
-  #tabLetters .gallery .shop-empty { display: flex; align-items: center; }
+  #tabLetters .gallery .shop-empty { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 0 4px; font-size: 11.5px; }
 
   /* ---- 탭 화면: 포켓몬 놀이방 ---- */
   #tabPlay { flex: 1 1 auto; min-height: 0; }
