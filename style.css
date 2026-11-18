@@ -772,7 +772,7 @@ html[data-theme="dark"] .wish-item.bought .wish-state { color: #c3aaff; }
 .wish-bar { height: 7px; border-radius: 999px; background: rgba(120,130,160,.18); overflow: hidden; }
 .wish-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--amber), #ffd166); transition: width .6s cubic-bezier(.22,1,.36,1); }
 .wish-item.now .wish-bar > i { background: linear-gradient(90deg, var(--mint), #7ee6c6); }
-.wish-tools { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
+.wish-tools { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .wish-tools .btn { min-height: 26px; padding: 0 6px; font-size: 11px; }
 .wish-gift { white-space: nowrap; }
 
