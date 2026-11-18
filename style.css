@@ -1011,7 +1011,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .brand { order: 1; }
   .top-actions { order: 3; }
   .timer-shell { flex-direction: column; }
-  #wikiList { columns: 1; }
+  #wikiList { column-count: auto; column-width: auto; }   /* columns:1 은 일부 브라우저에서 2단으로 남아 오른쪽 단이 잘리므로 auto로 해제 */
 }
 /* ============================ 월간·연간 달성 현황 ============================ */
 .hist-entry {
@@ -1267,7 +1267,7 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .free-day-banner .fd-title { font-size: 11.5px; }
   .free-day-banner .fd-sub { font-size: 9.5px; }
   .card.wiki .card-body { overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
-  #wikiList { columns: 1; }
+  #wikiList { column-count: auto; column-width: auto; }   /* columns:1 은 일부 브라우저에서 2단으로 남아 오른쪽 단이 잘리므로 auto로 해제 */
   .wiki-group { font-size: 9px; margin: 3px 0 1px; }
   .wiki-item { padding: 4px 6px; gap: 5px; margin-bottom: 3px; border-radius: 9px; }
   .wiki-key { font-size: 10.5px; flex-basis: 34%; min-width: 0; }
