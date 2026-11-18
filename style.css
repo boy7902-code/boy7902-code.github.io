@@ -1822,7 +1822,7 @@ html[data-quiet="1"] .standby * { animation: none !important; }
   /* 헤더: 브랜드·시계는 첫 줄, 버튼 줄은 폭을 넘으면 두 줄로 접힙니다 */
   .top-actions { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
   .top-actions .btn { min-height: 34px; }
-  .top-actions .btn.icon { width: 36px; min-width: 36px; font-size: 14px; }
+  .top-actions .btn.icon { width: 36px; min-width: 36px; font-size: 14px; order: 2; }   /* 아이콘 3개는 한데 묶여 아랫줄로 */
   .standby-btn, .parent-badge, .sync-badge { padding: 0 10px; min-height: 34px; font-size: 11.5px; gap: 4px; }
 
   /* 날씨: 아이콘·기온은 윗줄, 칩은 아래 전체 폭 — 칩이 좁은 칸에서 뭉개지지 않게 */
