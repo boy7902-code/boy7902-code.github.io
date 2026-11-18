@@ -277,7 +277,14 @@
       ]);
       if (wr.status !== 'fulfilled') throw new Error('weather request failed');
       const w = wr.value;
-      const air = ar.status === 'fulfilled' ? ar.value.current : null;
+      let air = ar.status === 'fulfilled' ? ar.value.current : null;
+      // 미세먼지 API가 첫 호출에서 가끔 늦거나 빈 응답을 주므로 한 번 더 시도
+      if (!air) {
+        try {
+          const r2 = await fetch(aURL, { cache: 'no-store' });
+          if (r2.ok) air = (await r2.json()).current;
+        } catch (e2) { /* noop */ }
+      }
       W = {
         at: Date.now(),
         locName: loc.name,
