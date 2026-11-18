@@ -49,6 +49,70 @@ const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 const TOKEN_MARGIN_MS = 60 * 1000;
 const REDIRECT_FLAG = 'family-dashboard:gcal-redirect';   // redirect 로 다녀오는 중인지 표시(이 탭에만)
 
+/* ── 같은 창 OAuth 2.0(직접 연결) ──────────────────────────────────────────
+   Firebase Auth 의 팝업(reauthenticateWithPopup)은 모바일 브라우저(삼성 인터넷·모바일 크롬)에서
+   Google 로그인·경고·동의 화면을 거치는 동안 window.opener 가 끊겨 auth/popup-closed-by-user 로
+   실패합니다. 그래서 캘린더는 Firebase Auth 를 거치지 않고 Google OAuth 2.0 으로 '같은 창'에서
+   이동했다 돌아오는 방식(response_type=token)을 씁니다.
+   - 돌아온 주소의 #access_token=… 에서 바로 읽고, 즉시 history.replaceState 로 해시를 지웁니다.
+   - state 는 sessionStorage 에 두었다가 대조합니다(CSRF 방지).
+   * redirect_uri 는 GCP 콘솔에 등록된 값과 글자까지 같아야 합니다. */
+const GCAL_CLIENT_ID = '190598784130-pbgif2prtfa5lms78s5rf3hdqgq2q06k.apps.googleusercontent.com';
+const GCAL_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+const OAUTH_STATE_KEY = 'family-dashboard:gcal-oauth-state';
+
+/* 승인된 리디렉션 URI 는 이 주소 하나뿐입니다 — 다른 주소(localhost 개발 등)에서는 예전 팝업 방식을 씁니다. */
+function gcalRedirectUri() {
+  const origin = window.location.origin || '';
+  return origin === 'https://boy7902-code.github.io' ? 'https://boy7902-code.github.io/' : '';
+}
+
+function oauthState() {
+  try {
+    const a = new Uint8Array(16);
+    window.crypto.getRandomValues(a);
+    return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    return 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+}
+
+/* 인가 화면에서 돌아온 주소의 해시를 읽습니다. 돌아온 흔적이 없으면 null.
+   #sync= 같은 예전 해시와 섞이지 않도록 access_token=/error= 가 있을 때만 처리합니다. */
+function parseOAuthHash() {
+  let raw = '';
+  try { raw = window.location.hash || ''; } catch (e) { return null; }
+  if (raw.length < 2) return null;
+  const body = raw.slice(1);
+  if (!/(^|&)(access_token|error)=/.test(body)) return null;
+  const params = new URLSearchParams(body);
+  const token = params.get('access_token') || '';
+  const error = params.get('error') || '';
+  const state = params.get('state') || '';
+  const expiresIn = Number(params.get('expires_in') || 0);
+  let savedState = '';
+  try {
+    savedState = sessionStorage.getItem(OAUTH_STATE_KEY) || '';
+    sessionStorage.removeItem(OAUTH_STATE_KEY);
+  } catch (e) { /* 저장소를 못 쓰면 state 대조만 건너뜁니다 */ }
+  /* 주소창에서 토큰을 곧바로 지웁니다 — 기록·공유·스크린샷에 남지 않도록 */
+  try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) { /* noop */ }
+  if (savedState && state && savedState !== state) {
+    return { ok: false, reason: 'error', code: 'oauth/state-mismatch', message: '요청과 돌아온 응답의 state 가 다릅니다' };
+  }
+  if (error) {
+    return {
+      ok: false,
+      reason: error === 'access_denied' ? 'cancelled' : 'error',
+      code: 'oauth/' + error,
+      message: params.get('error_description') || '',
+    };
+  }
+  if (!token) return { ok: false, reason: 'no-token', code: 'oauth/no-token', message: '돌아온 주소에 access token 이 없습니다' };
+  const seconds = expiresIn > 0 ? expiresIn : 55 * 60;
+  return { ok: true, token, expiresAt: Date.now() + seconds * 1000 - TOKEN_MARGIN_MS };
+}
+
 /* 연결 실패를 화면이 구분해 안내할 수 있도록 사유를 나눕니다.
    - CAL_CANCEL_CODES: 사용자가 창을 닫았거나 Google 이 허용을 끝내지 않은 경우
    - CAL_POPUP_FALLBACK_CODES: 이 기기에서 팝업 자체가 안 되는 경우(막힘·미지원) → 이동(redirect) 방식으로 안내 */
@@ -77,6 +141,8 @@ function calendarProvider() {
 
 const calendar = {
   token: '', expiresAt: 0, redirectFailed: false,
+  direct: !!gcalRedirectUri(),      // true 면 팝업 없이 같은 창 OAuth 로 연결합니다
+  oauthResult: null,                // 돌아온 결과 안내(화면이 한 번 가져갑니다)
   current() {
     return (this.token && this.expiresAt > Date.now()) ? { token: this.token, expiresAt: this.expiresAt } : null;
   },
@@ -111,6 +177,45 @@ const calendar = {
     if (!info) { this.redirectFailed = true; return null; }
     return this.adopt(info);
   },
+  /** 같은 창 OAuth 로 돌아왔을 때 토큰을 이어받고, 결과를 화면이 볼 수 있게 남깁니다. */
+  captureOAuthReturn() {
+    const r = parseOAuthHash();
+    if (!r) return null;
+    if (r.ok) this.adopt({ token: r.token, expiresAt: r.expiresAt });
+    this.oauthResult = r;
+    return r;
+  },
+  /** 화면이 결과 안내를 한 번만 가져가도록 비웁니다. */
+  takeOAuthResult() {
+    const r = this.oauthResult;
+    this.oauthResult = null;
+    return r;
+  },
+  /** 팝업 없이 '같은 창'에서 Google 인가 화면으로 이동합니다(모바일에서 끊기지 않음). */
+  connectDirect() {
+    if (!auth.currentUser) return { ok: false, reason: 'signed-out', code: 'auth/no-current-user' };
+    const redirectUri = gcalRedirectUri();
+    const state = oauthState();
+    try { sessionStorage.setItem(OAUTH_STATE_KEY, state); } catch (e) { /* 저장 못 하면 state 대조만 건너뜁니다 */ }
+    const params = new URLSearchParams({
+      client_id: GCAL_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'token',
+      scope: CALENDAR_SCOPE,
+      include_granted_scopes: 'true',
+      prompt: 'consent',
+      state,
+    });
+    const email = (auth.currentUser && auth.currentUser.email) || '';
+    if (email) params.set('login_hint', email);
+    try {
+      window.location.assign(GCAL_AUTH_ENDPOINT + '?' + params.toString());
+    } catch (e) {
+      try { sessionStorage.removeItem(OAUTH_STATE_KEY); } catch (e2) { /* noop */ }
+      return { ok: false, reason: 'error', code: 'oauth/navigate-failed', message: (e && e.message) || '' };
+    }
+    return { ok: false, reason: 'redirected', code: 'oauth/redirect' };
+  },
   /** 같은 탭에서 Google 화면으로 이동했다 돌아오는 방식 — 팝업이 막히는 기기용 폴백입니다. */
   async connectByRedirect(cause) {
     if (!auth.currentUser) return { ok: false, reason: 'signed-out', code: 'auth/no-current-user', cause: cause || '' };
@@ -127,6 +232,8 @@ const calendar = {
      connect({ redirect: true }) 로 부르면 처음부터 이동(redirect) 방식으로 연결합니다. */
   async connect(options) {
     const opts = options || {};
+    /* 이 주소에서는 같은 창 직접 OAuth — 팝업을 아예 쓰지 않습니다. */
+    if (gcalRedirectUri()) return this.connectDirect();
     if (opts.redirect === true) return this.connectByRedirect('requested');
     if (!auth.currentUser) return { ok: false, reason: 'signed-out', code: 'auth/no-current-user' };
     let cred;
@@ -152,6 +259,8 @@ const calendar = {
   },
 };
 calendar.restore();
+/* 같은 창 OAuth 로 돌아왔다면 여기서 토큰을 이어받습니다(주소창 해시는 즉시 지움). */
+calendar.captureOAuthReturn();
 
 async function signInWithGoogle() {
   const provider = new authSdk.GoogleAuthProvider();

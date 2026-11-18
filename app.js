@@ -1728,9 +1728,10 @@
     }
     if (GCAL.connecting) return;
     const retryRedirect = opts.redirect === true || (!!GCAL.redirectNextAt && Date.now() - GCAL.redirectNextAt < GCAL_REDIRECT_WINDOW_MS);
+    const direct = !!(boot.calendar && boot.calendar.direct);
     GCAL.connecting = true;
     try {
-      gcalNote(retryRedirect ? 'Google 화면으로 이동합니다 · ‘일정 읽기’를 허용한 뒤 돌아와 주세요…' : 'Google 창에서 ‘일정 읽기’를 허용해 주세요…');
+      gcalNote((direct || retryRedirect) ? 'Google 화면으로 이동합니다 · ‘일정 읽기’를 허용한 뒤 돌아와 주세요…' : 'Google 창에서 ‘일정 읽기’를 허용해 주세요…');
       const r = await (retryRedirect ? boot.calendar.connect({ redirect: true }) : boot.calendar.connect())
         .catch((e) => ({ ok: false, reason: 'error', code: 'exception', message: String((e && e.message) || '') }));
       if (r && r.ok) {
@@ -6226,8 +6227,22 @@
     if (!boot || !boot.sync || !window.FamilySync) return false;
     FB.sync = boot.sync;
     FB.core = window.FamilySync;
-    // 📅 이 탭에 아직 살아 있는 구글 캘린더 토큰이 있으면 일정을 조용히 다시 읽습니다
-    if (boot.calendar && typeof boot.calendar.current === 'function' && boot.calendar.current()) {
+    // 📅 같은 창 OAuth(Google 인가 화면)로 돌아온 경우: 결과를 바로 안내하고 일정을 읽습니다
+    const calReturn = (boot.calendar && typeof boot.calendar.takeOAuthResult === 'function') ? boot.calendar.takeOAuthResult() : null;
+    if (calReturn) {
+      if (calReturn.ok) {
+        GCAL.on = true; GCAL.at = 0;
+        gcalLoad({ force: true });
+        toast('📅 구글 캘린더 연결됨', 'mint', 3200);
+      } else if (calReturn.reason === 'cancelled') {
+        gcalNote('연결을 취소했어요 · 필요하면 다시 눌러 주세요');
+      } else if (calReturn.reason === 'no-token') {
+        gcalNote('Google에서 ‘일정 읽기’ 허용이 끝나지 않았어요 · 다시 눌러 주세요', 'warn');
+      } else {
+        gcalNote('구글 캘린더를 연결하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'warn');
+      }
+    } else if (boot.calendar && typeof boot.calendar.current === 'function' && boot.calendar.current()) {
+      // 📅 이 탭에 아직 살아 있는 구글 캘린더 토큰이 있으면 일정을 조용히 다시 읽습니다
       GCAL.on = true;
       gcalLoad();
     }
