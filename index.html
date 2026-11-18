@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=49" />
+<link rel="stylesheet" href="style.css?v=50" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
@@ -53,7 +53,7 @@
 
     <div class="top-actions">
       <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
-      <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 모드 잠김 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 모드</span></button>
+      <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 잠금 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 잠금</span></button>
       <button class="btn sync-badge parent-only" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
       <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
       <button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button>
@@ -61,9 +61,22 @@
     </div>
   </header>
 
-  <main class="grid">
+  <!-- ======================= 상단 탭 : 대시보드 · 손글씨 편지 · 포켓몬 놀이방 ======================= -->
+  <nav class="apptabs" id="appTabs" role="tablist" aria-label="화면 이동">
+    <button type="button" role="tab" class="at on" data-apptab="dash" aria-selected="true" aria-controls="mainGrid" tabindex="0">
+      <span class="at-ico" aria-hidden="true">🏠</span><span class="at-txt">대시보드</span>
+    </button>
+    <button type="button" role="tab" class="at" data-apptab="letters" aria-selected="false" aria-controls="tabLetters" tabindex="-1">
+      <span class="at-ico" aria-hidden="true">✏️</span><span class="at-txt">손글씨 편지</span><b class="at-badge" id="tabLettersBadge" hidden aria-label="새로 온 편지"></b>
+    </button>
+    <button type="button" role="tab" class="at" data-apptab="play" aria-selected="false" aria-controls="tabPlay" tabindex="-1">
+      <span class="at-ico" aria-hidden="true">🐾</span><span class="at-txt">포켓몬 놀이방</span>
+    </button>
+  </nav>
 
-    <!-- 좌측 열 — 한 달 일정(크게, 우리 집 위키 탭 통합) + 오늘 학교 -->
+  <main class="grid" id="mainGrid" role="tabpanel" aria-label="대시보드">
+
+    <!-- 왼쪽 열 — 가족 일정 · 오늘 학교 · 타이머 -->
     <div class="col col-left">
 
       <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
@@ -130,10 +143,41 @@
         <div class="card-body" id="schoolBody"></div>
       </section>
 
+      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+        <div class="card-head">
+          <div class="card-ico coral" aria-hidden="true">⏳</div>
+          <div>
+            <div class="card-title" id="tTimer">타이머</div>
+            <div class="card-sub">🎵 🎧</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="timer-shell">
+            <div class="timer-ring" id="timerRing" style="--p:0">
+              <div class="timer-face">
+                <div class="timer-digits" id="timerDigits">15:00</div>
+                <div class="timer-state" id="timerState">준비</div>
+              </div>
+            </div>
+            <div class="timer-side">
+              <div class="presets" id="presets"></div>
+              <div class="row">
+                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
+                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
+              </div>
+            </div>
+          </div>
+          <div class="link-row">
+            <div class="links" id="linkList"></div>
+            <button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
+          </div>
+        </div>
+      </section>
+
     </div>
 
-    <!-- 중앙 열 — 미션 & 포켓몬 파트너 -->
-    <div class="col col-center">
+    <!-- 오른쪽 열 — 아이 미션 · 사고 싶은 것 -->
+    <div class="col col-right">
 
       <section class="card chores" id="cardChores" aria-labelledby="tChores">
         <div class="card-head">
@@ -253,43 +297,6 @@
         </div>
       </section>
 
-    </div>
-
-    <!-- 우측 열 — 타이머·음악 + 사고 싶은 것 + 손글씨 편지함 + 장보기 -->
-    <div class="col col-right">
-
-      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
-        <div class="card-head">
-          <div class="card-ico coral" aria-hidden="true">⏳</div>
-          <div>
-            <div class="card-title" id="tTimer">타이머</div>
-            <div class="card-sub">🎵 🎧</div>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="timer-shell">
-            <div class="timer-ring" id="timerRing" style="--p:0">
-              <div class="timer-face">
-                <div class="timer-digits" id="timerDigits">15:00</div>
-                <div class="timer-state" id="timerState">준비</div>
-              </div>
-            </div>
-            <div class="timer-side">
-              <div class="presets" id="presets"></div>
-              <div class="row">
-                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
-                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
-              </div>
-            </div>
-          </div>
-          <div class="link-row">
-            <div class="links" id="linkList"></div>
-            <button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 사고 싶은 것 + 장보기/냉장고를 한 카드의 탭으로 통합 -->
       <section class="card wish" id="cardWish" aria-labelledby="tWish">
         <div class="card-head">
           <div class="card-ico pink" aria-hidden="true">🎁</div>
@@ -322,41 +329,71 @@
         </div>
       </section>
 
-      <section class="card letters span-8" id="cardLetters" aria-labelledby="tLetters">
-        <div class="card-head">
-          <div class="card-ico lilac" aria-hidden="true">✏️</div>
-          <div>
-            <div class="card-title" id="tLetters">손글씨 편지</div>
-            <div class="card-sub">✍️ 그려서 보내요</div>
-          </div>
-          <div class="card-tools">
-            <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
-            <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="canvas-shell">
-            <canvas id="letterCanvas" width="1000" height="580" aria-label="손글씨 편지 캔버스"></canvas>
-            <div class="canvas-hint" id="canvasHint">손가락으로 크게 편지를 써 보세요 ✍️</div>
-          </div>
-          <div class="tools">
-            <div class="swatches" id="swatches" aria-label="펜 색"></div>
-            <div class="widths" id="widths" aria-label="펜 굵기"></div>
-            <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
-            <div class="emojis" id="emojiBar" aria-label="스티커"></div>
-          </div>
-          <div class="row wrap">
-            <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
-            <button class="btn primary" id="letterSendBtn"><span aria-hidden="true">💌</span> 보내기</button>
-            <span class="pill" id="letterCount">저장된 편지 0장</span>
-          </div>
-          <div class="gallery" id="gallery"></div>
-        </div>
-      </section>
-
     </div>
 
   </main>
+
+  <!-- ======================= 탭 화면 : 손글씨 편지 ======================= -->
+  <section class="tabview" id="tabLetters" role="tabpanel" aria-label="손글씨 편지" hidden>
+    <section class="card letters" id="cardLetters" aria-labelledby="tLetters">
+      <div class="card-head">
+        <div class="card-ico lilac" aria-hidden="true">✏️</div>
+        <div>
+          <div class="card-title" id="tLetters">손글씨 편지</div>
+          <div class="card-sub">✍️ 그려서 보내요</div>
+        </div>
+        <div class="card-tools">
+          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
+          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="canvas-shell">
+          <canvas id="letterCanvas" width="1000" height="580" aria-label="손글씨 편지 캔버스"></canvas>
+          <div class="canvas-hint" id="canvasHint">손가락으로 크게 편지를 써 보세요 ✍️</div>
+        </div>
+        <div class="tools">
+          <div class="swatches" id="swatches" aria-label="펜 색"></div>
+          <div class="widths" id="widths" aria-label="펜 굵기"></div>
+          <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
+          <div class="emojis" id="emojiBar" aria-label="스티커"></div>
+        </div>
+        <div class="row wrap">
+          <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
+          <button class="btn primary" id="letterSendBtn"><span aria-hidden="true">💌</span> 보내기</button>
+          <span class="pill" id="letterCount">저장된 편지 0장</span>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ======================= 탭 화면 : 포켓몬 놀이방 ======================= -->
+  <section class="tabview" id="tabPlay" role="tabpanel" aria-label="포켓몬 놀이방" hidden>
+    <div class="card playcard" id="cardPlay" aria-labelledby="tPlay">
+      <div class="card-head">
+        <div class="card-ico mint" aria-hidden="true">🏡</div>
+        <div>
+          <div class="card-title" id="tPlay">내 포켓몬 놀이방</div>
+          <div class="card-sub">친구를 콕 누르면 좋아해요 ❤️</div>
+        </div>
+        <div class="card-tools">
+          <span class="pill" id="playTabCount">0마리</span>
+          <button type="button" class="btn sm ghost" id="playDexBtn" title="1세대 151종 도감 열기">📖 151 도감</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- 미션·포인트가 바뀌면 친구 구성도 함께 바뀝니다 (도감 모달의 놀이방과 같은 목록) -->
+        <div class="dex-play play-big" id="tabPlayPanel">
+          <div class="dp-head">
+            <b class="dp-title">🌱 풀밭</b>
+            <span class="dp-hint">콕 누르면 점프하며 좋아해요 ❤️</span>
+          </div>
+          <div class="dp-yard" id="tabPlayYard" role="group" aria-label="놀이방 풀밭"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <footer class="footer">
     <span class="grow">
@@ -509,7 +546,7 @@
         <input type="password" id="pinInput" class="grow" inputmode="numeric" maxlength="4" placeholder="새 PIN 숫자 4자리" autocomplete="off" />
         <button class="btn sm" id="pinSaveBtn">변경</button>
       </div>
-      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 모드</b>를 다시 누르면 바로 잠깁니다. 로그인 상태에서 바꾼 PIN은 부모 기기끼리 비공개 Firebase 문서로 동기화됩니다. 로그아웃 상태에서는 이 기기에만 저장됩니다.</p>
+      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 열림</b>을 다시 누르면 바로 잠깁니다. 로그인 상태에서 바꾼 PIN은 부모 기기끼리 비공개 Firebase 문서로 동기화됩니다. 로그아웃 상태에서는 이 기기에만 저장됩니다.</p>
     </div>
 
     <div class="settings-section">
@@ -719,10 +756,19 @@
       </p>
     </div>
     <div class="settings-section">
-      <h4>6. 편지함</h4>
+      <h4>6. ✏️ 손글씨 편지 탭</h4>
       <p class="settings-note">
-        편지 캔버스에 손가락으로 쓰고 색·굵기·이모지 스티커를 골라 꾸민 뒤
-        <b>편지함에 보내기</b>를 누르면 아래 갤러리에 그림으로 저장됩니다.
+        화면 위 <b>✏️ 손글씨 편지</b> 탭을 누르면 편지 화면이 크게 열립니다.
+        캔버스에 손가락으로 쓰고 색·굵기·이모지 스티커를 골라 꾸민 뒤
+        <b>💌 보내기</b>를 누르면 아래 편지함에 그림으로 저장되고, 저장된 편지는 탭 위 <b>숫자 배지</b>로 새 편지를 알려 줍니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>6-1. 🐾 포켓몬 놀이방 탭</h4>
+      <p class="settings-note">
+        화면 위 <b>🐾 포켓몬 놀이방</b> 탭을 누르면 모은 친구들이 풀밭에서 좌우로 걸어 다닙니다.
+        친구를 콕 누르면 두 번 점프하며 하트와 말풍선이 떠요. <b>📖 151 도감</b> 버튼으로 도감도 바로 열 수 있습니다.
+        도감 안의 놀이방과 같은 친구들이라, 미션을 끝내 새 친구를 만나면 이 탭에도 함께 늘어납니다.
       </p>
     </div>
     <div class="settings-section">
@@ -731,9 +777,9 @@
         <b>사고 싶은 것</b> 카드에 갖고 싶은 물건을 적으면, 지금 선물 코인으로 <b>✅ 지금 살 수 있어요!</b> 인지
         <b>🪙 몇 P 더 모아야 하는지</b> 바로 보여 줍니다. 적을 때 <b>장난감 · 준비물 · 책 · 기타</b> 중에서 분류를 고르면
         카드 위에 알록달록한 <b>태그 배지</b>로 붙고, 부모 모드에서 나중에 바꿀 수도 있어요. 적는 것은 아이도 자유롭게 할 수 있어요.<br />
-        상단 <b>🔒 부모 모드</b>는 기본이 잠금입니다. 잠긴 동안 아이는 <b>미션 체크·포켓몬 도감·편지 쓰기·사고 싶은 것 적기·타이머·월간 달성 보기</b>를 그대로 쓸 수 있고,
+        상단 <b>🔒 부모 잠금</b>은 기본이 잠금입니다. 잠긴 동안 아이는 <b>미션 체크·포켓몬 도감·편지 쓰기·사고 싶은 것 적기·타이머·월간 달성 보기</b>를 그대로 쓸 수 있고,
         <b>미션 추가·수정·삭제, 포인트 사용(선물 사주기), 일정·장보기·위키 편집, 편지 삭제, 설정</b>처럼 보호자가 해야 하는 일은 4자리 PIN을 넣어야 열립니다.
-        부모 모드는 5분 뒤 자동으로 잠기고, <b>🔓 부모 모드</b>를 누르면 바로 잠급니다.
+        부모 모드는 5분 뒤 자동으로 잠기고, <b>🔓 부모 열림</b>을 누르면 바로 잠급니다.
       </p>
     </div>
     <div class="settings-section">
@@ -758,6 +804,14 @@
         <b>⑦🎰 뽑기</b>는 50P마다 한 장씩 돌려 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
         <b>📅 달력</b>은 기본이 <b>2주</b>라 오늘 학교 카드가 넓게 보입니다. 헤더의 <b>1달</b>을 누르면 한 달 전체가 펼쳐집니다.
         보너스 포인트도 모두 <b>🕒 오늘</b> 기록에 남습니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>10. 🏠 화면 구성 (탭 · 2열)</h4>
+      <p class="settings-note">
+        화면 위쪽에 <b>🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방</b> 세 탭이 있습니다. 태블릿을 옆으로 눕히면
+        <b>대시보드</b>는 왼쪽에 <b>가족 일정 · 오늘 학교 · 타이머</b>, 오른쪽에 <b>아이 미션 · 사고 싶은 것</b>이 놓인 <b>2열</b>로 펼쳐져
+        스크롤 없이 한 화면에 다 들어옵니다. 휴대폰처럼 좁은 화면에서는 카드가 위에서 아래로 차례로 쌓입니다.
       </p>
     </div>
     <div class="modal-actions">
@@ -821,7 +875,7 @@
 <script src="legacy-sync-guard.js?v=1"></script>
 <script src="parent-session-guard.js?v=1"></script>
 <script src="standby-guard.js?v=2"></script>
-<script src="app.js?v=v7-gcal"></script>
+<script src="app.js?v=v8-2col-tabs"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=5"></script>
 </body>

@@ -1139,9 +1139,9 @@
     if (typeof renderEventBadge === 'function') renderEventBadge();   // 🎪 깜짝 이벤트 버튼은 부모 모드에서만 늘 보입니다
     if (!b) return;
     b.dataset.state = on ? 'on' : 'off';
-    b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">부모 모드</span>`;
+    b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">${on ? '부모 열림' : '부모 잠금'}</span>`;
     b.title = on ? `부모 모드 열림 · ${parentLeftText()} 뒤 자동 잠금 (누르면 바로 잠금)` : '부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요';
-    b.setAttribute('aria-label', on ? '부모 모드 열림 — 눌러서 잠그기' : '부모 모드 잠김 — 눌러서 열기');
+    b.setAttribute('aria-label', on ? '부모 모드 열림 — 눌러서 잠그기' : '부모 잠금 — 눌러서 열기');
   }
 
   function lockParent(quiet) {
@@ -2436,16 +2436,20 @@
   }
 
   function renderPlayground() {
-    const yard = $('#dexPlayYard');
-    if (!yard) return;
+    // 도감 모달 안의 놀이방(#dexPlayYard)과 🐾 포켓몬 놀이방 탭(#tabPlayYard)에 같은 친구를 그립니다
+    const yards = ['#dexPlayYard', '#tabPlayYard'].map((sel) => $(sel)).filter(Boolean);
     const mons = playgroundMons();
-    if ($('#dexPlayCount')) $('#dexPlayCount').textContent = `${mons.length}마리`;
+    const counts = ['#dexPlayCount', '#playTabCount'].map((sel) => $(sel)).filter(Boolean);
+    counts.forEach((el) => { el.textContent = `${mons.length}마리`; });
+    if (!yards.length) return;
     if (!mons.length) {
-      yard.innerHTML = '<div class="dp-empty">아직 놀이방이 비었어요 — 미션을 끝내 포켓몬을 만나면 여기서 같이 놀아요 🐾</div>';
+      yards.forEach((yard) => {
+        yard.innerHTML = '<div class="dp-empty">아직 놀이방이 비었어요 — 미션을 끝내 포켓몬을 만나면 여기서 같이 놀아요 🐾</div>';
+      });
       return;
     }
     const n = mons.length;
-    yard.innerHTML = mons.map((m, i) => {
+    const html = mons.map((m, i) => {
       const x = n === 1 ? 50 : 7 + (86 * i) / (n - 1);   // 풀밭 가로로 고르게
       const dur = (5.6 + (i % 4) * 0.8).toFixed(2);      // 걷는 속도는 친구마다 조금씩
       const lift = [0, 5, 2, 7, 1, 4, 6, 3][i % 8];      // 조금씩 앞·뒤로 서서 깊이감
@@ -2458,6 +2462,7 @@
         <span class="dp-name">${esc(m.name)}</span>
       </button>`;
     }).join('');
+    yards.forEach((yard) => { yard.innerHTML = html; });
     checkPokeImages();
   }
 
@@ -3484,6 +3489,74 @@
       '<option value="가족 모두">가족 모두</option>';
     sel.innerHTML = opts;
     if (cur) sel.value = cur;
+    renderTabBadges();
+  }
+
+  /* ---- 상단 3탭: 🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방 ---- */
+  const APP_TABS = ['dash', 'letters', 'play'];
+  let appTab = 'dash';
+  const LETTERS_SEEN_KEY = 'family-dashboard:letters-seen';
+  let lettersSeen = null;
+
+  // 이 기기에서 아직 열어 보지 않은 편지 = 탭 배지 숫자 (앱 상태·Firestore에는 쓰지 않는 기기 메모)
+  function lettersSeenIds() {
+    if (lettersSeen) return lettersSeen;
+    try {
+      const raw = localStorage.getItem(LETTERS_SEEN_KEY);
+      if (raw == null || raw === '') {
+        // 처음 이 기기에서 열 때는 지금 있던 편지를 이미 본 것으로 시작합니다(배지가 갑자기 쏟아지지 않게)
+        lettersSeen = new Set((S.letters || []).map((l) => l.id));
+        persistLettersSeen();
+      } else {
+        lettersSeen = new Set(JSON.parse(raw) || []);
+      }
+    } catch (e) { lettersSeen = new Set((S.letters || []).map((l) => l.id)); }
+    return lettersSeen;
+  }
+  function persistLettersSeen() {
+    try { localStorage.setItem(LETTERS_SEEN_KEY, JSON.stringify([...lettersSeen].slice(-240))); } catch (e) { /* noop */ }
+  }
+  function markLetterSeen(id) {
+    if (!id) return;
+    const seen = lettersSeenIds();
+    if (!seen.has(id)) { seen.add(id); persistLettersSeen(); renderTabBadges(); }
+  }
+  function markLettersAllSeen() {
+    const seen = lettersSeenIds();
+    let changed = false;
+    (S.letters || []).forEach((l) => { if (!seen.has(l.id)) { seen.add(l.id); changed = true; } });
+    if (changed) persistLettersSeen();
+    renderTabBadges();
+  }
+  function renderTabBadges() {
+    const badge = $('#tabLettersBadge');
+    if (!badge) return;
+    const seen = lettersSeenIds();
+    const unread = (S.letters || []).filter((l) => !seen.has(l.id)).length;
+    if (unread > 0) {
+      badge.hidden = false;
+      badge.textContent = unread > 9 ? '9+' : String(unread);
+      badge.setAttribute('aria-label', `새로 온 편지 ${unread}장`);
+    } else {
+      badge.hidden = true;
+      badge.textContent = '';
+    }
+  }
+
+  function setAppTab(name) {
+    appTab = APP_TABS.includes(name) ? name : 'dash';
+    document.body.dataset.apptab = appTab;
+    $$('.apptabs .at').forEach((b) => {
+      const on = b.dataset.apptab === appTab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    const views = { dash: $('#mainGrid'), letters: $('#tabLetters'), play: $('#tabPlay') };
+    Object.keys(views).forEach((k) => { if (views[k]) views[k].hidden = k !== appTab; });
+    if (appTab === 'letters') { renderLetters(); markLettersAllSeen(); }
+    else if (appTab === 'play') renderPlayground();
+    try { if (appTab !== 'dash') window.scrollTo(0, 0); } catch (e) { /* noop */ }
   }
 
   function exportCanvas() {
@@ -3521,6 +3594,7 @@
   function openLetter(id) {
     const l = S.letters.find((x) => x.id === id);
     if (!l) return;
+    markLetterSeen(id);
     $('#letterModalImg').src = l.img;
     $('#letterModalMeta').textContent = `${l.author || '가족'} · ${l.when || ''}`;
     $('#letterModal').hidden = false;
@@ -5431,6 +5505,20 @@
   // 가족 일정 카드 안의 달력 · 우리 집 위키 탭
   $$('[data-schedtab]').forEach((b) => b.addEventListener('click', () => setSchedTab(b.dataset.schedtab)));
   setSchedTab('cal');
+
+  // 상단 3탭 — 대시보드 · 손글씨 편지 · 포켓몬 놀이방
+  $$('.apptabs .at').forEach((b) => b.addEventListener('click', () => setAppTab(b.dataset.apptab)));
+  $$('.apptabs .at').forEach((b) => b.addEventListener('keydown', (e) => {
+    const i = APP_TABS.indexOf(b.dataset.apptab);
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = APP_TABS[(i + (e.key === 'ArrowRight' ? 1 : APP_TABS.length - 1)) % APP_TABS.length];
+    setAppTab(next);
+    const btn = document.querySelector(`.apptabs .at[data-apptab="${next}"]`);
+    if (btn) btn.focus();
+  }));
+  if ($('#playDexBtn')) $('#playDexBtn').addEventListener('click', () => openDex(0));
+  setAppTab('dash');
 
   $('#swatches').addEventListener('click', (e) => {
     const b = e.target.closest('[data-pen]');

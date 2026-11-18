@@ -2964,3 +2964,316 @@ html[data-theme="dark"] .mvp-kpi { background: rgba(255, 255, 255, .08); }
 .mvp-foot { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; font-weight: 700; }
 .mvp-foot b { font-weight: 900; }
 .mvp-sign { margin-top: 8px; font-size: 11px; font-weight: 800; opacity: .6; }
+
+/* ==========================================================================
+   2026-11-19 · 2열 + 상단 3탭 통합 레이아웃 (운영 적용)
+   · 상단 탭 : 🏠 대시보드 · ✏️ 손글씨 편지(새 편지 배지) · 🐾 포켓몬 놀이방
+   · 대시보드 : 왼쪽(가족 일정 · 오늘 학교 · 타이머) / 오른쪽(아이 미션 · 사고 싶은 것)
+   · 태블릿 가로(≥1024px) : 1280×800 한 화면, 페이지 세로 스크롤 0
+   · 폰(≤1023px)         : 1열 세로 배치, 가로 넘침 0
+   ========================================================================== */
+
+/* ---------------------------------- 상단 3탭 ---------------------------------- */
+.apptabs {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px; margin: 0 0 8px;
+  border-radius: 13px; background: var(--surface);
+  border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+.apptabs::-webkit-scrollbar { display: none; }
+.apptabs .at {
+  position: relative; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 34px; padding: 0 14px;
+  border: 0; border-radius: 10px; background: transparent;
+  color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: -.02em;
+  cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+.apptabs .at .at-ico { font-size: 14px; line-height: 1; }
+.apptabs .at.on {
+  background: var(--surface-solid); color: var(--text);
+  box-shadow: 0 3px 9px rgba(60, 80, 140, .16), inset 0 0 0 1px var(--border);
+}
+.apptabs .at:focus-visible { outline: 2px solid var(--sky); outline-offset: 1px; }
+.apptabs .at-badge {
+  position: absolute; top: -3px; right: 3px;
+  min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px;
+  background: linear-gradient(145deg, #ff8a3d, #ff4d4d); color: #fff;
+  font-size: 10.5px; font-weight: 900; line-height: 17px; text-align: center;
+  box-shadow: 0 2px 7px rgba(255, 77, 77, .45);
+}
+.apptabs .at-badge[hidden] { display: none; }
+
+/* 탭 화면(편지·놀이방)은 한 번에 하나만 */
+.tabview { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tabview[hidden], .grid[hidden] { display: none !important; }
+
+/* ---------------------------------- 폰·세로 화면: 1열 -------------------------------- */
+@media (max-width: 1023px) {
+  .grid { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+  .col { display: contents; }
+  #cardSchedule { order: 1; }
+  #cardSchool { order: 2; }
+  #cardChores { order: 3; }
+  #cardTimer { order: 4; }
+  #cardWish { order: 5; }
+  .apptabs .at { padding: 0 11px; }
+  .apptabs .at .at-txt { font-size: 12px; }
+}
+
+/* ---------------------------------- 태블릿 가로: 2열 한 화면 -------------------------------- */
+@media (min-width: 1024px) {
+  .app {
+    max-width: none; height: 100vh; height: 100dvh;
+    padding: 8px 12px 9px; display: flex; flex-direction: column; gap: 7px; overflow: hidden;
+  }
+  .footer { display: none; }
+
+  /* ---- 슬림 1줄 헤더 ---- */
+  .topbar {
+    position: static; flex: 0 0 auto; height: 46px; min-height: 46px; max-height: 46px;
+    flex-wrap: nowrap; gap: 12px; margin: 0; padding: 0 11px; border-radius: 14px;
+  }
+  .brand { order: 1; gap: 8px; flex: 0 0 auto; }
+  .brand-mark { width: 30px; height: 30px; flex: 0 0 30px; font-size: 15px; border-radius: 10px; }
+  .brand-title { font-size: 14px; line-height: 1.1; white-space: nowrap; }
+  .brand-sub { font-size: 9.5px; margin-top: 0; max-width: 180px; line-height: 1.1; }
+  .clock { order: 2; flex: 0 0 auto; display: flex; align-items: baseline; gap: 7px; margin: 0; padding: 0; }
+  .clock-time { font-size: 23px; line-height: 1; }
+  .clock-date { margin: 0; font-size: 10px; white-space: nowrap; }
+  .weather {
+    order: 3; flex: 0 0 auto; min-width: 0; gap: 8px; flex-wrap: nowrap; overflow: visible;
+    padding: 3px 9px 3px 7px; border-radius: 11px;
+  }
+  .weather-now { gap: 6px; }
+  .weather-icon { font-size: 19px; }
+  .weather-temp { font-size: 17px; }
+  .weather-temp small { font-size: 10px; }
+  .weather-desc { display: block; font-size: 10px; }
+  .weather-place { display: none; }
+  .outfit-guide { order: 4; flex: 0 0 auto; gap: 4px; max-width: none; overflow: visible; }
+  .og-chip { font-size: 9.5px; padding: 2px 8px; gap: 3px; }
+  .og-chip .og-ico { font-size: 11px; }
+  .top-actions { order: 5; margin-left: auto; gap: 5px; flex: 0 0 auto; }
+  .top-actions .btn { min-height: 28px; padding: 0 9px; font-size: 10.5px; border-radius: 999px; gap: 4px; }
+  .top-actions .btn.icon { width: 30px; min-width: 30px; padding: 0; font-size: 13px; }
+  /* 부모 버튼은 글자를 남깁니다 — 아이 화면에서 '부모 잠금'이 그대로 보이게 */
+  .parent-badge { width: auto; min-width: 0; padding: 0 10px; font-size: 10.5px; }
+  .parent-badge .parent-word { display: inline !important; font-size: 10.5px; }
+  .standby-btn, .sync-badge { width: 30px; min-width: 30px; padding: 0; font-size: 13px; }
+
+  .apptabs { flex: 0 0 auto; margin: 0; padding: 2px; }
+  .apptabs .at { min-height: 30px; padding: 0 16px; font-size: 12.5px; }
+  .apptabs .at .at-ico { font-size: 13.5px; }
+
+  /* ---- 2열 본문 ---- */
+  .grid {
+    flex: 1 1 auto; min-height: 0; height: auto;
+    display: grid; gap: 10px; align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+  .col-left > .card.schedule { flex: 1 1 auto; min-height: 0; }
+  .col-left > .card.school { flex: 0 0 auto; min-height: 0; }
+  .col-left > .card.timer { flex: 0 0 auto; min-height: 0; }
+  .col-right > .card.chores { flex: 1 1 auto; min-height: 0; }
+  .col-right > .card.wish { flex: 0 0 auto; min-height: 0; }
+  /* 카드가 남는 높이를 채우고, 넘치는 내용은 그 카드 안에서만 구르게 (페이지 스크롤 0) */
+  .col-left > .card.schedule > .card-body { flex: 1 1 auto; min-height: 0; }
+  .col-right > .card.chores > .card-body { flex: 1 1 auto; min-height: 0; }
+
+  /* ---- 카드 공통 압축 ---- */
+  .card { padding: 9px 12px; border-radius: 15px; }
+  .card-head { gap: 7px; margin-bottom: 5px; }
+  .card-ico { width: 26px; height: 26px; flex-basis: 26px; font-size: 13px; border-radius: 8px; }
+  .card-title { font-size: 14.5px; letter-spacing: -.03em; }
+  .card-body { gap: 5px; }
+
+  /* ---- 가족 일정 ---- */
+  .card.schedule .card-body { gap: 4px; }
+  .card .merge-tabs.sched-tabs { padding: 2px; gap: 2px; margin-bottom: 3px; }
+  .sched-tabs [role="tab"] { min-width: 30px; min-height: 22px; height: 22px; padding: 0 6px; }
+  .sched-tabs [role="tab"] .tab-ico { font-size: 12px; }
+  .cal-top { gap: 5px; }
+  .cal-label { font-size: 12.5px; }
+  .cal-nav { width: 22px; min-width: 22px; height: 22px; min-height: 22px; font-size: 13px; }
+  .cal-mode { padding: 1px; gap: 1px; }
+  .cal-mode .cmb { min-height: 20px; font-size: 10px; padding: 0 8px; }
+  .cal-today-btn { font-size: 10px; padding: 0 8px; min-height: 20px; margin-left: 4px !important; }
+  .cal-dows { font-size: 9.5px; padding-bottom: 1px; }
+  .cal-grid { gap: 3px; }
+  .cal-grid.two { grid-auto-rows: minmax(0, 34px); }
+  .cal-cell { min-height: 0; padding: 1px 4px 2px; border-radius: 8px; gap: 1px; }
+  .cal-num, .cal-grid.two .cal-num { font-size: 12px; line-height: 1.15; }
+  .cal-cell.today .cal-num, .cal-cell.sel .cal-num { font-size: 12.5px; }
+  .cal-bars { gap: 2px; margin-top: 1px; }
+  .cal-bars i, .cal-grid.two .cal-bars i { height: 3px; border-radius: 2px; }
+  .cal-more { font-size: 8px; }
+  .cal-day { gap: 1px; }
+  .cal-day-head { gap: 5px; padding: 2px 0 1px; }
+  .cal-day-date { font-size: 11.5px; }
+  .cal-today-pill { font-size: 9px; padding: 0 6px; }
+  .cal-day-count { font-size: 9.5px; }
+  .cal-day-list { gap: 2px; }
+  .event { padding: 2px 3px; gap: 6px; border-radius: 8px; }
+  .event-time { font-size: 10px; padding: 1px 5px; min-width: 38px; border-radius: 6px; }
+  .event-title { font-size: 11.5px; }
+  .event-sub { font-size: 9px; margin-top: 0; }
+  .event .check { width: 17px; height: 17px; flex: 0 0 17px; font-size: 10px; border-radius: 5px; }
+  .event .btn.icon.sm { width: 19px; min-width: 19px; min-height: 19px; font-size: 9.5px; }
+  .cal-up { margin-top: auto; padding-top: 3px; }
+  .cal-up-label { font-size: 9px; margin-bottom: 2px; }
+  .up-item { padding: 2px 4px; }
+  .up-date { font-size: 9.5px; }
+  .up-title { font-size: 10.5px; }
+  .free-day-banner { padding: 3px 8px; gap: 6px; border-radius: 10px; }
+
+  /* ---- 오늘 학교 (학교 이름·반은 이 카드에서만 보이게) ---- */
+  #cardSchool .card-sub { display: block; font-size: 9.5px; margin-top: 0; line-height: 1.15; }
+  #cardSchool .card-body { gap: 4px; }
+  .card.school .sch-row { gap: 6px; }
+  .card.school .sch-tag { font-size: 10px; padding: 2px 7px; }
+  .card.school .sch-chips { gap: 4px; max-height: none; }
+  .card.school .sch-chip { font-size: 11px; padding: 3px 8px; border-radius: 8px; }
+  .card.school .sch-none { font-size: 11px; }
+
+  /* ---- 타이머 ---- */
+  #cardTimer .card-body { gap: 5px; }
+  .card.timer .timer-shell { flex-direction: row; gap: 12px; align-items: center; }
+  .timer-ring { width: 84px; height: 84px; flex: 0 0 84px; }
+  .timer-digits { font-size: 20px; }
+  .timer-state { font-size: 9.5px; }
+  .timer-side { gap: 5px; }
+  .presets { gap: 4px; }
+  .preset { font-size: 10.5px; padding: 0 5px; min-height: 22px; border-radius: 7px; }
+  #timerStartBtn { min-height: 28px; font-size: 11.5px; }
+  .link-row { gap: 5px; }
+  .link-row .links { gap: 4px; }
+  .link-item { padding: 3px 7px; border-radius: 8px; }
+  .link-item a { font-size: 10.5px; }
+
+  /* ---- 아이 미션 ---- */
+  #cardChores .card-body { gap: 4px; }
+  .chore-wrap { gap: 7px; }
+  .char-panel { gap: 8px; padding: 4px 8px; border-radius: 12px; }
+  .char-stage { width: 92px; height: 92px; flex: 0 0 92px; }
+  .char-info { gap: 4px; }
+  .char-level { font-size: 13px; }
+  .poke-say { font-size: 9.5px; padding: 1px 6px; }
+  .evo-meter-head { font-size: 9px; }
+  .evo-bar { height: 6px; }
+  .evo-next { font-size: 9.5px; margin-top: 1px; }
+  .stat-cards { gap: 5px; }
+  .stat-card { padding: 4px 8px; border-radius: 9px; gap: 5px; flex-direction: row; align-items: center; }
+  .stat-card .stat-label { font-size: 8.5px; order: 0; }
+  .stat-card .stat-value { font-size: 13px; order: 1; margin-left: auto; }
+  .stat-card .stat-value em { font-size: 9.5px; }
+  .today-meter { padding: 3px 8px; gap: 2px; }
+  .today-meter-head { font-size: 8.5px; }
+  .today-meter-num { font-size: 9.5px; }
+  .today-bar { height: 4px; }
+  .char-aside { width: 132px; gap: 3px; }
+  .char-evo .evo { width: 25px; height: 25px; }
+  .member-stats { gap: 4px; }
+  .mstat { font-size: 9px; padding: 1px 6px; border-radius: 7px; }
+  .chore-list { gap: 4px; }
+  .chore { padding: 1px 8px; gap: 8px; border-radius: 9px; }
+  .chore-title { font-size: 12.5px; line-height: 1.15; }
+  .chore-check { width: 20px; height: 20px; flex: 0 0 20px; font-size: 10px; border-radius: 7px; }
+  .chore-meta { font-size: 8.5px; line-height: 1.05; gap: 2px 5px; }
+  .chore .pts { font-size: 9.5px; padding: 1px 6px; }
+  .days-chip, .due-chip, .done-badge { font-size: 8.5px; padding: 1px 5px; }
+  .chore-off > summary { font-size: 10px; padding: 1px 0; }
+  .mission-badges { gap: 4px; }
+  .mbtn { font-size: 10.5px; padding: 3px 4px; min-height: 26px; border-radius: 8px; gap: 3px; }
+  .mbtn .mb-ico { font-size: 12px; }
+  .mbtn .mb-num { font-size: 9px; }
+
+  /* ---- 사고 싶은 것 ---- */
+  #cardWish .card-head { margin-bottom: 4px; }
+  #cardWish .merge-tabs { padding: 2px; gap: 2px; margin-bottom: 3px; }
+  #cardWish .merge-tabs [role="tab"] { min-width: 30px; min-height: 22px; height: 22px; padding: 0 6px; }
+  #cardWish .merge-tabs .tab-ico { font-size: 12px; }
+  .card.wish .card-body { gap: 5px; }
+  .wish-balance { padding: 4px 8px; font-size: 10px; gap: 7px; border-radius: 9px; }
+  .wish-balance b { font-size: 13px; }
+  .wish-list { gap: 5px; }
+  .wish-item, .wish-card { min-height: 44px; padding: 5px 10px; border-radius: 10px; }
+  .wish-title { font-size: 13px; }
+  .wish-need, .wish-sub { font-size: 10px; }
+  .wish-bar { height: 4px; }
+  .wish-state { font-size: 9.5px; }
+
+  /* ---- 탭 화면: 손글씨 편지 ---- */
+  #tabLetters { flex: 1 1 auto; min-height: 0; }
+  #tabLetters #cardLetters { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; padding: 11px 15px; }
+  #tabLetters #cardLetters .card-body {
+    flex: 1 1 auto; min-height: 0; display: grid; gap: 7px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "canvas" "tools" "send" "gallery";
+  }
+  /* 캔버스는 남는 높이를 다 쓰되 비율(1000×580) 유지 */
+  #tabLetters .canvas-shell {
+    grid-area: canvas; min-height: 0; min-width: 0; align-self: stretch; justify-self: stretch;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #tabLetters #letterCanvas { width: auto; height: auto; max-width: 100%; max-height: 100%; }
+  #tabLetters .canvas-hint { display: grid; font-size: 14px; }
+  #tabLetters .canvas-hint.hide { display: none; }
+  /* 도구는 한 줄 — 펜 색 · 굵기 · 지우개 · 스티커 */
+  #tabLetters .tools {
+    grid-area: tools; flex-wrap: nowrap; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: 11px; background: var(--surface-2); overflow: hidden;
+  }
+  #tabLetters .swatches { gap: 4px; flex-wrap: nowrap; flex: 0 0 auto; }
+  #tabLetters .sw { width: 20px; height: 20px; }
+  #tabLetters .widths { gap: 4px; flex: 0 0 auto; }
+  #tabLetters .wbtn { width: 24px; height: 24px; }
+  #tabLetters #eraserBtn { flex: 0 0 auto; min-height: 24px; font-size: 10.5px; }
+  #tabLetters .emojis { gap: 4px; flex: 1 1 auto; flex-wrap: nowrap; max-height: none; overflow-x: auto; overflow-y: hidden; }
+  #tabLetters .emo { width: 26px; height: 26px; font-size: 15px; border-radius: 7px; flex: 0 0 26px; }
+  #tabLetters .row.wrap { grid-area: send; flex-wrap: nowrap; gap: 6px; margin: 0; }
+  #tabLetters #letterAuthor { flex: 0 0 120px; width: 120px; max-width: 120px !important; min-height: 30px; }
+  #tabLetters #letterSendBtn { min-height: 30px; font-size: 12px; }
+  #tabLetters #letterCount { font-size: 10px; white-space: nowrap; }
+  #tabLetters .gallery {
+    grid-area: gallery; display: flex; flex-wrap: nowrap; gap: 8px;
+    overflow-x: auto; overflow-y: hidden; align-items: flex-start; max-height: 92px;
+  }
+  #tabLetters .letter-card { flex: 0 0 152px; padding: 5px; gap: 3px; }
+  #tabLetters .letter-card img { height: 46px; object-fit: cover; border-radius: 6px; }
+  #tabLetters .letter-meta { font-size: 10px; }
+  #tabLetters .letter-tools { display: none; }
+  #tabLetters .gallery .shop-empty { display: flex; align-items: center; }
+
+  /* ---- 탭 화면: 포켓몬 놀이방 ---- */
+  #tabPlay { flex: 1 1 auto; min-height: 0; }
+  #cardPlay { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 11px 15px; }
+  #cardPlay .card-body { flex: 1 1 auto; min-height: 0; }
+  #tabPlayPanel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 0; padding: 8px 12px 0; }
+  #tabPlayYard { flex: 1 1 auto; min-height: 0; height: auto; }
+  #tabPlayYard .dp-mon { width: 92px; margin-left: -46px; bottom: calc(16px + var(--lift, 0px)); }
+  #tabPlayYard .dp-img { width: 84px; height: 84px; }
+  #tabPlayYard .dp-name { font-size: 11px; max-width: 90px; }
+  #tabPlayYard .dp-bubble { bottom: 92px; font-size: 12px; padding: 4px 10px; }
+  #tabPlayYard .dp-hearts { bottom: 78px; }
+  #tabPlayYard .dp-hearts i:nth-child(1) { --dx: -26px; left: -14px; font-size: 20px; }
+  #tabPlayYard .dp-hearts i:nth-child(2) { --dx: -2px; left: 2px; font-size: 16px; }
+  #tabPlayYard .dp-hearts i:nth-child(3) { --dx: 18px; left: 14px; font-size: 13px; }
+}
+
+/* ---- 폰에서 편지·놀이방 탭: 세로로 쌓고 캔버스는 폭에 맞춤 ---- */
+@media (max-width: 1023px) {
+  #tabLetters #letterCanvas { max-width: 100%; height: auto; }
+  #tabLetters .gallery { max-height: none; }
+  #tabPlayPanel { min-height: 230px; }
+  #tabPlayYard { height: 190px; }
+  #tabPlayYard .dp-mon { width: 66px; margin-left: -33px; bottom: calc(10px + var(--lift, 0px)); }
+  #tabPlayYard .dp-img { width: 58px; height: 58px; }
+  #tabPlayYard .dp-name { font-size: 9.5px; max-width: 66px; }
+  #tabPlayYard .dp-bubble { bottom: 70px; font-size: 11px; }
+  #tabPlayYard .dp-hearts { bottom: 58px; }
+}
