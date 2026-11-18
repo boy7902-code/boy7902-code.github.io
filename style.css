@@ -996,6 +996,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   .char-panel { flex: 0 0 auto; flex-direction: row; gap: 14px; padding: 12px; align-items: center; flex-wrap: wrap; }
   .char-stage { width: 96px; height: 96px; flex: 0 0 96px; }
   .char-panel .char-info { flex: 1 1 520px; text-align: left; align-items: flex-start; gap: 7px; }
+  .char-nameline { justify-content: flex-start; }   /* 이름·말풍선은 포켓몬 쪽(왼쪽)에서 시작 */
   .char-panel .char-evo, .char-panel .char-actions, .char-panel .char-adopt { flex: 0 0 auto; }
   .char-panel .char-adopt { width: 100%; }
   .char-panel .evo-meter, .char-panel .today-meter { max-width: 440px; }
