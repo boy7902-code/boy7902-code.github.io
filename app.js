@@ -916,6 +916,9 @@
     $('#partnerModal').hidden = true;
   }
 
+  // 목표 시간 빠른 선택 (태블릿에서 두 번 탭으로 지정)
+  const TIME_QUICK = ['없음', '07:30', '08:00', '08:30', '09:00', '17:00', '18:00', '20:00', '21:00', '22:00'];
+
   function missionMemberOptions() {
     return S.members.map((m) => ({ value: m.id, label: m.name })).concat([{ value: '', label: '공용(모두)' }]);
   }
@@ -923,11 +926,11 @@
   async function addMission() {
     const r = await askModal({
       title: '미션 추가',
-      hint: '목표 시간을 비워 두면 시간 보너스 없이 기본 포인트만 쌓여요.',
+      hint: '목표 시간을 비우거나 [없음]을 고르면 시간 보너스 없이 기본 포인트만 쌓여요.',
       fields: [
         { name: 'title', label: '미션', placeholder: '예: 신발 정리하기' },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: 3 },
-        { name: 'due', label: '목표 시간 (마감 시각, 비우면 없음)', type: 'time', value: '' },
+        { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: '', quick: TIME_QUICK },
         { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: 3 },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: (S.members[S.members.length - 1] || {}).id || '' },
       ],
@@ -956,7 +959,7 @@
       fields: [
         { name: 'title', label: '미션', value: c.title },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: basePtsOf(c) },
-        { name: 'due', label: '목표 시간 (마감 시각, 비우면 없음)', type: 'time', value: c.due || '' },
+        { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: c.due || '', quick: TIME_QUICK },
         { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: bonusPtsOf(c) || 3 },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: c.member || '' },
       ],
@@ -1475,8 +1478,21 @@
         if (f.type === 'textarea') {
           return `<label class="field">${esc(f.label)}<textarea name="${esc(f.name)}" id="${id}" rows="3" placeholder="${esc(f.placeholder || '')}">${esc(f.value ?? '')}</textarea></label>`;
         }
-        return `<label class="field">${esc(f.label)}<input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.type === 'number' ? ' inputmode="numeric"' : ''}></label>`;
+        return `<label class="field">${esc(f.label)}<input type="${f.type || 'text'}" name="${esc(f.name)}" id="${id}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"${f.type === 'number' ? ' inputmode="numeric"' : ''}>${f.quick && f.quick.length
+          ? `<span class="quick-row">${f.quick.map((v) => `<button type="button" class="qchip" data-quick="${esc(f.name)}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</span>`
+          : ''}</label>`;
       }).join('');
+
+      // 빠른 선택 버튼(예: 목표 시간 칩)은 입력간을 그대로 채웁니다.
+      $$('[data-quick]', modal).forEach((b) => {
+        b.onclick = (ev) => {
+          ev.preventDefault();
+          const el = $('#mf_' + b.dataset.quick);
+          if (!el) return;
+          el.value = b.dataset.val === '없음' ? '' : b.dataset.val;
+          $$('[data-quick]', modal).forEach((o) => o.classList.toggle('on', o === b));
+        };
+      });
 
       const actions = $('.modal-actions', modal);
       actions.innerHTML = (extraAction ? `<button class="btn" type="button" data-extra style="margin-right:auto;color:var(--coral)">${esc(extraAction.label)}</button>` : '') +
