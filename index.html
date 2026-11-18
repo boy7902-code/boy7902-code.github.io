@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=4" />
+<link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
 <div class="app">
@@ -110,6 +110,10 @@
           <div class="mission-area">
             <div class="member-stats" id="memberStats"></div>
             <div class="chore-list" id="choreList"></div>
+            <button class="btn sm ghost hist-entry" id="histOpenBtn" type="button" title="월간 달력과 연간 12개월 요약으로 달성 현황을 봅니다">
+              <span>📅 월간·연간 달성</span>
+              <span class="pill" id="histBtnPill">이번 달 기록 없음</span>
+            </button>
             <details class="log-box" id="logBox" open>
               <summary>🕒 오늘 완료 이력 <span class="pill" id="logCount">아직 없어요</span></summary>
               <div class="log-list" id="todayLog"></div>
@@ -385,6 +389,36 @@
   </div>
 </div>
 
+<!-- ======================= 모달: 월간·연간 달성 현황 ======================= -->
+<div class="modal" id="historyModal" hidden>
+  <div class="modal-card wide hist-card" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+    <div class="hist-top">
+      <div>
+        <h3 id="histTitle">📅 월간·연간 달성 현황</h3>
+        <p class="hist-sub" id="histSubText">월간 달력으로 하루하루, 연간 카드로 1년 흐름을 봅니다.</p>
+      </div>
+      <button class="btn icon sm ghost" type="button" id="histClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="hist-tabs" role="tablist" aria-label="보기 단위">
+      <button class="hist-tab on" type="button" data-histview="month" role="tab" aria-selected="true">월간</button>
+      <button class="hist-tab" type="button" data-histview="year" role="tab" aria-selected="false">연간</button>
+    </div>
+    <div class="hist-toolbar">
+      <div class="hist-nav">
+        <button class="btn icon sm" type="button" id="histPrev" aria-label="이전">‹</button>
+        <b id="histTitleText">2026년 11월</b>
+        <button class="btn icon sm" type="button" id="histNext" aria-label="다음">›</button>
+        <button class="btn sm ghost" type="button" id="histToday">오늘</button>
+      </div>
+      <div class="hist-filter" id="histFilter" role="group" aria-label="구성원 필터"></div>
+    </div>
+    <div class="hist-body" id="histBody"></div>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="histCloseBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ======================= 모달: 사용 안내 ======================= -->
 <div class="modal" id="helpModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
@@ -417,7 +451,8 @@
         미션마다 <b>목표 시간</b>(예: 08:00)과 <b>시간 내 완료 보너스</b>(예: +3P)를 정할 수 있고,
         목표 시간 안에 체크하면 기본 포인트에 보너스까지 더해지며 <b>⏰ 목표 시간 달성!</b> 배지가 붙습니다.
         시간이 지나 체크하면 기본 포인트만 쌓이고 실제 완료 시각과 함께 <b>⏱️ 목표 시간 초과</b>로 표시됩니다.
-        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.
+        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.<br />
+        <b>📅 월간·연간 달성</b>을 누르면 이번 달 달력과 1년 12개월 요약이 열려, 날짜별 완료·목표 달성·획득 포인트를 되돌아볼 수 있습니다.
       </p>
     </div>
     <div class="settings-section">
@@ -450,6 +485,6 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

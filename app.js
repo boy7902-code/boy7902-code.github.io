@@ -19,10 +19,19 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const fmtMD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? `${+m[2]}/${+m[3]}` : ''; };
+  const isDateStr = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+  // 완료 이력 보존: 오래된 기록은 잘라내되 최소 400일은 그대로 남깁니다 (동기화 patch에도 그대로 반영)
+  function keepLogs(arr) {
+    const cutoff = fmtDate(addDays(new Date(), -(LOG_KEEP_DAYS - 1)));
+    const kept = (Array.isArray(arr) ? arr : []).filter((l) => l && typeof l === 'object' && isDateStr(l.date));
+    const recent = kept.filter((l) => l.date >= cutoff);
+    return recent.length > 8000 ? recent.slice(0, 8000) : recent; // 안전 상한(하루 20건 × 400일)
+  }
 
   /* 아이 역할 구성원과 포켓몬 성장 기준 */
   const KID_ID = 'm3';        // 아이 역할 — 이름은 설정에서 바꿀 수 있고, id는 그대로 씁니다
   const FINAL_P = 200;        // 최종 진화 기준 경험치(현재 파트너)
+  const LOG_KEEP_DAYS = 400;  // 완료 이력은 400일(1년 이상) 보존 — 월간·연간 달성 현황 조회용
 
   /* ------------------------------------------------------------- data model */
   const KEY = 'family-dashboard:v1';
@@ -115,6 +124,7 @@
       m.goalMet = !!m.goalMet;
     });
     out.logs = out.logs.filter((l) => l && typeof l === 'object' && l.date && l.at);
+    out.logs = keepLogs(out.logs);
     out.logs.forEach((l) => {
       ['base', 'bonus', 'earned'].forEach((k) => { l[k] = Math.max(0, Math.round(+l[k] || 0)); });
       l.member = l.member || '';
@@ -1136,7 +1146,7 @@
       base: r.base || 0, bonus: r.goalMet ? (r.bonus || 0) : 0, earned: r.earned || 0,
       due: c.due || '', goalMet: !!r.goalMet,
     });
-    if (S.logs.length > 200) S.logs.length = 200;
+    S.logs = keepLogs(S.logs);
   }
   function dropLog(mid) {
     const t = todayStr();
@@ -1169,6 +1179,229 @@
     return { count: rows.length, met };
   }
 
+  /* ============================================================ 월간·연간 달성 현황
+     S.logs에 쌓인 완료 기록(400일 보존)을 달력·월별 카드로 되돌아봅니다.
+     달성률은 '목표 시간이 있는 미션 중 목표 시간 안에 끝낸 비율'입니다. */
+  const HIST = { view: 'month', y: 0, m: 0, member: 'all', day: '' };
+
+  function histAllLogs() {
+    return (S.logs || []).filter((l) => l && isDateStr(l.date));
+  }
+  function histMemberOk(l) {
+    return HIST.member === 'all' || String(l.member || '') === HIST.member;
+  }
+  function histMonthLogs(y, m) {
+    const pre = `${y}-${pad(m + 1)}`;
+    return histAllLogs().filter((l) => l.date.slice(0, 7) === pre && histMemberOk(l));
+  }
+  function histYearLogs(y) {
+    const pre = String(y);
+    return histAllLogs().filter((l) => l.date.slice(0, 4) === pre && histMemberOk(l));
+  }
+  function histStats(logs) {
+    let pts = 0;
+    let met = 0;
+    let eligible = 0;
+    const days = {};
+    logs.forEach((l) => {
+      pts += Math.max(0, Math.round(+l.earned || 0));
+      if (l.due) { eligible++; if (l.goalMet) met++; }
+      days[l.date] = 1;
+    });
+    return {
+      count: logs.length,
+      pts,
+      met,
+      eligible,
+      rate: eligible ? Math.round((met / eligible) * 100) : null,
+      days: Object.keys(days).length,
+    };
+  }
+
+  function histKpis(items) {
+    return `<div class="hist-kpis">${items.map((k, i) => `<div class="hist-kpi k${i + 1}">
+        <div class="k">${esc(k.k)}</div>
+        <div class="v">${k.v}</div>
+        <div class="s">${esc(k.s || '')}</div>
+      </div>`).join('')}</div>`;
+  }
+
+  function histMemberChip(member) {
+    if (!member) return '<span class="hist-who"><i style="background:#9aa4bd"></i>공용</span>';
+    const m = memberById(member);
+    return `<span class="hist-who"><i style="background:${esc(m ? m.color : '#9aa4bd')}"></i>${esc(m ? m.name : '구성원')}</span>`;
+  }
+
+  function renderHistFilter() {
+    const box = $('#histFilter');
+    if (!box) return;
+    const opts = [{ id: 'all', name: '전체', color: '' }].concat(S.members.map((m) => ({ id: m.id, name: m.name, color: m.color })));
+    if (histAllLogs().some((l) => !l.member)) opts.push({ id: '', name: '공용', color: '#9aa4bd' });
+    box.innerHTML = opts.map((o) => `<button type="button" class="hist-chip ${HIST.member === o.id ? 'on' : ''}" data-histmember="${esc(o.id)}">
+        ${o.color ? `<i class="mdot" style="background:${esc(o.color)}"></i>` : ''}${esc(o.name)}${o.id === KID_ID ? ' 🧒' : ''}
+      </button>`).join('');
+  }
+
+  function histShift(dir) {
+    if (HIST.view === 'year') {
+      HIST.y += dir;
+    } else {
+      const d = new Date(HIST.y, HIST.m + dir, 1);
+      HIST.y = d.getFullYear();
+      HIST.m = d.getMonth();
+    }
+    HIST.day = '';
+    renderHistory();
+  }
+
+  function histGoToday() {
+    const n = new Date();
+    HIST.y = n.getFullYear();
+    HIST.m = n.getMonth();
+    HIST.day = HIST.view === 'month' ? todayStr() : '';
+    renderHistory();
+  }
+
+  function histDayLabel(ds) {
+    const p = String(ds).split('-').map(Number);
+    const d = new Date(p[0], p[1] - 1, p[2]);
+    return `${p[1]}월 ${p[2]}일 (${DAYS[d.getDay()]})`;
+  }
+
+  function histMonthHTML() {
+    const y = HIST.y;
+    const m = HIST.m;
+    const pre = `${y}-${pad(m + 1)}`;
+    const dim = new Date(y, m + 1, 0).getDate();
+    const logs = histMonthLogs(y, m);
+    const st = histStats(logs);
+    const byDay = {};
+    logs.forEach((l) => { (byDay[l.date] = byDay[l.date] || []).push(l); });
+    Object.keys(byDay).forEach((k) => byDay[k].sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))));
+    const dayKeys = Object.keys(byDay).sort();
+
+    // 고른 날짜가 이 달에 없으면 오늘(기록이 있으면) 또는 기록이 있는 마지막 날로 맞춥니다.
+    const todayS = todayStr();
+    const thisMonth = todayS.slice(0, 7) === pre;
+    if (!HIST.day || HIST.day.slice(0, 7) !== pre) {
+      if (thisMonth && byDay[todayS]) HIST.day = todayS;
+      else if (dayKeys.length) HIST.day = dayKeys[dayKeys.length - 1];
+      else HIST.day = thisMonth ? todayS : '';
+    }
+
+    const first = new Date(y, m, 1).getDay();
+    const cells = [];
+    for (let i = 0; i < first; i++) cells.push('<span class="hist-cell blank" aria-hidden="true"></span>');
+    for (let d = 1; d <= dim; d++) {
+      const ds = `${pre}-${pad(d)}`;
+      const rows = byDay[ds] || [];
+      const met = rows.some((r) => r.goalMet);
+      const pts = rows.reduce((s, r) => s + Math.max(0, Math.round(+r.earned || 0)), 0);
+      const dow = (first + d - 1) % 7;
+      const cls = ['hist-cell'];
+      if (rows.length) cls.push(met ? 'goal' : 'has');
+      if (ds === todayS) cls.push('is-today');
+      if (ds === HIST.day) cls.push('is-sel');
+      const label = `${m + 1}월 ${d}일 ${rows.length ? rows.length + '건 완료' + (met ? ' · 목표 달성 포함' : '') : '기록 없음'}`;
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-histday="${ds}" aria-label="${esc(label)}"${ds === HIST.day ? ' aria-pressed="true"' : ''}>
+          <span class="hc-num${dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''}">${d}</span>
+          ${rows.length ? `<span class="hc-cnt">${rows.length}건</span><span class="hc-pt">+${pts}P</span>` : ''}
+          ${met ? '<span class="hc-flag" aria-hidden="true">⏰</span>' : ''}
+        </button>`);
+    }
+
+    const dRows = HIST.day ? (byDay[HIST.day] || []) : [];
+    const dPts = dRows.reduce((s, r) => s + Math.max(0, Math.round(+r.earned || 0)), 0);
+    const detail = HIST.day
+      ? `<div class="hist-detail">
+          <div class="hist-detail-head">
+            <b>${esc(histDayLabel(HIST.day))}</b>
+            ${dRows.length ? `<span class="pill">${dRows.length}건 · +${dPts}P</span>` : ''}
+          </div>
+          ${dRows.length ? `<div class="hist-day-list">${dRows.map((l) => `<div class="hist-day-row">
+              <span class="t">${esc(l.at || '')}</span>
+              <span class="n">${esc(l.title || '미션')}</span>
+              ${histMemberChip(l.member)}
+              ${l.goalMet ? '<span class="log-badge goal">⏰ 목표 달성</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>')}
+              <b class="p">+${Math.max(0, Math.round(+l.earned || 0))}P</b>
+            </div>`).join('')}</div>` : '<div class="shop-empty" style="padding:8px 4px">이 날은 완료 기록이 없어요</div>'}
+        </div>`
+      : '<div class="hist-detail"><div class="shop-empty" style="padding:8px 4px">날짜를 누르면 그날 완료한 미션이 이곳에 보여요</div></div>';
+
+    return histKpis([
+      { k: '이 달 완료', v: `${st.count}건`, s: `${dim}일 중 ${st.days}일 활동` },
+      { k: '목표 시간 달성률', v: st.rate == null ? '—' : `${st.rate}%`, s: st.eligible ? `${st.met}/${st.eligible}건` : '목표 시간 미설정' },
+      { k: '이 달 획득 포인트', v: `+${st.pts}P`, s: st.days ? `하루 평균 ${Math.round(st.pts / st.days)}P` : '기록 없음' },
+      { k: '활동 일수', v: `${st.days}일`, s: st.days ? `이 달 ${Math.round((st.days / dim) * 100)}%` : '기록 없음' },
+    ]) + `<div class="hist-cal">
+        <div class="hist-dows">${DAYS.map((d, i) => `<span class="${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}">${d}</span>`).join('')}</div>
+        <div class="hist-grid">${cells.join('')}</div>
+      </div>
+      <div class="hist-legend">
+        <span><i class="lg-goal"></i>목표 시간 달성</span>
+        <span><i class="lg-has"></i>완료</span>
+        <span><i class="lg-none"></i>기록 없음</span>
+      </div>
+      ${detail}`;
+  }
+
+  function histYearHTML() {
+    const y = HIST.y;
+    const logs = histYearLogs(y);
+    const st = histStats(logs);
+    const months = [];
+    for (let m = 0; m < 12; m++) months.push(histStats(histMonthLogs(y, m)));
+    const maxC = Math.max(1, ...months.map((x) => x.count));
+    const now = new Date();
+    const cards = months.map((x, m) => {
+      const cur = now.getFullYear() === y && now.getMonth() === m;
+      return `<button type="button" class="hist-month${x.count ? '' : ' zero'}${cur ? ' cur' : ''}" data-histmonth="${m}" aria-label="${m + 1}월 ${x.count}건 완료 · 월간 보기">
+          <span class="mh"><b>${m + 1}월</b>${cur ? '<span>이번 달</span>' : ''}</span>
+          <span class="mc">${x.count}<small>건</small></span>
+          <span class="ms">달성률 ${x.rate == null ? '—' : x.rate + '%'} · +${x.pts}P</span>
+          <span class="ms">활동 ${x.days}일</span>
+          <span class="mbar"><i style="width:${Math.round((x.count / maxC) * 100)}%"></i></span>
+        </button>`;
+    }).join('');
+    return histKpis([
+      { k: '연간 완료', v: `${st.count}건`, s: `활동 ${st.days}일` },
+      { k: '연간 목표 시간 달성률', v: st.rate == null ? '—' : `${st.rate}%`, s: st.eligible ? `${st.met}/${st.eligible}건` : '목표 시간 미설정' },
+      { k: '연간 획득 포인트', v: `+${st.pts}P`, s: st.days ? `하루 평균 ${Math.round(st.pts / st.days)}P` : '기록 없음' },
+    ]) + `<div class="hist-year-grid">${cards}</div>
+      <div class="hist-year-hint">월 카드를 누르면 그 달의 월간 달력으로 바로 이동해요.</div>`;
+  }
+
+  function renderHistory() {
+    const body = $('#histBody');
+    if (!body) return;
+    if (!HIST.y) { const n = new Date(); HIST.y = n.getFullYear(); HIST.m = n.getMonth(); }
+    $$('.hist-tab').forEach((b) => {
+      const on = b.dataset.histview === HIST.view;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    const list = HIST.view === 'month' ? histMonthLogs(HIST.y, HIST.m) : histYearLogs(HIST.y);
+    const st = histStats(list);
+    if ($('#histTitleText')) $('#histTitleText').textContent = HIST.view === 'month' ? `${HIST.y}년 ${HIST.m + 1}월` : `${HIST.y}년`;
+    if ($('#histSubText')) $('#histSubText').textContent = HIST.view === 'month'
+      ? `${st.count}건 완료 · +${st.pts}P`
+      : `1년 ${st.count}건 완료 · +${st.pts}P`;
+    renderHistFilter();
+    body.innerHTML = HIST.view === 'month' ? histMonthHTML() : histYearHTML();
+  }
+
+  function openHistory() {
+    const n = new Date();
+    HIST.view = 'month';
+    HIST.y = n.getFullYear();
+    HIST.m = n.getMonth();
+    HIST.member = 'all';
+    HIST.day = todayStr();
+    $('#historyModal').hidden = false;
+    renderHistory();
+  }
+  function closeHistory() { const m = $('#historyModal'); if (m) m.hidden = true; }
+
   function renderMissions() {
     const t = todayStr();
     const p = partnerOf(S.pokemon.key);
@@ -1191,6 +1424,9 @@
     if (tick) tick.textContent = `현재 파트너 ${xp}P / ${FINAL_P}P`;
     const log = renderLog();
     $('#choreSub').textContent = `오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met} · 미션 ${S.missions.length}개`;
+    const thisMonth = todayStr().slice(0, 7);
+    const monthCount = histAllLogs().filter((l) => l.date.slice(0, 7) === thisMonth).length;
+    if ($('#histBtnPill')) $('#histBtnPill').textContent = monthCount ? `이번 달 ${monthCount}건` : '이번 달 기록 없음';
 
     const nxt = st[lv + 1];
     if (nxt) {
@@ -1276,6 +1512,7 @@
     renderDex();
     renderPointUses();
     checkPokeImages();
+    if ($('#historyModal') && !$('#historyModal').hidden) renderHistory();
   }
 
   /* ---- 포켓몬 도감(수집 완료) ---- */
@@ -2330,6 +2567,38 @@
   });
   $('#dexClose').addEventListener('click', () => { $('#dexModal').hidden = true; });
   $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
+
+  // 월간·연간 달성 현황
+  $('#histOpenBtn').addEventListener('click', openHistory);
+  $('#histClose').addEventListener('click', closeHistory);
+  $('#histCloseBtn').addEventListener('click', closeHistory);
+  $('#histPrev').addEventListener('click', () => histShift(-1));
+  $('#histNext').addEventListener('click', () => histShift(1));
+  $('#histToday').addEventListener('click', histGoToday);
+  $('#historyModal').addEventListener('click', (e) => {
+    if (e.target.id === 'historyModal') { closeHistory(); return; }
+    const tab = e.target.closest('[data-histview]');
+    if (tab) {
+      const v = tab.dataset.histview;
+      if (v !== HIST.view) {
+        HIST.view = v;
+        if (v === 'year') HIST.day = '';
+        renderHistory();
+      }
+      return;
+    }
+    const chip = e.target.closest('[data-histmember]');
+    if (chip) { HIST.member = chip.dataset.histmember; HIST.day = ''; renderHistory(); return; }
+    const day = e.target.closest('[data-histday]');
+    if (day) { HIST.day = day.dataset.histday; renderHistory(); return; }
+    const mon = e.target.closest('[data-histmonth]');
+    if (mon) {
+      HIST.view = 'month';
+      HIST.m = Math.max(0, Math.min(11, Math.round(+mon.dataset.histmonth || 0)));
+      HIST.day = '';
+      renderHistory();
+    }
+  });
   $('#wikiAddBtn').addEventListener('click', () => editWiki(null));
   $('#linkAddBtn').addEventListener('click', () => editLink(null));
 
@@ -2537,7 +2806,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal', '#dexModal'].forEach((sel) => {
+    ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal', '#dexModal', '#historyModal'].forEach((sel) => {
       const m = $(sel);
       if (m && !m.hidden) {
         if (sel === '#modal' && modalResolve) { modalResolve(null); return; }
