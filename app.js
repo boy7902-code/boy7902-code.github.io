@@ -17,18 +17,25 @@
   const todayStr = () => fmtDate(new Date());
   const addDays = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  const won = (n) => Number(n || 0).toLocaleString('ko-KR');
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const fmtMD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? `${+m[2]}/${+m[3]}` : ''; };
+
+  /* 아이 역할 구성원과 포켓몬 성장 기준 */
+  const KID_ID = 'm3';        // 아이 역할 — 이름은 설정에서 바꿀 수 있고, id는 그대로 씁니다
+  const FINAL_P = 200;        // 최종 진화 기준 경험치(현재 파트너)
 
   /* ------------------------------------------------------------- data model */
   const KEY = 'family-dashboard:v1';
   const WKEY = 'family-dashboard:weather';
 
+  // 파트너 포켓몬 진화 라인 키 — 저장된 데이터를 읽을 때 이 목록으로 검증합니다
+  const POKE_KEYS = ['pikachu', 'charmander', 'squirtle', 'bulbasaur', 'eevee', 'riolu', 'froakie', 'dratini', 'gastly', 'piplup', 'chimchar', 'turtwig'];
+
   const DEFAULT_STATE = () => ({
-    v: 2,
+    v: 3,
     theme: 'light',
     quiet: false,
-    partner: 'pikachu',        // 파트너 포켓몬 진화 라인 키(pikachu/charmander/squirtle/bulbasaur)
+    pokemon: { key: 'pikachu', xp: 0, dex: [] },   // 현재 파트너 라인 · 현재 파트너 경험치 · 수집 완료 도감
     location: null,             // { lat, lon, name } — 사용자가 정한 경우에만 저장
     members: [
       { id: 'm1', name: '성인 1', color: '#ff7a6b' },
@@ -52,6 +59,7 @@
     ],
     logs: [],
     points: { total: 0, byMember: {} },
+    pointUses: [],              // 포인트 사용 내역 { id, date, at, title, amount }
     letters: [],
     shopping: [
       { id: uid(), cat: 'buy', text: '우유', done: false },
@@ -70,17 +78,6 @@
       { id: uid(), group: '연락처·와이파이', key: 'Wi-Fi', val: '예) 와이파이 이름 / 비밀번호' },
       { id: uid(), group: '연락처·와이파이', key: '관리사무소', val: '예) 관리사무소 번호' },
     ],
-    budget: {
-      goal: 2500000,
-      fixed: [
-        { id: uid(), label: '주거비', amount: 800000 },
-        { id: uid(), label: '통신·구독', amount: 120000 },
-      ],
-      variable: [
-        { id: uid(), label: '식비', amount: 600000 },
-        { id: uid(), label: '생활용품', amount: 150000 },
-      ],
-    },
     links: [
       { id: uid(), title: '유튜브 뮤직 — 가족 플레이리스트', url: 'https://music.youtube.com/' },
     ],
@@ -91,11 +88,11 @@
     if (!raw || typeof raw !== 'object') return base;
     const out = Object.assign({}, base, raw);
     // 배열/객체 타입 보정
-    ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs'].forEach((k) => {
+    ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses'].forEach((k) => {
       if (!Array.isArray(out[k])) out[k] = base[k];
     });
-    out.v = 2;                     // 데이터 형식 2: 포켓몬 파트너 + 목표 시간/보너스
-    if (!['pikachu', 'charmander', 'squirtle', 'bulbasaur'].includes(out.partner)) out.partner = 'pikachu';
+    out.v = 3;                     // 데이터 형식 3: 아이 포인트 기준 진화 + 경험치/잔액 분리 + 도감
+    const prevV = Math.max(0, Math.round(+raw.v || 0));
     if (!out.points || typeof out.points !== 'object') out.points = { total: 0, byMember: {} };
     out.points.total = Math.max(0, Math.round(+out.points.total || 0));
     if (!out.points.byMember || typeof out.points.byMember !== 'object') out.points.byMember = {};
@@ -125,9 +122,43 @@
       l.due = l.due || '';
       l.goalMet = !!l.goalMet;
     });
-    if (!out.budget || typeof out.budget !== 'object') out.budget = base.budget;
-    if (!Array.isArray(out.budget.fixed)) out.budget.fixed = [];
-    if (!Array.isArray(out.budget.variable)) out.budget.variable = [];
+    // ---- 포켓몬 파트너/도감 (형식 2 → 3 마이그레이션 포함) ----
+    const pkRaw = (raw.pokemon && typeof raw.pokemon === 'object') ? raw.pokemon : null;
+    const pk = {
+      key: (pkRaw && pkRaw.key) || raw.partner || base.pokemon.key,
+      xp: 0,
+      dex: (pkRaw && Array.isArray(pkRaw.dex)) ? pkRaw.dex : [],
+    };
+    if (!POKE_KEYS.includes(pk.key)) pk.key = base.pokemon.key;
+    if (prevV < 3) {
+      // 형식 2까지는 '가족 전체 누적 포인트'로 진화했습니다.
+      // 형식 3부터는 아이(m3) 누적 포인트를 경험치로 삼으므로, 지금까지 아이가 모은 포인트를 현재 파트너 경험치로 옮겨 옵니다.
+      pk.xp = Math.min(FINAL_P, Math.max(0, Math.round(+out.points.byMember[KID_ID] || 0)));
+    } else if (pkRaw) {
+      pk.xp = Math.max(0, Math.round(+pkRaw.xp || 0));
+    }
+    pk.xp = clamp(pk.xp, 0, FINAL_P);
+    pk.dex = pk.dex.filter((d) => d && typeof d === 'object' && POKE_KEYS.includes(d.key)).map((d) => ({
+      key: d.key,
+      label: String(d.label || ''),
+      finalName: String(d.finalName || ''),
+      finalId: Math.max(0, Math.round(+d.finalId || 0)),
+      tint: String(d.tint || ''),
+      at: /^\d{4}-\d{2}-\d{2}$/.test(String(d.at || '')) ? d.at : '',
+      times: Math.max(1, Math.round(+d.times || 1)),
+    }));
+    out.pokemon = pk;
+    delete out.partner;
+
+    // ---- 포인트 사용 내역 ----
+    out.pointUses = out.pointUses.filter((u) => u && typeof u === 'object').map((u) => ({
+      id: u.id || 'u' + Math.random().toString(36).slice(2, 9),
+      date: /^\d{4}-\d{2}-\d{2}$/.test(String(u.date || '')) ? u.date : todayStr(),
+      at: String(u.at || ''),
+      title: String(u.title || ''),
+      amount: Math.max(0, Math.round(+u.amount || 0)),
+    }));
+
     if (typeof out.stickers !== 'number' || !isFinite(out.stickers)) out.stickers = 0;
 
     if (!out.members.length) out.members = base.members;
@@ -532,7 +563,7 @@
         { id: 4, name: '파이리', min: 0 },
         { id: 5, name: '리자드', min: 30 },
         { id: 6, name: '리자몽', min: 90 },
-        { id: 10034, name: '메가리자몽 X', min: 200 },
+        { id: 10034, name: '메가리자몽 X', min: 200, crown: true },
       ],
     },
     {
@@ -541,7 +572,7 @@
         { id: 7, name: '꼬부기', min: 0 },
         { id: 8, name: '어니부기', min: 30 },
         { id: 9, name: '거북왕', min: 90 },
-        { id: 10036, name: '메가거북왕', min: 200 },
+        { id: 10036, name: '메가거북왕', min: 200, crown: true },
       ],
     },
     {
@@ -550,13 +581,79 @@
         { id: 1, name: '이상해씨', min: 0 },
         { id: 2, name: '이상해풀', min: 30 },
         { id: 3, name: '이상해꽃', min: 90 },
-        { id: 10033, name: '메가이상해꽃', min: 200 },
+        { id: 10033, name: '메가이상해꽃', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'eevee', label: '이브이 (님피아·블래키)', tint: '#c8a06a',
+      stages: [
+        { id: 133, name: '이브이', min: 0 },
+        { id: 700, name: '님피아', min: 100 },
+        { id: 197, name: '블래키', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'riolu', label: '리오르', tint: '#4f7fd6',
+      stages: [
+        { id: 447, name: '리오르', min: 0 },
+        { id: 448, name: '루카리오', min: 70 },
+        { id: 10059, name: '메가루카리오', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'froakie', label: '개구마르', tint: '#4f95ff',
+      stages: [
+        { id: 656, name: '개구마르', min: 0 },
+        { id: 657, name: '개굴반장', min: 60 },
+        { id: 658, name: '개굴닌자', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'dratini', label: '미뇽', tint: '#7fb3e8',
+      stages: [
+        { id: 147, name: '미뇽', min: 0 },
+        { id: 148, name: '신뇽', min: 60 },
+        { id: 149, name: '망나뇽', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'gastly', label: '고오스', tint: '#8f7bd0',
+      stages: [
+        { id: 92, name: '고오스', min: 0 },
+        { id: 93, name: '고우스트', min: 40 },
+        { id: 94, name: '팬텀', min: 110 },
+        { id: 10038, name: '메가팬텀', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'piplup', label: '팽도리', tint: '#4aa3d8',
+      stages: [
+        { id: 393, name: '팽도리', min: 0 },
+        { id: 394, name: '팽태자', min: 70 },
+        { id: 395, name: '엠페르트', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'chimchar', label: '불꽃숭이', tint: '#f4883c',
+      stages: [
+        { id: 390, name: '불꽃숭이', min: 0 },
+        { id: 391, name: '파이숭이', min: 70 },
+        { id: 392, name: '초염몽', min: 200, crown: true },
+      ],
+    },
+    {
+      key: 'turtwig', label: '모부기', tint: '#7cbf5a',
+      stages: [
+        { id: 387, name: '모부기', min: 0 },
+        { id: 388, name: '수풀부기', min: 70 },
+        { id: 389, name: '토대부기', min: 200, crown: true },
       ],
     },
   ];
 
   const partnerOf = (key) => PARTNERS.find((p) => p.key === key) || PARTNERS[0];
-  const stagesOf = () => partnerOf(S.partner).stages;
+  const stagesOf = () => partnerOf(S.pokemon.key).stages;
+  const finalStageOf = (p) => p.stages[p.stages.length - 1];
   function stageIndex(n) {
     const st = stagesOf();
     let idx = 0;
@@ -655,6 +752,39 @@
     return { base, bonus, goalMet, earned: base + (goalMet ? bonus : 0) };
   }
 
+  /* ---- 아이 포인트: 누적 경험치 · 사용 가능 포인트(잔액) · 사용 내역 ---- */
+  const kidMember = () => S.members.find((m) => m.id === KID_ID) || null;
+  // 아이가 지금까지 모은 포인트 총합 = 총 누적 경험치. 포인트를 써도 줄지 않습니다.
+  function kidTotalPts() { ptsInit(); return Math.max(0, Math.round(+S.points.byMember[KID_ID] || 0)); }
+  function spentPts() {
+    if (!Array.isArray(S.pointUses)) S.pointUses = [];
+    return S.pointUses.reduce((s, u) => s + Math.max(0, Math.round(+u.amount || 0)), 0);
+  }
+  // 사용 가능 포인트(잔액) = 모은 포인트 − 사용한 포인트. 경험치·진화와는 완전히 별개입니다.
+  function balancePts() { return Math.max(0, kidTotalPts() - spentPts()); }
+  function kidTodayPts() {
+    const t = todayStr();
+    return S.missions.filter((x) => x.member === KID_ID && x.doneOn === t).reduce((s, x) => s + earnOf(x), 0);
+  }
+
+  /* ---- 도감 ---- */
+  const dexEntryOf = (key) => (S.pokemon.dex || []).find((d) => d.key === key) || null;
+  function registerDex(bump = false, key = S.pokemon.key) {
+    const p = partnerOf(key);
+    const fin = finalStageOf(p);
+    const ex = dexEntryOf(key);
+    if (ex) {
+      if (bump) { ex.at = todayStr(); ex.times = Math.max(1, Math.round(+ex.times || 1)) + 1; }
+      return false;
+    }
+    S.pokemon.dex.push({ key, label: p.label, finalName: fin.name, finalId: fin.id, tint: p.tint, at: todayStr(), times: 1 });
+    return true;
+  }
+  // 이미 최종 진화 상태(예: 형식 2에서 옮겨 온 데이터)라면 도감에 빠지지 않게 한 번 채워 넣습니다.
+  function syncDex() {
+    if (S.pokemon && S.pokemon.xp >= FINAL_P && !dexEntryOf(S.pokemon.key)) registerDex(false);
+  }
+
   /* ---- 오늘 완료 이력 ---- */
   function addLog(c, r, at) {
     if (!Array.isArray(S.logs)) S.logs = [];
@@ -700,31 +830,36 @@
 
   function renderMissions() {
     const t = todayStr();
-    const total = Math.max(0, Math.round((S.points && S.points.total) || 0));
-    const p = partnerOf(S.partner);
-    const st = stagesOf();
-    const lv = stageIndex(total);
+    const p = partnerOf(S.pokemon.key);
+    const st = p.stages;
+    const xp = clamp(Math.round(+S.pokemon.xp || 0), 0, FINAL_P);
+    const lv = stageIndex(xp);
     const stage = st[lv];
+    const totalXp = kidTotalPts();
+    const bal = balancePts();
+    const done = xp >= FINAL_P;
 
     $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint) + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '');
     $('#charLevel').textContent = stage.name;
 
     const doneList = S.missions.filter((x) => x.doneOn === t);
-    const ptsToday = doneList.reduce((s, x) => s + earnOf(x), 0);
-    $('#charCount').innerHTML = `누적 <b>${total}P</b>`;
-    $('#charToday').textContent = `오늘 +${ptsToday}P`;
+    $('#charCount').innerHTML = `누적 경험치 <b>${totalXp}P</b>`;
+    $('#charToday').textContent = `아이 오늘 +${kidTodayPts()}P`;
+    if ($('#charBalance')) $('#charBalance').innerHTML = `사용 가능 <b>${bal}P</b>`;
+    const tick = $('#charTick');
+    if (tick) tick.textContent = `현재 파트너 ${xp}P / ${FINAL_P}P`;
     const log = renderLog();
     $('#choreSub').textContent = `오늘 ${doneList.length}개 완료 · 목표 달성 ${log.met} · 미션 ${S.missions.length}개`;
 
     const nxt = st[lv + 1];
     if (nxt) {
-      const span = nxt.min - stage.min;
-      const got = total - stage.min;
+      const span = Math.max(1, nxt.min - stage.min);
+      const got = xp - stage.min;
       $('#charBar').style.width = clamp((got / span) * 100, 0, 100) + '%';
-      $('#charNext').textContent = `${nxt.name}까지 ${Math.max(0, nxt.min - total)}P 남았어요`;
+      $('#charNext').textContent = `${nxt.name}까지 ${Math.max(0, nxt.min - xp)}P 남았어요`;
     } else {
       $('#charBar').style.width = '100%';
-      $('#charNext').textContent = '최종 진화 완료! 정말 대단해요 🎉';
+      $('#charNext').textContent = done ? '최종 진화 완료! 🏆 도감에 저장됐어요' : '최종 단계예요';
     }
 
     $('#charEvo').innerHTML = st.map((s, i) =>
@@ -732,11 +867,21 @@
     ).join('');
     if ($('#partnerPill')) $('#partnerPill').textContent = `${p.label} 계열`;
 
+    const adoptBtn = $('#adoptBtn');
+    if (adoptBtn) {
+      adoptBtn.disabled = !done;
+      adoptBtn.classList.toggle('on', done);
+      adoptBtn.textContent = done ? '✨ 새 포켓몬 입양하기' : `🔒 새 포켓몬 입양 (${FINAL_P}P)`;
+      adoptBtn.title = done
+        ? '지금 포켓몬은 도감에 저장되고, 새 포켓몬을 0P부터 다시 키울 수 있어요'
+        : `현재 파트너가 ${FINAL_P}P에 도달하면 새 포켓몬을 입양할 수 있어요`;
+    }
+
     // 구성원별 오늘 완료·오늘 포인트·누적 포인트
     const stats = memberStats();
     $('#memberStats').innerHTML = stats.map((s) => `<div class="mstat" style="--c:${esc(s.m.color)}">
         <span class="mdot" style="background:${esc(s.m.color)}"></span>
-        <span class="mstat-name">${esc(s.m.name)}</span>
+        <span class="mstat-name">${esc(s.m.name)}${s.m.id === KID_ID ? ' 🧒' : ''}</span>
         <span class="mstat-today">오늘 ${s.today}개</span>
         <span class="mstat-pts">${s.ptsToday ? '+' + s.ptsToday + 'P' : '0P'}</span>
         <span class="mstat-total">누적 ${s.total}P</span>
@@ -779,15 +924,110 @@
         }).join('')
       : `<div class="shop-empty">미션을 추가해 보세요</div>`;
 
-    // 10P마다 별 하나
-    const stars = Math.min(Math.floor(total / 10), 24);
+    // 10P마다 별 하나 (아이 누적 경험치 기준)
+    const stars = Math.min(Math.floor(totalXp / 10), 24);
     let row = '';
     for (let i = 0; i < stars; i++) row += '<span>⭐</span>';
-    if (total >= 10 && total > stars * 10) row += `<span style="font-size:11px;font-weight:800;color:var(--text-3);align-self:center">${total - stars * 10}P</span>`;
+    if (totalXp >= 10 && totalXp > stars * 10) row += `<span style="font-size:11px;font-weight:800;color:var(--text-3);align-self:center">${totalXp - stars * 10}P</span>`;
     if (!stars) row = '<span style="font-size:11.5px;font-weight:700;color:var(--text-3)">미션을 끝내면 10P마다 ⭐ 하나씩 쌓여요</span>';
     $('#stickerRow').innerHTML = row;
 
+    renderDex();
+    renderPointUses();
     checkPokeImages();
+  }
+
+  /* ---- 포켓몬 도감(수집 완료) ---- */
+  function renderDex() {
+    const box = $('#dexRow');
+    if (!box) return;
+    const dex = S.pokemon.dex || [];
+    if ($('#dexCount')) $('#dexCount').textContent = `${dex.length}마리`;
+    box.innerHTML = dex.length
+      ? dex.map((d) => {
+          const p = partnerOf(d.key);
+          const fin = finalStageOf(p);
+          return `<button type="button" class="dex-card" data-act="dex-open" data-key="${esc(d.key)}" title="${esc(d.label)} 계열 · ${esc(d.at || '')} 완성">
+            <span class="dex-img-frame">${pokeImg(fin, 'dex-art', p.tint)}</span>
+            <span class="dex-name">${esc(d.finalName || fin.name)}</span>
+            <span class="dex-when">${esc(fmtMD(d.at))} 완성${d.times > 1 ? ` · ${d.times}회` : ''}</span>
+          </button>`;
+        }).join('')
+      : '<div class="shop-empty" style="padding:8px 4px">최종 진화(200P)를 마치면 그 포켓몬이 이곳에 영구히 쌓여요</div>';
+    checkPokeImages();
+  }
+
+  function openDexEntry(key) {
+    const d = dexEntryOf(key);
+    if (!d) return;
+    const p = partnerOf(d.key);
+    const fin = finalStageOf(p);
+    $('#dexTitle').textContent = `🏆 ${p.label} 계열`;
+    $('#dexMeta').textContent = `${d.finalName || fin.name} · ${d.at || ''} 완성${d.times > 1 ? ` · ${d.times}회 완성` : ''}`;
+    $('#dexDetail').innerHTML = `<div class="dex-detail-img">${pokeImg(fin, 'poke-img', p.tint)}</div>
+      <div class="dex-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', p.tint)}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
+      <div class="dex-legend">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>`;
+    $('#dexModal').hidden = false;
+    checkPokeImages();
+  }
+
+  /* ---- 포인트 사용 내역 ---- */
+  function renderPointUses() {
+    const box = $('#useList');
+    if (!box) return;
+    const uses = (S.pointUses || []).slice();
+    const total = uses.reduce((s, u) => s + Math.max(0, Math.round(+u.amount || 0)), 0);
+    if ($('#useCount')) $('#useCount').textContent = uses.length ? `${uses.length}건 · ${total}P` : '아직 없어요';
+    box.innerHTML = uses.length
+      ? uses.map((u) => `<div class="use-row">
+          <span class="use-date" title="${esc(u.date || '')} ${esc(u.at || '')}">${esc(fmtMD(u.date))}</span>
+          <span class="use-title">${esc(u.title || '포인트 사용')}</span>
+          <b class="use-amt">-${Math.max(0, Math.round(+u.amount || 0))}P</b>
+          <button class="btn icon sm ghost" data-act="use-del" data-id="${u.id}" aria-label="사용 내역 되돌리기">✕</button>
+        </div>`).join('')
+      : '<div class="shop-empty" style="padding:8px 4px">포인트를 사용하면 내역이 이곳에 남아요</div>';
+  }
+
+  async function usePoints() {
+    const kid = kidMember();
+    if (!kid) { toast('아이 구성원(m3)이 없어 포인트를 쓸 수 없어요', 'coral', 3200); return; }
+    const bal = balancePts();
+    if (bal <= 0) { toast(`사용 가능한 포인트가 없어요 (지금 ${bal}P)`, '', 2600); return; }
+    const r = await askModal({
+      title: '🎁 포인트 사용',
+      hint: `${kid.name} 님의 사용 가능 포인트는 ${bal}P입니다. 사용한 만큼만 잔액이 줄고, 포켓몬 경험치와 진화 단계는 그대로 유지돼요.`,
+      fields: [
+        { name: 'title', label: '무엇을 사줬나요?', placeholder: '예: 포켓몬 카드 팩' },
+        { name: 'amount', label: '사용 포인트 (P)', type: 'number', value: Math.min(bal, 50) },
+      ],
+      okText: '사용',
+    });
+    if (!r) return;
+    const title = String(r.title || '').trim();
+    const amount = Math.round(+r.amount || 0);
+    if (!title) { toast('사용 내용을 적어 주세요', 'coral', 2800); return; }
+    if (!(amount > 0)) { toast('사용 포인트를 1P 이상 적어 주세요', 'coral', 2800); return; }
+    const nowBal = balancePts();
+    if (amount > nowBal) { toast(`사용 가능 포인트가 ${nowBal}P뿐이에요`, 'coral', 3200); return; }
+    S.pointUses.unshift({ id: uid(), date: todayStr(), at: hhmm(), title, amount });
+    save();
+    renderMissions();
+    toast(`${amount}P 사용 · 남은 포인트 ${balancePts()}P · 포켓몬 경험치는 그대로예요`, 'mint', 3400);
+  }
+
+  async function deletePointUse(id) {
+    const u = (S.pointUses || []).find((x) => x.id === id);
+    if (!u) return;
+    const r = await askModal({
+      title: '사용 내역 되돌리기',
+      hint: `'${u.title || '포인트 사용'}' ${Math.round(+u.amount || 0)}P 내역을 지우면 사용 가능 포인트로 다시 돌아옵니다.`,
+      fields: [],
+      okText: '되돌리기',
+    });
+    if (!r) return;
+    S.pointUses = S.pointUses.filter((x) => x.id !== id);
+    save(); renderMissions();
+    toast(`${Math.round(+u.amount || 0)}P를 되돌렸어요`, 'mint', 2400);
   }
 
   function memberStats() {
@@ -822,14 +1062,19 @@
     const t = todayStr();
     ptsInit();
     const key = c.member || '';
-    const before = stageIndex(Math.max(0, Math.round(S.points.total || 0)));
+    const isKid = key === KID_ID;
+    const beforeXp = clamp(Math.round(+S.pokemon.xp || 0), 0, FINAL_P);
+    const before = stageIndex(beforeXp);
 
     if (c.doneOn === t) {
-      addPoints(key, -earnOf(c));
+      const undo = earnOf(c);
+      addPoints(key, -undo);
+      // 아이 미션 체크를 취소했을 때만 파트너 경험치도 되돌아갑니다 (포인트 사용으로는 절대 줄지 않음)
+      if (isKid) S.pokemon.xp = clamp(beforeXp - undo, 0, FINAL_P);
       c.doneOn = null; c.doneAt = ''; c.earned = 0; c.goalMet = false;
       dropLog(c.id);
       save(); renderMissions();
-      toast('완료를 취소했어요', '', 1400);
+      toast(isKid ? `완료를 취소했어요 · 파트너 경험치 -${undo}P` : '완료를 취소했어요', '', 1600);
       return;
     }
 
@@ -840,12 +1085,23 @@
     c.earned = r.earned;
     c.goalMet = r.goalMet;
     addPoints(key, r.earned);
+    // 파트너 경험치는 '아이(m3)'의 미션에서만 오릅니다. 성인 미션은 자기 통계에만 쌓여요.
+    if (isKid) S.pokemon.xp = clamp(beforeXp + r.earned, 0, FINAL_P);
     addLog(c, r, at);
-    const after = stageIndex(Math.max(0, Math.round(S.points.total || 0)));
+
+    const afterXp = clamp(Math.round(+S.pokemon.xp || 0), 0, FINAL_P);
+    const after = stageIndex(afterXp);
+    const justFinal = isKid && beforeXp < FINAL_P && afterXp >= FINAL_P;
+    if (justFinal) registerDex(true);
+    syncDex();
     save();
     renderMissions();
 
-    if (after > before) {
+    if (justFinal) {
+      confetti(130);
+      beep('up');
+      showFinalDone();
+    } else if (after > before) {
       confetti(90);
       beep('up');
       showLevelUp(after);
@@ -863,17 +1119,32 @@
   function showLevelUp(lv) {
     const el = $('#levelup');
     const st = stagesOf();
-    const p = partnerOf(S.partner);
+    const p = partnerOf(S.pokemon.key);
     const stage = st[lv] || st[st.length - 1];
     el.innerHTML = `<div class="levelup-card">
       <div class="lv-emoji">🎉</div>
       <h4>${esc(stage.name)} 진화 완료!</h4>
-      <p>누적 ${Math.round(S.points.total)}P · 정말 대단해요</p>
+      <p>파트너 경험치 ${Math.round(S.pokemon.xp)}P · 누적 ${kidTotalPts()}P</p>
       <div class="levelup-poke">${pokeImg(stage, 'poke-img', p.tint)}</div>
     </div>`;
     el.hidden = false;
     checkPokeImages();
     setTimeout(() => { el.hidden = true; el.innerHTML = ''; }, 2800);
+  }
+
+  function showFinalDone() {
+    const el = $('#levelup');
+    const p = partnerOf(S.pokemon.key);
+    const fin = finalStageOf(p);
+    el.innerHTML = `<div class="levelup-card dex">
+      <div class="lv-emoji">🏆</div>
+      <h4>${esc(fin.name)} 완성!</h4>
+      <p>도감에 영구 저장했어요 · ✨ 새 포켓몬을 입양할 수 있어요</p>
+      <div class="levelup-poke">${pokeImg(fin, 'poke-img', p.tint)}</div>
+    </div>`;
+    el.hidden = false;
+    checkPokeImages();
+    setTimeout(() => { el.hidden = true; el.innerHTML = ''; }, 3800);
   }
 
   /* ---- 파트너 고르기 ---- */
@@ -891,30 +1162,71 @@
     const grid = $('#partnerGrid');
     if (!grid) return;
     grid.innerHTML = PARTNERS.map((p) => {
-      const on = p.key === S.partner;
+      const on = p.key === S.pokemon.key;
+      const got = !!dexEntryOf(p.key);
       return `<button type="button" class="partner-card${on ? ' on' : ''}" data-partner="${p.key}" aria-pressed="${on}">
         <div class="partner-line">${p.stages.map((s) => `<span class="pstage">${pokeImg(s, 'pstage-img', p.tint)}</span>`).join('<i class="pstage-arrow">›</i>')}</div>
-        <div class="partner-name">${esc(p.label)} 계열${on ? ' <b>사용 중</b>' : ''}</div>
+        <div class="partner-name">${esc(p.label)} 계열${on ? ' <b>사용 중</b>' : ''}${got ? ' <b class="got">🏆 도감</b>' : ''}</div>
         <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
       </button>`;
     }).join('');
     checkPokeImages();
   }
 
-  function openPartnerPicker() {
+  let partnerMode = 'change';   // 'change' = 파트너 바꾸기 · 'adopt' = 새 포켓몬 입양
+
+  function partnerHintText() {
+    const p = partnerOf(S.pokemon.key);
+    const fin = finalStageOf(p);
+    if (partnerMode === 'adopt') {
+      return `지금 파트너 ${fin.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
+    }
+    return `지금은 ${p.label} 계열 ${fin.name}을(를) 키우는 중이에요(파트너 경험치 ${S.pokemon.xp}P). 아이 미션으로만 경험치가 쌓이고, 언제든 바꿀 수 있습니다.`;
+  }
+
+  function openPartnerPicker(mode = 'change') {
+    partnerMode = mode === 'adopt' ? 'adopt' : 'change';
+    $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
+    $('#partnerHint').textContent = partnerHintText();
     renderPartnerGrid();
     $('#partnerModal').hidden = false;
   }
 
-  function setPartner(key) {
-    if (!PARTNERS.some((p) => p.key === key)) return;
-    if (S.partner === key) { $('#partnerModal').hidden = true; return; }
-    S.partner = key;
+  function pickPartner(key) {
+    if (!POKE_KEYS.includes(key)) return;
+    const p = partnerOf(key);
+
+    if (partnerMode === 'adopt') {
+      if (S.pokemon.xp < FINAL_P) { toast('최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요', '', 2600); return; }
+      syncDex();                      // 보호: 지금 완성한 포켓몬은 먼저 도감에 넣어 두고 시작
+      S.pokemon.key = key;
+      S.pokemon.xp = 0;               // 현재 파트너 경험치만 0P부터 (누적 경험치·잔액은 유지)
+      save();
+      renderMissions();
+      renderSettings();
+      $('#partnerModal').hidden = true;
+      confetti(60);
+      beep('up');
+      toast(`✨ ${p.label} 계열 새 파트너와 0P부터 다시 시작해요`, 'mint', 3200);
+      return;
+    }
+
+    if (S.pokemon.key === key) { $('#partnerModal').hidden = true; return; }
+    if (S.pokemon.xp >= FINAL_P) {
+      // 최종 진화를 마친 파트너는 바꾸는 대신 '입양'으로 안내해요
+      partnerMode = 'adopt';
+      $('#partnerTitle').textContent = '✨ 새 포켓몬 입양하기';
+      $('#partnerHint').textContent = partnerHintText();
+      renderPartnerGrid();
+      toast('최종 진화를 마쳤어요 · 새 포켓몬은 0P부터 키워요', '', 2800);
+      return;
+    }
+    S.pokemon.key = key;
     save();
     renderMissions();
     renderSettings();
     checkPokeImages();
-    toast(`파트너를 ${partnerOf(key).label} 계열로 바꿨어요`, 'mint', 2200);
+    toast(`파트너를 ${p.label} 계열로 바꿨어요`, 'mint', 2200);
     $('#partnerModal').hidden = true;
   }
 
@@ -969,7 +1281,11 @@
       extraAction: { label: '삭제', act: 'del' },
     });
     if (r === 'del') {
-      if (c.doneOn === todayStr()) { addPoints(c.member || '', -earnOf(c)); dropLog(c.id); }
+      if (c.doneOn === todayStr()) {
+        addPoints(c.member || '', -earnOf(c));
+        if ((c.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(c), 0, FINAL_P);
+        dropLog(c.id);
+      }
       S.missions = S.missions.filter((x) => x.id !== id);
       save(); renderMissions();
       return;
@@ -997,10 +1313,15 @@
       } else if (delta) {
         addPoints(c.member, delta);
       }
+      // 파트너 경험치도 주인(아이)이 바뀜에 따라 함께 옮겨 줍니다
+      if (oldKey === KID_ID && c.member !== KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - oldEarned, 0, FINAL_P);
+      else if (oldKey !== KID_ID && c.member === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp + rr.earned, 0, FINAL_P);
+      else if (oldKey === KID_ID && c.member === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp + delta, 0, FINAL_P);
       c.earned = rr.earned;
       c.goalMet = rr.goalMet;
       addLog(c, rr, c.doneAt || hhmm());
     }
+    syncDex();
     save(); renderMissions();
     toast('미션을 저장했어요', 'mint');
   }
@@ -1008,7 +1329,7 @@
   async function resetPoints() {
     const r = await askModal({
       title: '포인트 초기화',
-      hint: '누적 포인트·오늘 완료 표시·오늘 완료 이력을 0으로 되돌립니다. 미션 목록은 그대로 남습니다.',
+      hint: '누적 포인트·아이 파트너 경험치·도감·포인트 사용 내역·오늘 완료 이력을 모두 0으로 되돌립니다. 미션 목록은 그대로 남습니다.',
       fields: [{ name: 'ok', label: '계속하려면 "초기화"를 입력하세요', placeholder: '초기화' }],
       okText: '초기화',
     });
@@ -1016,6 +1337,9 @@
     if ((r.ok || '').trim() !== '초기화') { toast('입력이 맞지 않아 취소했어요'); return; }
     const t = todayStr();
     S.points = { total: 0, byMember: {} };
+    S.pointUses = [];
+    S.pokemon.xp = 0;
+    S.pokemon.dex = [];
     S.missions.forEach((m) => {
       if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; }
     });
@@ -1256,7 +1580,7 @@
     $('#letterModal').dataset.id = id;
   }
 
-  /* ---------------------------------------------------------------- wiki/budget */
+  /* ---------------------------------------------------------------------- wiki */
   const WIKI_GROUPS = ['생신·기념일', '예방접종', '집안 메모', '연락처·와이파이'];
 
   function renderWiki() {
@@ -1299,75 +1623,6 @@
     if (w) { w.group = r.group; w.key = r.key.trim(); w.val = r.val; }
     else S.wiki.push({ id: uid(), group: r.group, key: r.key.trim(), val: r.val });
     save(); renderWiki(); toast('저장했어요', 'mint');
-  }
-
-  function budgetTotals() {
-    const f = S.budget.fixed.reduce((s, x) => s + (+x.amount || 0), 0);
-    const v = S.budget.variable.reduce((s, x) => s + (+x.amount || 0), 0);
-    const goal = +S.budget.goal || 0;
-    return { f, v, goal, used: f + v, left: goal - (f + v) };
-  }
-
-  function renderBudget() {
-    const { f, v, goal, used, left } = budgetTotals();
-    const pct = goal > 0 ? clamp((used / goal) * 100, 0, 100) : (used > 0 ? 100 : 0);
-    const cls = pct >= 100 ? 'danger' : pct >= 85 ? 'warn' : '';
-    $('#budgetSub').textContent = `예산 ${won(goal)}원 · 쓴 돈 ${won(used)}원`;
-    const rows = (list, kind) => list.length
-      ? list.map((x) => `<div class="budget-line">
-          <span>${esc(x.label)}</span>
-          <button class="del" data-act="budget-del" data-kind="${kind}" data-id="${x.id}" aria-label="삭제">✕</button>
-          <b>${won(x.amount)}</b>
-        </div>`).join('')
-      : `<div class="budget-line" style="color:var(--text-3)">항목 없음</div>`;
-    $('#budgetBody').innerHTML = `
-      <div class="budget-top">
-        <div>
-          <div class="budget-left-label">${left >= 0 ? '남은 예산' : '초과 금액'}</div>
-          <div class="budget-left" style="${left < 0 ? 'color:var(--coral)' : ''}">${won(Math.abs(left))}<small>원</small></div>
-        </div>
-        <div class="budget-pct">${Math.round(pct)}% 사용</div>
-      </div>
-      <div class="gauge ${cls}"><i style="width:${pct}%"></i></div>
-      <div class="budget-rows" style="margin-top:4px">
-        <div class="budget-box">
-          <h4>고정비 <span>${won(f)}원</span></h4>
-          ${rows(S.budget.fixed, 'fixed')}
-          <button class="btn sm ghost block" data-act="budget-add" data-kind="fixed" style="margin-top:4px">＋ 고정비 추가</button>
-        </div>
-        <div class="budget-box">
-          <h4>변동비 <span>${won(v)}원</span></h4>
-          ${rows(S.budget.variable, 'variable')}
-          <button class="btn sm ghost block" data-act="budget-add" data-kind="variable" style="margin-top:4px">＋ 변동비 추가</button>
-        </div>
-      </div>`;
-  }
-
-  async function editBudgetGoal() {
-    const r = await askModal({
-      title: '이번 달 예산',
-      hint: '한 달 목표 예산을 정하면 남은 금액 게이지가 채워집니다.',
-      fields: [{ name: 'goal', label: '목표 예산 (원)', type: 'number', value: S.budget.goal || 0 }],
-      okText: '저장',
-    });
-    if (!r) return;
-    S.budget.goal = Math.max(0, Math.round(+r.goal || 0));
-    save(); renderBudget(); toast('예산을 저장했어요', 'mint');
-  }
-
-  async function addBudgetItem(kind) {
-    const r = await askModal({
-      title: kind === 'fixed' ? '고정비 추가' : '변동비 추가',
-      hint: '고정비: 매달 나가는 돈 · 변동비: 이번 달에 쓴 돈',
-      fields: [
-        { name: 'label', label: '항목', placeholder: '예: 관리비' },
-        { name: 'amount', label: '금액 (원)', type: 'number', value: 0 },
-      ],
-      okText: '추가',
-    });
-    if (!r || !r.label.trim()) return;
-    S.budget[kind].push({ id: uid(), label: r.label.trim(), amount: Math.max(0, Math.round(+r.amount || 0)) });
-    save(); renderBudget();
   }
 
   /* -------------------------------------------------------------- timer & links */
@@ -1547,7 +1802,7 @@
         <button class="btn icon sm ghost" data-act="member-edit" data-id="${m.id}" aria-label="이름 변경">✎</button>
       </span>`).join('');
     $('#quietToggle').checked = !!S.quiet;
-    if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.partner).label} 계열`;
+    if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.pokemon.key).label} 계열`;
     try {
       const bytes = new Blob([JSON.stringify(S)]).size;
       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
@@ -1631,6 +1886,7 @@
         const data = JSON.parse(String(reader.result));
         if (!data || typeof data !== 'object') throw new Error('bad');
         S = mergeState(data);
+        syncDex();
         save();
         applyTheme();
         renderAll();
@@ -1660,7 +1916,6 @@
     renderShopping();
     renderLetters();
     renderWiki();
-    renderBudget();
     renderTimer();
     renderLinks();
   }
@@ -1686,7 +1941,17 @@
       } else if (act === 'chore-edit') {
         editMission(id);
       } else if (act === 'chore-del') {
+        const m = S.missions.find((x) => x.id === id);
+        if (m && m.doneOn === todayStr()) {
+          addPoints(m.member || '', -earnOf(m));
+          if ((m.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(m), 0, FINAL_P);
+          dropLog(m.id);
+        }
         S.missions = S.missions.filter((x) => x.id !== id); save(); renderMissions();
+      } else if (act === 'dex-open') {
+        openDexEntry(t.dataset.key);
+      } else if (act === 'use-del') {
+        deletePointUse(id);
       } else if (act === 'shop-toggle') {
         const it = S.shopping.find((x) => x.id === id);
         if (it) { it.done = !it.done; save(); renderShopping(); }
@@ -1700,12 +1965,6 @@
         editWiki(id);
       } else if (act === 'wiki-del') {
         S.wiki = S.wiki.filter((x) => x.id !== id); save(); renderWiki();
-      } else if (act === 'budget-add') {
-        addBudgetItem(t.dataset.kind);
-      } else if (act === 'budget-del') {
-        const kind = t.dataset.kind;
-        S.budget[kind] = S.budget[kind].filter((x) => x.id !== id);
-        save(); renderBudget();
       } else if (act === 'link-edit') {
         editLink(id);
       } else if (act === 'link-del') {
@@ -1722,8 +1981,14 @@
   $('#eventAddBtn').addEventListener('click', () => addEvent());
   $('#choreAddBtn').addEventListener('click', addMission);
   $('#stickerResetBtn').addEventListener('click', resetPoints);
+  $('#pointUseBtn').addEventListener('click', usePoints);
+  $('#adoptBtn').addEventListener('click', () => {
+    if (S.pokemon.xp < FINAL_P) { toast(`최종 진화(${FINAL_P}P)를 마치면 새 포켓몬을 입양할 수 있어요`, '', 2600); return; }
+    openPartnerPicker('adopt');
+  });
+  $('#dexClose').addEventListener('click', () => { $('#dexModal').hidden = true; });
+  $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
   $('#wikiAddBtn').addEventListener('click', () => editWiki(null));
-  $('#budgetEditBtn').addEventListener('click', editBudgetGoal);
   $('#linkAddBtn').addEventListener('click', () => editLink(null));
 
   $('#shopAddBtn').addEventListener('click', addShopItem);
@@ -1800,13 +2065,13 @@
   $('#helpModal').addEventListener('click', (e) => { if (e.target.id === 'helpModal') $('#helpModal').hidden = true; });
 
   // 파트너 포켓몬 고르기
-  $('#partnerBtn').addEventListener('click', openPartnerPicker);
-  $('#partnerBtn2').addEventListener('click', openPartnerPicker);
+  $('#partnerBtn').addEventListener('click', () => openPartnerPicker('change'));
+  $('#partnerBtn2').addEventListener('click', () => openPartnerPicker('change'));
   $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
   $('#partnerModal').addEventListener('click', (e) => { if (e.target.id === 'partnerModal') $('#partnerModal').hidden = true; });
   $('#partnerGrid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-partner]');
-    if (b) setPartner(b.dataset.partner);
+    if (b) pickPartner(b.dataset.partner);
   });
 
   $('#geoBtn').addEventListener('click', async () => {
@@ -1843,7 +2108,7 @@
   $('#resetAllBtn').addEventListener('click', async () => {
     const r = await askModal({
       title: '모두 지우기',
-      hint: '일정·할 일·편지·장보기·위키·가계부 기록이 모두 사라집니다. 되돌릴 수 없으니 먼저 백업해 두세요.',
+      hint: '일정·미션·포인트·도감·편지·장보기·위키 기록이 모두 사라집니다. 되돌릴 수 없으니 먼저 백업해 두세요.',
       fields: [{ name: 'ok', label: '계속하려면 "지우기"를 입력하세요', placeholder: '지우기' }],
       okText: '모두 지우기',
     });
@@ -1859,7 +2124,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal'].forEach((sel) => {
+    ['#modal', '#letterModal', '#settingsModal', '#helpModal', '#partnerModal', '#dexModal'].forEach((sel) => {
       const m = $(sel);
       if (m && !m.hidden) {
         if (sel === '#modal' && modalResolve) { modalResolve(null); return; }
@@ -1884,6 +2149,7 @@
   /* ---------------------------------------------------------------------- init */
   loadWeatherCache();
   applyTheme();
+  syncDex();                 // 형식 2에서 옮겨 온 데이터가 이미 최종 진화 상태면 도감에 채워 둡니다
   renderClock();
   setInterval(renderClock, 15000);
   renderAll();
@@ -1899,8 +2165,18 @@
 
   window.FamilyDashboard = {
     get state() { return S; },
-    version: '2.0.0',
+    version: '3.0.0',
     now: () => hhmm(),
+    kid: () => ({ id: KID_ID, name: (kidMember() || {}).name || '' }),
+    pokemon: () => ({
+      key: S.pokemon.key,
+      xp: Math.round(S.pokemon.xp),
+      stage: stagesOf()[stageIndex(S.pokemon.xp)].name,
+      totalXp: kidTotalPts(),
+      balance: balancePts(),
+      spent: spentPts(),
+      dex: (S.pokemon.dex || []).map((d) => ({ key: d.key, finalName: d.finalName, at: d.at, times: d.times })),
+    }),
     pokemonStatus: () => $$('img[data-poke]').map((i) => ({
       name: i.dataset.pokeName || i.alt, id: i.dataset.poke,
       ok: i.naturalWidth > 0, width: i.naturalWidth,

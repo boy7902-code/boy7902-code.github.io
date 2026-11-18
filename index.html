@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·포켓몬 미션 포인트·목표 시간·편지함·장보기·가계부를 한 화면에." />
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·포켓몬 미션 포인트·목표 시간·포인트 사용·도감·편지함·장보기·위키를 한 화면에." />
 <meta name="theme-color" content="#f4f7ff" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -92,13 +92,19 @@
             <div class="char-stage" id="charStage"></div>
             <div class="char-info" id="charInfo">
               <div class="char-level" id="charLevel">피츄</div>
-              <div class="char-count" id="charCount">누적 <b>0P</b></div>
-              <div class="char-today" id="charToday">오늘 +0P</div>
               <div class="char-bar"><i id="charBar" style="width:0%"></i></div>
               <div class="char-next" id="charNext">피카츄까지 30P 남았어요</div>
+              <div class="char-tick" id="charTick">현재 파트너 0P / 200P</div>
+              <div class="char-count" id="charCount">누적 경험치 <b>0P</b></div>
+              <div class="char-today" id="charToday">아이 오늘 +0P</div>
+              <div class="char-balance" id="charBalance">사용 가능 <b>0P</b></div>
             </div>
             <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
-            <button class="btn sm ghost char-partner-btn" id="partnerBtn" title="파트너 포켓몬 바꾸기">🐾 파트너</button>
+            <div class="char-actions">
+              <button class="btn sm ghost char-partner-btn" id="partnerBtn" title="파트너 포켓몬 바꾸기">🐾 파트너</button>
+              <button class="btn sm ghost char-partner-btn" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다">🎁 포인트 사용</button>
+            </div>
+            <button class="btn sm char-adopt" id="adoptBtn" disabled title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
           </div>
           <div class="mission-area">
             <div class="member-stats" id="memberStats"></div>
@@ -107,7 +113,19 @@
               <summary>🕒 오늘 완료 이력 <span class="pill" id="logCount">아직 없어요</span></summary>
               <div class="log-list" id="todayLog"></div>
             </details>
+            <details class="log-box" id="useBox">
+              <summary>🎁 포인트 사용 내역 <span class="pill" id="useCount">아직 없어요</span></summary>
+              <div class="log-list" id="useList"></div>
+            </details>
           </div>
+        </div>
+        <div class="dex-wrap">
+          <div class="dex-head">
+            <b>🏆 내 포켓몬 도감</b>
+            <span class="pill" id="dexCount">0마리</span>
+            <span class="dex-note">최종 진화(200P)를 마친 포켓몬은 여기에 영구히 남아요</span>
+          </div>
+          <div class="dex-row" id="dexRow"></div>
         </div>
         <div class="row" style="margin-top:2px">
           <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
@@ -202,33 +220,18 @@
     </section>
 
     <!-- ======================= 6. 위키 ======================= -->
-    <section class="card wiki span-6" id="cardWiki" aria-labelledby="tWiki">
+    <section class="card wiki" id="cardWiki" aria-labelledby="tWiki">
       <div class="card-head">
         <div class="card-ico mint" aria-hidden="true">📗</div>
         <div>
           <div class="card-title" id="tWiki">우리 집 위키</div>
-          <div class="card-sub">생신 · 예방접종 · 집안 메모</div>
+          <div class="card-sub">생신 · 예방접종 · 집안 메모 · 연락처</div>
         </div>
         <div class="card-tools">
           <button class="btn icon sm" id="wikiAddBtn" title="항목 추가" aria-label="위키 항목 추가">＋</button>
         </div>
       </div>
       <div class="card-body" id="wikiList"></div>
-    </section>
-
-    <!-- ======================= 7. 가계부 ======================= -->
-    <section class="card budget span-6" id="cardBudget" aria-labelledby="tBudget">
-      <div class="card-head">
-        <div class="card-ico sky" aria-hidden="true">💰</div>
-        <div>
-          <div class="card-title" id="tBudget">이번 달 가계부</div>
-          <div class="card-sub" id="budgetSub">예산과 고정비·변동비</div>
-        </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="budgetEditBtn" title="예산 설정" aria-label="예산 설정">✎</button>
-        </div>
-      </div>
-      <div class="card-body" id="budgetBody"></div>
     </section>
 
   </main>
@@ -305,7 +308,7 @@
         <button class="btn sm" id="partnerBtn2">파트너 바꾸기</button>
         <span class="pill" id="partnerPill">피카츄 계열</span>
       </div>
-      <p class="settings-note">아이가 좋아하는 진화 라인을 고르면 누적 포인트에 따라 그 포켓몬이 함께 자랍니다. (피카츄 · 파이리 · 꼬부기 · 이상해씨)</p>
+      <p class="settings-note">포켓몬은 <b>'아이' 구성원(m3)</b>의 포인트로만 자랍니다. 아이 이름은 아래 구성원에서 바꿔도 됩니다. 최종 진화(200P) 후에는 대시보드의 <b>✨ 새 포켓몬 입양</b>으로 다른 계열을 0P부터 키울 수 있어요.</p>
     </div>
 
     <div class="settings-section">
@@ -335,7 +338,6 @@
       </div>
       <p class="settings-note" id="storageNote"></p>
     </div>
-
     <div class="modal-actions">
       <button class="btn primary" type="button" id="settingsClose">닫기</button>
     </div>
@@ -346,10 +348,22 @@
 <div class="modal" id="partnerModal" hidden>
   <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="partnerTitle">
     <h3 id="partnerTitle">🐾 파트너 포켓몬 고르기</h3>
-    <p class="hint">누적 포인트가 쌓이면 고른 진화 라인을 따라 함께 자라요. 언제든 바꿀 수 있습니다.</p>
+    <p class="hint" id="partnerHint">누적 포인트가 쌓이면 고른 진화 라인을 따라 함께 자라요. 언제든 바꿀 수 있습니다.</p>
     <div class="partner-grid" id="partnerGrid"></div>
     <div class="modal-actions">
       <button class="btn primary" type="button" id="partnerClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 모달: 도감 상세 ======================= -->
+<div class="modal" id="dexModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
+    <h3 id="dexTitle">🏆 내 포켓몬</h3>
+    <p class="hint" id="dexMeta"></p>
+    <div class="dex-detail" id="dexDetail"></div>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="dexClose">닫기</button>
     </div>
   </div>
 </div>
@@ -375,7 +389,7 @@
     <div class="settings-section">
       <h4>3. 모든 기록은 이 기기에 저장</h4>
       <p class="settings-note">
-        일정·미션·편지·장보기·위키·가계부는 브라우저 저장소에 자동 저장됩니다.
+        일정·미션·포인트·편지·장보기·위키 기록은 브라우저 저장소에 자동 저장됩니다.
         기기를 바꾸거나 기록을 옮기려면 <b>백업 내보내기</b>로 파일을 받아 두세요.
       </p>
     </div>
@@ -386,11 +400,24 @@
         미션마다 <b>목표 시간</b>(예: 08:00)과 <b>시간 내 완료 보너스</b>(예: +3P)를 정할 수 있고,
         목표 시간 안에 체크하면 기본 포인트에 보너스까지 더해지며 <b>⏰ 목표 시간 달성!</b> 배지가 붙습니다.
         시간이 지나 체크하면 기본 포인트만 쌓이고 실제 완료 시각과 함께 <b>⏱️ 목표 시간 초과</b>로 표시됩니다.
-        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있고, 누적 포인트가 쌓이면 고른 포켓몬 파트너가 진화합니다.
+        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.
       </p>
     </div>
     <div class="settings-section">
-      <h4>5. 편지함</h4>
+      <h4>5. 포켓몬 · 포인트 사용 · 도감</h4>
+      <p class="settings-note">
+        포켓몬은 <b>'아이' 구성원의 포인트</b>로만 자랍니다. 아이가 미션을 끝내면
+        <b>현재 파트너 경험치</b>·<b>누적 경험치</b>·<b>사용 가능 포인트</b>가 함께 오르고(취소하면 함께 돌아감),
+        성인 미션은 성인 통계에만 쌓입니다.<br />
+        <b>🎁 포인트 사용</b>을 누르면 부모가 무엇을 사줬는지와 사용 포인트를 적어 잔액을 줄일 수 있습니다.
+        <b>사용해도 경험치와 진화 단계는 절대로 풀리지 않아요.</b> 내역은 <b>포인트 사용 내역</b>에 남습니다.<br />
+        현재 파트너가 <b>200P(최종 진화)</b>에 도달하면 <b>🏆 내 포켓몬 도감</b>에 영구히 저장되고,
+        <b>✨ 새 포켓몬 입양하기</b>로 다른 포켓몬을 <b>0P부터</b> 새로 키울 수 있습니다.
+        이때도 누적 경험치와 사용 가능 포인트는 그대로 유지됩니다.
+      </p>
+    </div>
+    <div class="settings-section">
+      <h4>6. 편지함</h4>
       <p class="settings-note">
         편지 캔버스에 손가락으로 쓰고 색·굵기·이모지 스티커를 골라 꾸민 뒤
         <b>편지함에 보내기</b>를 누르면 아래 갤러리에 그림으로 저장됩니다.
