@@ -2103,10 +2103,11 @@
   }
 
   function openDex(id) {
-    const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
-    DEXUI.sel = (+id > 0 && POKE_INFO[+id]) ? +id : (curId || 1);
-    if (DEXUI.sel > 151 && !POKE_INFO[DEXUI.sel + '']) DEXUI.sel = 1;
-    if (!POKE_INFO[DEXUI.sel]) DEXUI.sel = 1;
+    const curLine = partnerOf(S.pokemon.key);
+    const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
+    const firstGen1 = (curLine.members || []).find((n) => POKE_INFO[n] && n <= 151);
+    const pick = (+id > 0 && POKE_INFO[+id]) ? +id : (curStageId || firstGen1 || 1);
+    DEXUI.sel = POKE_INFO[pick] && pick <= 151 ? pick : (firstGen1 || 1);
     DEXUI.q = '';
     DEXUI.filter = 'all';
     if ($('#dexSearch')) $('#dexSearch').value = '';
@@ -3389,7 +3390,7 @@
       void say.offsetWidth;
       say.classList.add('on');
       clearTimeout(say._hideTimer);
-      say._hideTimer = setTimeout(() => say.classList.remove('on'), 2400);
+      say._hideTimer = setTimeout(() => say.classList.remove('on'), 3200);
     }
     pokeChirp();
   }
