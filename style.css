@@ -842,7 +842,7 @@ html[data-theme="dark"] .hist-kpi.k2 .v { color: #67e3bd; }
 .hist-dows .sat { color: var(--sky); }
 .hist-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
 .hist-cell {
-  position: relative; min-height: 62px; padding: 6px 7px;
+  position: relative; min-height: 56px; padding: 5px 7px;
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
   border: 1px solid var(--border); border-radius: 12px;
   background: var(--surface-solid); color: var(--text-3);
@@ -870,7 +870,8 @@ html[data-theme="dark"] .hist-kpi.k2 .v { color: #67e3bd; }
 .hist-cell.blank:hover { border-color: transparent; }
 html[data-theme="dark"] .hist-cell { background: rgba(255, 255, 255, .03); }
 html[data-theme="dark"] .hist-cell.has { background: rgba(33, 195, 154, .16); }
-html[data-theme="dark"] .hist-cell.goal { background: linear-gradient(150deg, rgba(245, 166, 35, .26), rgba(255, 209, 102, .3)); border-color: rgba(255, 209, 102, .5); }
+html[data-theme="dark"] .hist-cell.goal { background: linear-gradient(150deg, rgba(255, 209, 102, .2), rgba(245, 166, 35, .08)); border-color: rgba(255, 209, 102, .5); }
+html[data-theme="dark"] .hist-cell.goal:hover { border-color: var(--sky); }
 html[data-theme="dark"] .hist-cell.goal .hc-num { color: #ffd166; }
 html[data-theme="dark"] .hist-cell.goal .hc-num.sun { color: #ff9c8f; }
 html[data-theme="dark"] .hist-cell.goal .hc-num.sat { color: #8fbaff; }
@@ -883,7 +884,7 @@ html[data-theme="dark"] .hist-cell.goal .hc-pt { color: #ffd166; }
 .hist-legend .lg-goal { background: linear-gradient(150deg, #fff6d6, #ffe9a8); border: 1px solid rgba(245, 166, 35, .55); }
 .hist-legend .lg-has { background: var(--mint-soft); border: 1px solid rgba(33, 195, 154, .4); }
 .hist-legend .lg-none { background: var(--surface-solid); border: 1px solid var(--border-strong); }
-html[data-theme="dark"] .hist-legend .lg-goal { background: rgba(255, 209, 102, .3); }
+html[data-theme="dark"] .hist-legend .lg-goal { background: rgba(255, 209, 102, .22); }
 html[data-theme="dark"] .hist-legend .lg-has { background: rgba(33, 195, 154, .2); }
 html[data-theme="dark"] .hist-legend .lg-none { background: rgba(255, 255, 255, .05); }
 
