@@ -3314,8 +3314,8 @@ html[data-theme="dark"] .alarm-btn[data-state="locked"] { color: #ffd489; }
   50% { opacity: .55; transform: scale(.94); }
 }
 @media (max-width: 860px) {
-  .alarm-btn { min-height: 34px; padding: 0 9px; font-size: 11px; }
-  .alarm-btn .alarm-word { display: none; }      /* 좁은 화면에서는 아이콘·배지만 */
+  .alarm-btn { min-height: 34px; padding: 0 9px; font-size: 11px; gap: 4px; }
+  .alarm-btn .alarm-tap { font-size: 9px; padding: 2px 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .alarm-btn .alarm-tap { animation: none; }
