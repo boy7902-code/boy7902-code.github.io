@@ -1161,13 +1161,14 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
 /* 기본(세로·좁은 화면)에서는 열 묶음을 풀어 카드가 예전처럼 흐르게 합니다 */
 @media (max-width: 1023px) {
   .col { display: contents; }
-  .grid > .card.schedule { order: 1; }
-  .grid > .card.chores { order: 2; }
-  .grid > .card.shopping { order: 3; }
-  .grid > .card.letters { order: 4; }
-  .grid > .card.timer { order: 5; }
-  .grid > .card.wish { order: 6; }
-  .grid > .card.wiki { order: 7; }
+  /* 열 묶음을 풀어도 카드 순서는 예전 그대로 (일정 → 미션 → 장보기 → 편지 → 타이머 → 위시 → 위키) */
+  #cardSchedule { order: 1; }
+  #cardChores { order: 2; }
+  #cardShopping { order: 3; }
+  #cardLetters { order: 4; }
+  #cardTimer { order: 5; }
+  #cardWish { order: 6; }
+  #cardWiki { order: 7; }
 }
 
 /* 링크 묶음: 기본은 세로로 쌓고(추가 버튼은 한 줄 전체) */
