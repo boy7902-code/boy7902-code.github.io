@@ -1157,6 +1157,267 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .hist-dows, .hist-grid { gap: 4px; }
 }
 
+/* ============================ 카드 열 묶음(3열) ============================ */
+/* 기본(세로·좁은 화면)에서는 열 묶음을 풀어 카드가 예전처럼 흐르게 합니다 */
+@media (max-width: 1023px) {
+  .col { display: contents; }
+  .grid > .card.schedule { order: 1; }
+  .grid > .card.chores { order: 2; }
+  .grid > .card.shopping { order: 3; }
+  .grid > .card.letters { order: 4; }
+  .grid > .card.timer { order: 5; }
+  .grid > .card.wish { order: 6; }
+  .grid > .card.wiki { order: 7; }
+}
+
+/* 링크 묶음: 기본은 세로로 쌓고(추가 버튼은 한 줄 전체) */
+.link-row { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin-top: 4px; }
+.link-row > #linkAddBtn { width: 100%; }
+/* 진화 단계·버튼 묶음: 기본 레이아웃에서는 예전처럼 캐릭터 패널 안에 그대로 흐릅니다 */
+.char-aside { display: contents; }
+
+/* ==========================================================================
+   태블릿 가로 1스크린 (≥1024px)
+   1280×800 기준 — 스크롤 없이 일곱 카드가 한 화면에 들어오도록
+   헤더는 1줄 60px, 본문은 3열(27% / 43% / 30%) 다단으로 압축합니다.
+   카드가 넘치는 내용은 그 카드 안쪽에서만 스크롤됩니다.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  .app {
+    max-width: none; height: 100vh; height: 100dvh;
+    padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden;
+  }
+  .footer { display: none; }
+
+  /* ---------------- 슬림 1줄 헤더 (60px) ---------------- */
+  .topbar {
+    position: static; flex: 0 0 60px; height: 60px; min-height: 60px; max-height: 60px;
+    flex-wrap: nowrap; gap: 9px; margin: 0; padding: 0 8px 0 10px; border-radius: 18px;
+  }
+  .brand { order: 1; gap: 7px; flex: 0 0 auto; }
+  .brand-mark { width: 34px; height: 34px; flex: 0 0 34px; font-size: 17px; border-radius: 11px; box-shadow: 0 5px 12px rgba(255, 122, 107, .28); }
+  .brand-title { font-size: 14.5px; line-height: 1.15; white-space: nowrap; }
+  .brand-sub { font-size: 10px; margin-top: 0; max-width: 148px; }
+  .clock { order: 2; display: flex; align-items: baseline; gap: 7px; margin: 0; padding: 0; text-align: left; flex: 0 0 auto; }
+  .clock-time { font-size: 23px; line-height: 1; }
+  .clock-date { margin: 0; font-size: 11px; white-space: nowrap; }
+  .weather { order: 3; flex: 1 1 auto; min-width: 0; gap: 8px; flex-wrap: nowrap; overflow: hidden; padding: 4px 10px; border-radius: 12px; }
+  .weather-now { flex: 0 0 auto; gap: 5px; }
+  .weather-icon { font-size: 20px; }
+  .weather-temp { font-size: 18px; }
+  .weather-temp small { font-size: 9px; }
+  .weather-desc { font-size: 10.5px; }
+  .weather-meta { flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
+  .weather-place { display: none; }
+  .weather-chips { flex-wrap: nowrap; overflow: hidden; gap: 4px; }
+  .wchip { font-size: 10px; padding: 2px 7px; }
+  .top-actions { order: 4; margin-left: 0; gap: 5px; flex: 0 0 auto; }
+  .top-actions .btn { min-height: 34px; }
+  .top-actions .btn.icon { width: 34px; min-width: 34px; font-size: 14px; }
+  .parent-badge, .sync-badge { padding: 0 9px; font-size: 11px; min-height: 34px; }
+
+  /* ---------------- 3열 다단 본문 ---------------- */
+  .grid {
+    flex: 1 1 auto; min-height: 0; height: calc(100vh - 84px);
+    display: grid; gap: 10px; align-items: stretch;
+    grid-template-columns: minmax(0, 27fr) minmax(0, 43fr) minmax(0, 30fr);
+  }
+  .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+  .col > .card { flex: 1 1 0; min-height: 0; }
+
+  /* ---------------- 카드 공통 압축 ---------------- */
+  .card { padding: 10px 11px; border-radius: 18px; min-height: 0; overflow: hidden; }
+  .card-head { gap: 7px; margin-bottom: 6px; flex: 0 0 auto; }
+  .card-head > div { min-width: 0; }
+  .card-ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 8px; font-size: 13px; }
+  .card-title { font-size: 13px; line-height: 1.2; }
+  .card-sub { font-size: 10px; margin-top: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-tools { gap: 2px; }
+  .card-tools .btn.icon.sm { width: 26px; min-width: 26px; min-height: 26px; font-size: 12px; }
+  .card-body { gap: 5px; min-height: 0; }
+  .shop-empty { font-size: 11px; padding: 8px 4px; }
+
+  /* ---------------- 좌측 열: 일정 + 위키 ---------------- */
+  .col-left > .card.schedule { flex: 1.05 1 0; }
+  .card.schedule .card-body { overflow-y: auto; overflow-x: hidden; gap: 4px; padding-right: 2px; }
+  .event { padding: 4px 3px; gap: 6px; }
+  .event-time { min-width: 42px; font-size: 10px; padding: 3px 3px; border-radius: 7px; }
+  .event-title { font-size: 11.5px; }
+  .event-sub { font-size: 9.5px; margin-top: 0; }
+  .check { width: 20px; height: 20px; flex: 0 0 20px; font-size: 11px; border-radius: 6px; }
+  .event .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 11px; }
+  .week { gap: 3px; }
+  .wday { min-height: 46px; padding: 3px 2px 4px; gap: 0; border-radius: 8px; }
+  .wd-name { font-size: 8.5px; }
+  .wd-date { font-size: 11px; line-height: 1.1; }
+  .wd-ico { font-size: 10px; }
+  .wd-ev { font-size: 8px; padding: 0 2px; }
+  .wd-more { font-size: 8px; }
+  .free-day-banner { padding: 5px 8px; gap: 6px; border-radius: 12px; }
+  .free-day-banner .fd-emoji { font-size: 16px; }
+  .free-day-banner .fd-title { font-size: 11.5px; }
+  .free-day-banner .fd-sub { font-size: 9.5px; }
+  .card.wiki .card-body { overflow-y: auto; padding-right: 2px; }
+  #wikiList { columns: 2; column-gap: 10px; }
+  .wiki-group { font-size: 9px; margin: 3px 0 1px; }
+  .wiki-item { padding: 4px 6px; gap: 5px; margin-bottom: 3px; border-radius: 9px; }
+  .wiki-key { font-size: 10.5px; flex-basis: 38%; }
+  .wiki-val { font-size: 10.5px; line-height: 1.3; }
+
+  /* ---------------- 중앙 열: 미션 & 포켓몬 ---------------- */
+  .col-center > .card.chores { flex: 1 1 auto; }
+  .card.chores .card-body { min-height: 0; }
+  .chore-wrap { flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; align-items: stretch; }
+  .char-panel { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 14px; }
+  .char-stage { width: 60px; height: 60px; flex: 0 0 60px; }
+  .char-info {
+    flex: 1 1 auto; min-width: 0; display: grid; align-items: center;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    gap: 2px 9px; text-align: left;
+  }
+  .char-info .char-level { grid-column: 1; grid-row: 1; font-size: 12px; text-align: left; }
+  .char-info .evo-meter { grid-column: 1; grid-row: 2; gap: 2px; }
+  .char-info .stat-cards { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+  .char-info .today-meter { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 3px 7px; padding: 3px 7px; }
+  .char-foot { display: none; }
+  .evo-meter-label { font-size: 9px; }
+  .evo-meter-pct { font-size: 11.5px; }
+  .evo-bar { height: 11px; }
+  .evo-next { font-size: 9.5px; text-align: left; line-height: 1.25; }
+  .evo-next b { font-size: 10.5px; }
+  .stat-cards { gap: 5px; }
+  .stat-card { padding: 3px 2px 4px; border-radius: 10px; gap: 0; }
+  .stat-card .stat-ico { font-size: 12px; }
+  .stat-card .stat-label { font-size: 8.5px; }
+  .stat-card .stat-value { font-size: 13.5px; }
+  .stat-card .stat-value em { font-size: 8.5px; }
+  .today-meter-head { font-size: 9px; }
+  .today-meter-pct { font-size: 10px; }
+  .today-meter-num { font-size: 9.5px; justify-content: flex-end; gap: 0 3px; }
+  .today-meter-num b { font-size: 11px; }
+  .today-bar { height: 7px; }
+  .today-hint { display: none; }
+  .char-aside { display: flex; flex-direction: column; gap: 3px; align-items: stretch; flex: 0 0 auto; width: 132px; }
+  .char-evo { justify-content: space-between; gap: 2px; margin: 0; }
+  .char-evo .evo { width: 26px; height: 26px; border-radius: 8px; }
+  .char-evo .evo .evo-img { width: 22px; height: 22px; }
+  .char-actions { gap: 3px; flex-wrap: nowrap; justify-content: space-between; }
+  .char-partner-btn { min-height: 21px; font-size: 9.5px; padding: 0 5px; border-radius: 7px; white-space: nowrap; flex: 1 1 0; }
+  .char-adopt { min-height: 21px; margin-top: 0; font-size: 9px; padding: 0 4px; border-radius: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .mission-area { flex: 1 1 auto; min-height: 0; gap: 5px; }
+  .member-stats { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .mstat { font-size: 9.5px; padding: 2px 6px; gap: 4px; border-radius: 7px; }
+  .mstat-name { min-width: 0; max-width: 70px; }
+  .chore-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; gap: 4px; padding-right: 2px; }
+  .chore { padding: 4px 7px; gap: 7px; border-radius: 10px; }
+  .chore-check { width: 32px; height: 32px; flex: 0 0 32px; font-size: 15px; border-radius: 10px; }
+  .chore-title { font-size: 12px; }
+  .chore-meta { font-size: 9px; gap: 2px 5px; }
+  .days-chip, .due-chip, .done-badge { font-size: 9px; padding: 1px 6px; }
+  .pts { font-size: 9.5px; padding: 1px 6px; }
+  .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
+  .chore-off > summary { font-size: 10px; padding: 2px; }
+  .hist-entry { min-height: 24px; font-size: 10.5px; padding: 0 8px; border-radius: 8px; }
+  .hist-entry .pill { font-size: 9px; padding: 1px 6px; }
+  .log-box { border-radius: 9px; padding: 0 6px; }
+  .log-box summary { font-size: 10.5px; padding: 4px 2px; gap: 4px; }
+  .log-box summary .pill { font-size: 9px; padding: 1px 6px; }
+  .log-list { max-height: 62px; }
+  .log-row { font-size: 10px; padding: 2px; }
+  .use-row { font-size: 10px; padding: 2px; }
+  .dex-wrap { margin-top: 3px; padding-top: 4px; }
+  .dex-head { font-size: 10.5px; }
+  .dex-head .pill { font-size: 9px; padding: 1px 6px; }
+  .dex-row { gap: 4px; margin-top: 4px; flex-wrap: nowrap; overflow-x: auto; }
+  .dex-card { width: 54px; padding: 3px 2px; }
+  .dex-img-frame, .dex-art { width: 30px; height: 30px; }
+  .dex-name { font-size: 8.5px; max-width: 50px; }
+  .dex-when { font-size: 7.5px; }
+  .sticker-row { gap: 2px; flex-wrap: nowrap; overflow: hidden; }
+  .sticker-row span { font-size: 11px; }
+  #stickerResetBtn { min-height: 22px; font-size: 9.5px; padding: 0 6px; }
+
+  /* ---------------- 우측 열: 타이머 · 위시 · 장보기 · 편지 ---------------- */
+  .col-right > .card.timer { flex: 0 0 auto; }
+  .col-right > .card.wish { flex: 1 1 0; }
+  .col-right > .card.shopping { flex: 1 1 0; }
+  .col-right > .card.letters { flex: 1.45 1 0; }
+
+  .card.timer .card-body { gap: 4px; }
+  .timer-shell { flex-direction: row; gap: 10px; align-items: center; }
+  .timer-ring { flex: 0 0 74px; width: 74px; height: 74px; }
+  .timer-ring::before { inset: 6px; }
+  .timer-digits { font-size: 15.5px; }
+  .timer-state { font-size: 9px; }
+  .timer-side { gap: 4px; }
+  .presets { gap: 3px; }
+  .preset { min-height: 24px; padding: 0 7px; font-size: 10.5px; border-radius: 7px; }
+  .timer-side .row { gap: 4px; }
+  .timer-side .btn { min-height: 26px; font-size: 11px; border-radius: 8px; }
+  .link-row { flex-direction: row; align-items: center; gap: 4px; margin-top: 0; }
+  .links { flex-direction: row; gap: 4px; flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+  .link-item { padding: 3px 7px; border-radius: 8px; flex: 0 0 auto; max-width: 175px; gap: 5px; }
+  .link-item a { font-size: 10.5px; }
+  .link-item .btn.icon.sm { width: 18px; min-width: 18px; min-height: 18px; font-size: 9px; }
+  .link-dot { width: 6px; height: 6px; flex: 0 0 6px; }
+  .link-row > #linkAddBtn { width: auto; flex: 0 0 auto; min-height: 24px; font-size: 10px; padding: 0 7px; white-space: nowrap; }
+
+  .card.wish .card-body { gap: 4px; }
+  .wish-balance { padding: 4px 8px; border-radius: 9px; font-size: 10px; gap: 5px; }
+  .wish-balance b { font-size: 13px; }
+  .wish-balance .wb-side { font-size: 9.5px; }
+  .wish-list { gap: 4px; min-height: 0; overflow-y: auto; padding-right: 2px; }
+  .wish-item { padding: 4px 7px; gap: 6px; border-radius: 10px; }
+  .wish-top { gap: 4px; }
+  .wish-title { font-size: 11px; }
+  .wish-need { font-size: 10px; }
+  .wish-state { font-size: 9.5px; }
+  .wish-bar { height: 5px; }
+  .wish-tools { gap: 0; }
+  .wish-tools .btn { min-height: 20px; padding: 0 4px; font-size: 10px; border-radius: 6px; }
+  .wish-tools .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
+
+  .card.shopping .card-body { gap: 4px; min-height: 0; }
+  .shop-tabs { padding: 2px; border-radius: 9px; gap: 3px; }
+  .shop-tabs button { min-height: 24px; font-size: 10.5px; border-radius: 7px; }
+  .card.shopping .row { gap: 4px; }
+  .card.shopping #shopInput { min-height: 28px; font-size: 11.5px; padding: 4px 8px; border-radius: 9px; }
+  .card.shopping #shopAddBtn { min-height: 28px; font-size: 11px; padding: 0 10px; border-radius: 9px; }
+  #shopList { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .shop-item { padding: 4px 2px; gap: 6px; }
+  .shop-text { font-size: 11.5px; }
+  .shop-item .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
+
+  .card.letters .card-body {
+    display: grid; gap: 4px 7px; min-height: 0;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "canvas tools" "send send" "gallery gallery";
+  }
+  .card.letters .canvas-shell { grid-area: canvas; align-self: start; }
+  .card.letters .tools { grid-area: tools; align-content: flex-start; gap: 4px; overflow: hidden; }
+  .card.letters .row.wrap { grid-area: send; flex-wrap: nowrap; gap: 5px; }
+  .card.letters .gallery { grid-area: gallery; }
+  .swatches { gap: 3px; flex-wrap: wrap; }
+  .sw { width: 16px; height: 16px; }
+  .widths { gap: 3px; }
+  .wbtn { width: 19px; height: 19px; border-radius: 6px; }
+  .emojis { gap: 2px; max-height: 42px; overflow-y: auto; }
+  .emo { width: 19px; height: 19px; font-size: 11px; border-radius: 6px; }
+  .card.letters #eraserBtn { min-height: 19px; font-size: 9px; padding: 0 5px; border-radius: 6px; }
+  .canvas-hint { font-size: 10.5px; }
+  .card.letters #letterAuthor { min-height: 26px; font-size: 10.5px; padding: 3px 6px; max-width: 92px !important; border-radius: 8px; }
+  .card.letters #letterSendBtn { min-height: 26px; font-size: 10.5px; padding: 0 9px; border-radius: 8px; }
+  .card.letters #letterCount { font-size: 9px; padding: 2px 7px; white-space: nowrap; }
+  .gallery { display: flex; flex-wrap: nowrap; gap: 5px; overflow-x: auto; align-items: flex-start; }
+  .letter-card { flex: 0 0 76px; }
+  .letter-meta, .letter-tools { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001s !important; transition-duration: .001s !important; }
 }

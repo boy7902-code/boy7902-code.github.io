@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=19" />
+<link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body>
 <div class="app">
@@ -57,259 +57,272 @@
 
   <main class="grid">
 
-    <!-- ======================= 1. 일정 ======================= -->
-    <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
-      <div class="card-head">
-        <div class="card-ico sky" aria-hidden="true">📅</div>
-        <div>
-          <div class="card-title" id="tSchedule">오늘 · 이번 주 일정</div>
-          <div class="card-sub" id="scheduleSub">가족 일정을 터치로 추가하세요</div>
-        </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="eventAddBtn" title="일정 추가" aria-label="일정 추가">＋</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="free-day-banner" id="freeBannerSchedule" hidden role="status">
-          <span class="fd-emoji" aria-hidden="true">🎉</span>
-          <span class="fd-text">
-            <b class="fd-title">오늘은 자유의 날!</b>
-            <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
-          </span>
-        </div>
-        <div id="todayEvents"></div>
-        <div class="week" id="weekStrip" aria-label="이번 주 일정"></div>
-        <div id="upcomingEvents"></div>
-      </div>
-    </section>
+    <!-- 좌측 열 — 오늘·이번 주 일정 + 우리 집 위키 -->
+    <div class="col col-left">
 
-    <!-- ======================= 2. 할 일 & 캐릭터 ======================= -->
-    <section class="card chores" id="cardChores" aria-labelledby="tChores">
-      <div class="card-head">
-        <div class="card-ico mint" aria-hidden="true">⭐</div>
-        <div>
-          <div class="card-title" id="tChores">아이 미션</div>
-          <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
+      <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
+        <div class="card-head">
+          <div class="card-ico sky" aria-hidden="true">📅</div>
+          <div>
+            <div class="card-title" id="tSchedule">오늘 · 이번 주 일정</div>
+            <div class="card-sub" id="scheduleSub">가족 일정을 터치로 추가하세요</div>
+          </div>
+          <div class="card-tools">
+            <button class="btn icon sm" id="eventAddBtn" title="일정 추가" aria-label="일정 추가">＋</button>
+          </div>
         </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
+        <div class="card-body">
+          <div class="free-day-banner" id="freeBannerSchedule" hidden role="status">
+            <span class="fd-emoji" aria-hidden="true">🎉</span>
+            <span class="fd-text">
+              <b class="fd-title">오늘은 자유의 날!</b>
+              <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
+            </span>
+          </div>
+          <div id="todayEvents"></div>
+          <div class="week" id="weekStrip" aria-label="이번 주 일정"></div>
+          <div id="upcomingEvents"></div>
         </div>
-      </div>
-      <div class="card-body">
-        <div class="free-day-banner" id="freeBannerMission" hidden role="status">
-          <span class="fd-emoji" aria-hidden="true">🎉</span>
-          <span class="fd-text">
-            <b class="fd-title">오늘은 자유의 날!</b>
-            <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
-          </span>
-        </div>
-        <div class="chore-wrap">
-          <div class="char-panel">
-            <div class="char-stage" id="charStage"></div>
-            <div class="char-info" id="charInfo">
-              <div class="char-level" id="charLevel">피츄</div>
+      </section>
 
-              <!-- ① 진화 게이지 — 굵은 바 + 퍼센트 + '다음 진화까지 딱 N P' -->
-              <div class="evo-meter" id="evoMeter">
-                <div class="evo-meter-head">
-                  <span class="evo-meter-label">🧬 다음 진화까지</span>
-                  <b class="evo-meter-pct" id="evoPct">0%</b>
+      <section class="card wiki" id="cardWiki" aria-labelledby="tWiki">
+        <div class="card-head">
+          <div class="card-ico mint" aria-hidden="true">📗</div>
+          <div>
+            <div class="card-title" id="tWiki">우리 집 위키</div>
+            <div class="card-sub">생신 · 예방접종 · 집안 메모 · 연락처</div>
+          </div>
+          <div class="card-tools">
+            <button class="btn icon sm" id="wikiAddBtn" title="항목 추가" aria-label="위키 항목 추가">＋</button>
+          </div>
+        </div>
+        <div class="card-body" id="wikiList"></div>
+      </section>
+
+    </div>
+
+    <!-- 중앙 열 — 미션 & 포켓몬 파트너 -->
+    <div class="col col-center">
+
+      <section class="card chores" id="cardChores" aria-labelledby="tChores">
+        <div class="card-head">
+          <div class="card-ico mint" aria-hidden="true">⭐</div>
+          <div>
+            <div class="card-title" id="tChores">아이 미션</div>
+            <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
+          </div>
+          <div class="card-tools">
+            <button class="btn icon sm" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="free-day-banner" id="freeBannerMission" hidden role="status">
+            <span class="fd-emoji" aria-hidden="true">🎉</span>
+            <span class="fd-text">
+              <b class="fd-title">오늘은 자유의 날!</b>
+              <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
+            </span>
+          </div>
+          <div class="chore-wrap">
+            <div class="char-panel">
+              <div class="char-stage" id="charStage"></div>
+              <div class="char-info" id="charInfo">
+                <div class="char-level" id="charLevel">피츄</div>
+
+                <!-- ① 진화 게이지 — 굵은 바 + 퍼센트 + '다음 진화까지 딱 N P' -->
+                <div class="evo-meter" id="evoMeter">
+                  <div class="evo-meter-head">
+                    <span class="evo-meter-label">🧬 다음 진화까지</span>
+                    <b class="evo-meter-pct" id="evoPct">0%</b>
+                  </div>
+                  <div class="evo-bar" id="evoBar" role="progressbar" aria-label="다음 진화까지 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <i id="charBar" style="width:0%"></i>
+                  </div>
+                  <div class="evo-next" id="charNext">다음 진화 <b>피카츄</b>까지 딱 <b>30P</b> 남음!</div>
                 </div>
-                <div class="evo-bar" id="evoBar" role="progressbar" aria-label="다음 진화까지 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                  <i id="charBar" style="width:0%"></i>
+
+                <!-- ② 진화 경험치 vs 선물 코인 — 색이 다른 두 스탯 카드 -->
+                <div class="stat-cards" aria-label="진화 경험치와 선물 코인">
+                  <div class="stat-card xp" id="statXpCard">
+                    <span class="stat-ico" aria-hidden="true">⚡</span>
+                    <span class="stat-label">진화 경험치</span>
+                    <span class="stat-value"><b id="statXp">0</b><em id="statXpMax">/200P</em></span>
+                  </div>
+                  <div class="stat-card coin" id="statCoinCard">
+                    <span class="stat-ico" aria-hidden="true">🪙</span>
+                    <span class="stat-label">선물 코인</span>
+                    <span class="stat-value"><b id="statCoin">0</b><em>P</em></span>
+                  </div>
                 </div>
-                <div class="evo-next" id="charNext">다음 진화 <b>피카츄</b>까지 딱 <b>30P</b> 남음!</div>
+
+                <!-- ③ 오늘 달성 바 — 오늘 모은 N P / 오늘 목표 합계 N P -->
+                <div class="today-meter" id="todayMeter">
+                  <div class="today-meter-head">
+                    <span>🎯 오늘 달성</span>
+                    <span class="today-meter-pct" id="todayPct">0%</span>
+                  </div>
+                  <div class="today-meter-num">
+                    <span>오늘 모은 <b id="todayGot">0P</b></span>
+                    <span class="tm-sep">/</span>
+                    <span>오늘 목표 <b class="goal" id="todayGoal">0P</b></span>
+                  </div>
+                  <div class="today-bar" id="todayBarWrap"><i id="todayBar" style="width:0%"></i></div>
+                  <div class="today-hint" id="todayHint">미션을 끝낼 때마다 채워져요</div>
+                </div>
+
+                <div class="char-foot">
+                  <span class="char-count" id="charCount">누적 경험치 <b>0P</b></span>
+                  <span class="char-today" id="charToday">아이 오늘 +0P</span>
+                </div>
               </div>
-
-              <!-- ② 진화 경험치 vs 선물 코인 — 색이 다른 두 스탯 카드 -->
-              <div class="stat-cards" aria-label="진화 경험치와 선물 코인">
-                <div class="stat-card xp" id="statXpCard">
-                  <span class="stat-ico" aria-hidden="true">⚡</span>
-                  <span class="stat-label">진화 경험치</span>
-                  <span class="stat-value"><b id="statXp">0</b><em id="statXpMax">/200P</em></span>
+              <!-- 진화 단계 · 파트너/포인트 사용 · 입양 : 세로 화면에서는 그대로, 태블릿 가로에서는 오른쪽 한 묶음으로 -->
+              <div class="char-aside">
+                <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
+                <div class="char-actions">
+                  <button class="btn sm ghost char-partner-btn" id="partnerBtn" title="파트너 포켓몬 바꾸기">🐾 파트너</button>
+                  <button class="btn sm ghost char-partner-btn" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다">🎁 포인트 사용</button>
                 </div>
-                <div class="stat-card coin" id="statCoinCard">
-                  <span class="stat-ico" aria-hidden="true">🪙</span>
-                  <span class="stat-label">선물 코인</span>
-                  <span class="stat-value"><b id="statCoin">0</b><em>P</em></span>
-                </div>
-              </div>
-
-              <!-- ③ 오늘 달성 바 — 오늘 모은 N P / 오늘 목표 합계 N P -->
-              <div class="today-meter" id="todayMeter">
-                <div class="today-meter-head">
-                  <span>🎯 오늘 달성</span>
-                  <span class="today-meter-pct" id="todayPct">0%</span>
-                </div>
-                <div class="today-meter-num">
-                  <span>오늘 모은 <b id="todayGot">0P</b></span>
-                  <span class="tm-sep">/</span>
-                  <span>오늘 목표 <b class="goal" id="todayGoal">0P</b></span>
-                </div>
-                <div class="today-bar" id="todayBarWrap"><i id="todayBar" style="width:0%"></i></div>
-                <div class="today-hint" id="todayHint">미션을 끝낼 때마다 채워져요</div>
-              </div>
-
-              <div class="char-foot">
-                <span class="char-count" id="charCount">누적 경험치 <b>0P</b></span>
-                <span class="char-today" id="charToday">아이 오늘 +0P</span>
+                <button class="btn sm char-adopt" id="adoptBtn" disabled title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
               </div>
             </div>
-            <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
-            <div class="char-actions">
-              <button class="btn sm ghost char-partner-btn" id="partnerBtn" title="파트너 포켓몬 바꾸기">🐾 파트너</button>
-              <button class="btn sm ghost char-partner-btn" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다">🎁 포인트 사용</button>
-            </div>
-            <button class="btn sm char-adopt" id="adoptBtn" disabled title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
-          </div>
-          <div class="mission-area">
-            <div class="member-stats" id="memberStats"></div>
-            <div class="chore-list" id="choreList"></div>
-            <button class="btn sm ghost hist-entry" id="histOpenBtn" type="button" title="월간 달력과 연간 12개월 요약으로 달성 현황을 봅니다">
-              <span>📅 월간·연간 달성</span>
-              <span class="pill" id="histBtnPill">이번 달 기록 없음</span>
-            </button>
-            <details class="log-box" id="logBox" open>
-              <summary>🕒 오늘 완료 이력 <span class="pill" id="logCount">아직 없어요</span></summary>
-              <div class="log-list" id="todayLog"></div>
-            </details>
-            <details class="log-box" id="useBox">
-              <summary>🎁 포인트 사용 내역 <span class="pill" id="useCount">아직 없어요</span></summary>
-              <div class="log-list" id="useList"></div>
-            </details>
-          </div>
-        </div>
-        <div class="dex-wrap">
-          <div class="dex-head">
-            <b>🏆 내 포켓몬 도감</b>
-            <span class="pill" id="dexCount">0마리</span>
-          </div>
-          <div class="dex-row" id="dexRow"></div>
-        </div>
-        <div class="row" style="margin-top:2px">
-          <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
-          <button class="btn sm ghost" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">포인트 초기화</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ======================= 3. 장보기 & 냉장고 ======================= -->
-    <section class="card shopping" id="cardShopping" aria-labelledby="tShopping">
-      <div class="card-head">
-        <div class="card-ico amber" aria-hidden="true">🛒</div>
-        <div>
-          <div class="card-title" id="tShopping">장보기 &amp; 냉장고 메모</div>
-          <div class="card-sub" id="shopSub">살 것과 있는 것을 나눠 적어요</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="shop-tabs" role="tablist">
-          <button role="tab" data-shoptab="buy" class="on" aria-selected="true">🛒 장보기</button>
-          <button role="tab" data-shoptab="fridge" aria-selected="false">🧊 냉장고</button>
-        </div>
-        <div class="row">
-          <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
-          <button class="btn primary" id="shopAddBtn">추가</button>
-        </div>
-        <div id="shopList"></div>
-      </div>
-    </section>
-
-    <!-- ======================= 4. 편지함 ======================= -->
-    <section class="card letters span-8" id="cardLetters" aria-labelledby="tLetters">
-      <div class="card-head">
-        <div class="card-ico lilac" aria-hidden="true">✏️</div>
-        <div>
-          <div class="card-title" id="tLetters">손글씨 &amp; 스티커 편지함</div>
-          <div class="card-sub">손가락이나 펜으로 그리고 편지함에 보내세요</div>
-        </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
-          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="canvas-shell">
-          <canvas id="letterCanvas" width="1000" height="400" aria-label="손글씨 편지 캔버스"></canvas>
-          <div class="canvas-hint" id="canvasHint">여기에 손가락으로 편지를 써 보세요 ✍️</div>
-        </div>
-        <div class="tools">
-          <div class="swatches" id="swatches" aria-label="펜 색"></div>
-          <div class="widths" id="widths" aria-label="펜 굵기"></div>
-          <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
-          <div class="emojis" id="emojiBar" aria-label="스티커"></div>
-        </div>
-        <div class="row wrap">
-          <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
-          <button class="btn primary" id="letterSendBtn">💌 편지함에 보내기</button>
-          <span class="pill" id="letterCount">저장된 편지 0장</span>
-        </div>
-        <div class="gallery" id="gallery"></div>
-      </div>
-    </section>
-
-    <!-- ======================= 5. 타이머 & 음악 ======================= -->
-    <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
-      <div class="card-head">
-        <div class="card-ico coral" aria-hidden="true">⏳</div>
-        <div>
-          <div class="card-title" id="tTimer">타이머 &amp; 음악</div>
-          <div class="card-sub">밥 먹기·공부 시간 재기</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="timer-shell">
-          <div class="timer-ring" id="timerRing" style="--p:0">
-            <div class="timer-face">
-              <div class="timer-digits" id="timerDigits">15:00</div>
-              <div class="timer-state" id="timerState">준비</div>
+            <div class="mission-area">
+              <div class="member-stats" id="memberStats"></div>
+              <div class="chore-list" id="choreList"></div>
+              <button class="btn sm ghost hist-entry" id="histOpenBtn" type="button" title="월간 달력과 연간 12개월 요약으로 달성 현황을 봅니다">
+                <span>📅 월간·연간 달성</span>
+                <span class="pill" id="histBtnPill">이번 달 기록 없음</span>
+              </button>
+              <details class="log-box" id="logBox" open>
+                <summary>🕒 오늘 완료 이력 <span class="pill" id="logCount">아직 없어요</span></summary>
+                <div class="log-list" id="todayLog"></div>
+              </details>
+              <details class="log-box" id="useBox">
+                <summary>🎁 포인트 사용 내역 <span class="pill" id="useCount">아직 없어요</span></summary>
+                <div class="log-list" id="useList"></div>
+              </details>
             </div>
           </div>
-          <div class="timer-side">
-            <div class="presets" id="presets"></div>
-            <div class="row">
-              <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
-              <button class="btn" id="timerResetBtn" title="초기화">↺</button>
+          <div class="dex-wrap">
+            <div class="dex-head">
+              <b>🏆 내 포켓몬 도감</b>
+              <span class="pill" id="dexCount">0마리</span>
             </div>
+            <div class="dex-row" id="dexRow"></div>
+          </div>
+          <div class="row" style="margin-top:2px">
+            <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
+            <button class="btn sm ghost" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">포인트 초기화</button>
           </div>
         </div>
-        <div class="links" id="linkList" style="margin-top:4px"></div>
-        <button class="btn sm block ghost" id="linkAddBtn">＋ 가족 플레이리스트 · 유튜브 링크 추가</button>
-      </div>
-    </section>
+      </section>
 
-    <!-- ======================= 6. 사고 싶은 것(위시리스트) ======================= -->
-    <section class="card wish" id="cardWish" aria-labelledby="tWish">
-      <div class="card-head">
-        <div class="card-ico pink" aria-hidden="true">🎁</div>
-        <div>
-          <div class="card-title" id="tWish">사고 싶은 것</div>
-          <div class="card-sub" id="wishSub">갖고 싶은 걸 적어 두면 얼마나 더 모아야 하는지 알려 줘요</div>
-        </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="wish-balance" id="wishBalance"></div>
-        <div class="wish-list" id="wishList"></div>
-      </div>
-    </section>
+    </div>
 
-    <!-- ======================= 7. 위키 ======================= -->
-    <section class="card wiki" id="cardWiki" aria-labelledby="tWiki">
-      <div class="card-head">
-        <div class="card-ico mint" aria-hidden="true">📗</div>
-        <div>
-          <div class="card-title" id="tWiki">우리 집 위키</div>
-          <div class="card-sub">생신 · 예방접종 · 집안 메모 · 연락처</div>
+    <!-- 우측 열 — 타이머·음악 + 사고 싶은 것 + 장보기 + 손글씨 편지함 -->
+    <div class="col col-right">
+
+      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+        <div class="card-head">
+          <div class="card-ico coral" aria-hidden="true">⏳</div>
+          <div>
+            <div class="card-title" id="tTimer">타이머 &amp; 음악</div>
+            <div class="card-sub">밥 먹기·공부 시간 재기</div>
+          </div>
         </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="wikiAddBtn" title="항목 추가" aria-label="위키 항목 추가">＋</button>
+        <div class="card-body">
+          <div class="timer-shell">
+            <div class="timer-ring" id="timerRing" style="--p:0">
+              <div class="timer-face">
+                <div class="timer-digits" id="timerDigits">15:00</div>
+                <div class="timer-state" id="timerState">준비</div>
+              </div>
+            </div>
+            <div class="timer-side">
+              <div class="presets" id="presets"></div>
+              <div class="row">
+                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
+                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
+              </div>
+            </div>
+          </div>
+          <div class="link-row">
+            <div class="links" id="linkList"></div>
+            <button class="btn sm ghost" id="linkAddBtn">＋ 가족 플레이리스트 · 유튜브 링크 추가</button>
+          </div>
         </div>
-      </div>
-      <div class="card-body" id="wikiList"></div>
-    </section>
+      </section>
+
+      <section class="card wish" id="cardWish" aria-labelledby="tWish">
+        <div class="card-head">
+          <div class="card-ico pink" aria-hidden="true">🎁</div>
+          <div>
+            <div class="card-title" id="tWish">사고 싶은 것</div>
+            <div class="card-sub" id="wishSub">갖고 싶은 걸 적어 두면 얼마나 더 모아야 하는지 알려 줘요</div>
+          </div>
+          <div class="card-tools">
+            <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="wish-balance" id="wishBalance"></div>
+          <div class="wish-list" id="wishList"></div>
+        </div>
+      </section>
+
+      <section class="card shopping" id="cardShopping" aria-labelledby="tShopping">
+        <div class="card-head">
+          <div class="card-ico amber" aria-hidden="true">🛒</div>
+          <div>
+            <div class="card-title" id="tShopping">장보기 &amp; 냉장고 메모</div>
+            <div class="card-sub" id="shopSub">살 것과 있는 것을 나눠 적어요</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="shop-tabs" role="tablist">
+            <button role="tab" data-shoptab="buy" class="on" aria-selected="true">🛒 장보기</button>
+            <button role="tab" data-shoptab="fridge" aria-selected="false">🧊 냉장고</button>
+          </div>
+          <div class="row">
+            <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
+            <button class="btn primary" id="shopAddBtn">추가</button>
+          </div>
+          <div id="shopList"></div>
+        </div>
+      </section>
+
+      <section class="card letters span-8" id="cardLetters" aria-labelledby="tLetters">
+        <div class="card-head">
+          <div class="card-ico lilac" aria-hidden="true">✏️</div>
+          <div>
+            <div class="card-title" id="tLetters">손글씨 &amp; 스티커 편지함</div>
+            <div class="card-sub">손가락이나 펜으로 그리고 편지함에 보내세요</div>
+          </div>
+          <div class="card-tools">
+            <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
+            <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="canvas-shell">
+            <canvas id="letterCanvas" width="1000" height="400" aria-label="손글씨 편지 캔버스"></canvas>
+            <div class="canvas-hint" id="canvasHint">여기에 손가락으로 편지를 써 보세요 ✍️</div>
+          </div>
+          <div class="tools">
+            <div class="swatches" id="swatches" aria-label="펜 색"></div>
+            <div class="widths" id="widths" aria-label="펜 굵기"></div>
+            <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
+            <div class="emojis" id="emojiBar" aria-label="스티커"></div>
+          </div>
+          <div class="row wrap">
+            <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
+            <button class="btn primary" id="letterSendBtn">💌 편지함에 보내기</button>
+            <span class="pill" id="letterCount">저장된 편지 0장</span>
+          </div>
+          <div class="gallery" id="gallery"></div>
+        </div>
+      </section>
+
+    </div>
 
   </main>
 
@@ -599,6 +612,6 @@
 <div id="confetti" aria-hidden="true"></div>
 <div class="levelup" id="levelup" hidden></div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
