@@ -417,19 +417,19 @@ html[data-theme="dark"] .evo-next.done { color: #6ee7c2; }
   padding: 7px 4px 6px; border-radius: 13px; border: 1px solid transparent;
   transition: transform .18s ease, box-shadow .2s ease;
 }
-.stat-card .stat-ico { font-size: 15px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(23,35,73,.12)); }
-.stat-card .stat-label { font-size: 9.5px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; }
-.stat-card .stat-value { font-size: 15px; font-weight: 900; letter-spacing: -.04em; line-height: 1.12; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.stat-card .stat-value em { font-style: normal; font-size: 9.5px; font-weight: 800; opacity: .78; margin-left: 1px; }
+.stat-card .stat-ico { font-size: 16px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(23,35,73,.14)); }
+.stat-card .stat-label { font-size: 10px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; }
+.stat-card .stat-value { font-size: 16.5px; font-weight: 900; letter-spacing: -.04em; line-height: 1.12; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stat-card .stat-value em { font-style: normal; font-size: 10px; font-weight: 800; opacity: .8; margin-left: 1px; }
 .stat-card.xp {
-  color: #5636c0; background: linear-gradient(160deg, #f2ebff, #ffffff 82%);
-  border-color: rgba(155,123,240,.34);
-  box-shadow: 0 6px 14px rgba(155,123,240,.18), inset 0 0 0 1px rgba(255,255,255,.7);
+  color: #4d2ab5; background: linear-gradient(160deg, #efe4ff, #fbf8ff 85%);
+  border-color: rgba(155,123,240,.46);
+  box-shadow: 0 7px 16px rgba(155,123,240,.22), inset 0 0 0 1px rgba(255,255,255,.8);
 }
 .stat-card.coin {
-  color: #96600a; background: linear-gradient(160deg, #fff2d4, #ffffff 82%);
-  border-color: rgba(245,166,35,.44);
-  box-shadow: 0 6px 14px rgba(245,166,35,.2), inset 0 0 0 1px rgba(255,255,255,.7);
+  color: #8f5500; background: linear-gradient(160deg, #ffedc2, #fffaf0 85%);
+  border-color: rgba(240,150,20,.5);
+  box-shadow: 0 7px 16px rgba(245,166,35,.24), inset 0 0 0 1px rgba(255,255,255,.8);
 }
 .stat-card.pop { animation: statPop .6s cubic-bezier(.2,1.5,.4,1); }
 @keyframes statPop { 0% { transform: scale(1); } 38% { transform: scale(1.09); } 100% { transform: scale(1); } }
