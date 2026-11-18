@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFamilySync, reconcileMissionCompletions, schoolDocOf, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso } from '../firebase-sync.js';
+import { createFamilySync, reconcileMissionCompletions, schoolDocOf, customAlarmDoc, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso } from '../firebase-sync.js';
 
 function fakeSdk() {
   const listeners = [];
@@ -304,7 +304,36 @@ test('every signed-in role subscribes to the event center document', async () =>
     sync.startSubscriptions();
     assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/event_center'));
     assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/today_school'));
+    assert.ok(probe.listeners.some((entry) => entry.ref && entry.ref.path === 'households/main/child_state/custom_alarms'));
   }
+});
+
+test('custom alarm document keeps only valid times/titles/days and 40 alarms at most', () => {
+  const doc = customAlarmDoc({
+    alarms: [
+      { id: 'def-morning-done', time: '07:15', title: ' 밥 먹기  끝 ', days: [1, 2, 3, 4, 5], on: true },
+      { id: 'x y', time: '08:05', title: '준비 끝', days: [1, 9, 2, '3'], on: false },
+      { id: 'bad', time: '24:00', title: '잘못된 시각' },
+      { id: 'empty', time: '09:00', title: '   ' },
+    ],
+  });
+  assert.deepEqual(doc.alarms, [
+    { id: 'def-morning-done', time: '07:15', title: '밥 먹기 끝', days: [1, 2, 3, 4, 5], on: true },
+    { id: 'a2', time: '08:05', title: '준비 끝', days: [1, 2, 3], on: false },
+  ]);
+  const many = customAlarmDoc({ alarms: Array.from({ length: 60 }, (_, i) => ({ id: `a${i}`, time: '08:00', title: `알람 ${i}` })) });
+  assert.equal(many.alarms.length, 40);
+});
+
+test('child dashboard never writes the custom alarm document', async () => {
+  const probe = fakeSdk();
+  const auth = { currentUser: userWithRole('child-user', 'child') };
+  const sync = createFamilySync({ sdk: probe.sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+  const res = await sync.pushAlarms({ alarms: [{ id: 'a1', time: '07:15', title: '밥 먹기 끝' }] });
+  assert.equal(res.ok, false);
+  assert.equal(res.denied[0].id, 'custom_alarms');
+  assert.equal(probe.writes.length, 0);
 });
 
 test('school document keeps only real dates and the meal/timetable of each day', () => {

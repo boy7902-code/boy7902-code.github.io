@@ -27,6 +27,8 @@ export const PARTNER_PATH = `${FAMILY_ROOT}/child_state/partner`;
 export const EVENT_CENTER_PATH = `${FAMILY_ROOT}/child_state/event_center`;
 /** 🏫 오늘 학교(급식·시간표) — 같은 child_state 규칙(가족 읽기 · 부모 쓰기)을 씁니다 */
 export const SCHOOL_PATH = `${FAMILY_ROOT}/child_state/today_school`;
+/** ⏰ 맞춤 알람 — 같은 child_state 규칙(가족 읽기 · 부모 쓰기)을 씁니다 */
+export const ALARM_PATH = `${FAMILY_ROOT}/child_state/custom_alarms`;
 export const PARENT_CONFIG_PATH = `${FAMILY_ROOT}/private/parent_config`;
 export const FAMILY_PATH = FAMILY_ROOT;
 /** Firestore 는 빈 필드명('')을 허용하지 않습니다. 공용 미션 몫(byMember[''])은 '_shared' 로 저장합니다. */
@@ -689,6 +691,8 @@ export function createFamilySync(deps = {}) {
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/event_center')), push('eventCenter'), fail('eventCenter')));
     // 🏫 오늘 학교 — 부모가 고치면 아이 기기·태블릿이 그대로 읽어 갑니다
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/today_school')), push('school'), fail('school')));
+    // ⏰ 맞춤 알람 — 부모가 만들고 고치며, 아이 기기·태블릿은 읽어서 그대로 울립니다
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/custom_alarms')), push('alarms'), fail('alarms')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
       unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
@@ -791,6 +795,25 @@ export function createFamilySync(deps = {}) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       const doc = schoolDocOf(data);
       await sdk.setDoc(docRef(pathOf('child_state/today_school')), { ...doc, updatedAt: sdk.serverTimestamp() });
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: true };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  /* ---- ⏰ 맞춤 알람 저장 (부모 기기) ----
+     경로: households/main/child_state/custom_alarms
+     규칙: child_state/{docId} = 가족 읽기 / 부모 쓰기 → 아이 기기·태블릿은 읽기만 합니다. */
+  async function pushAlarms(data = {}) {
+    const session = activeSession({ r: 'parent' });
+    if (!session || role !== 'parent') {
+      return { ok: false, cancelled: true, denied: [{ collection: 'child_state', id: 'custom_alarms', reason: '맞춤 알람은 보호자 기기에서만 저장할 수 있어요' }] };
+    }
+    try {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      await sdk.setDoc(docRef(pathOf('child_state/custom_alarms')), { ...customAlarmDoc(data), updatedAt: sdk.serverTimestamp() });
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: true };
     } catch (e) {
@@ -1230,7 +1253,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
-    pushEventCenter, pushSchool, writeBonusLog,
+    pushEventCenter, pushSchool, pushAlarms, writeBonusLog,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
@@ -1238,6 +1261,29 @@ export function createFamilySync(deps = {}) {
     // 내부 헬퍼(테스트용)
     _diffById: diffById,
   };
+}
+
+/* ────────────────────────────── ⏰ 맞춤 알람 ────────────────────────────── */
+/**
+ * 맞춤 알람 문서 모양 — households/main/child_state/custom_alarms
+ * 규칙(child_state/{docId} = 가족 읽기 · 부모 쓰기)을 그대로 쓰므로 firestore.rules 는 그대로입니다.
+ * 시각(HH:MM)이 아니거나 제목이 빈 항목은 버리고, 40개까지만 보냅니다.
+ */
+export function customAlarmDoc(data = {}) {
+  const list = (Array.isArray(data && data.alarms) ? data.alarms : []).slice(0, 40).map((a, i) => {
+    const time = isHhmm(a && a.time) ? String(a.time) : '';
+    const title = String((a && a.title) || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!time || !title) return null;
+    const id = /^[A-Za-z0-9_-]{1,24}$/.test(String((a && a.id) || '')) ? String(a.id) : `a${i + 1}`;
+    return {
+      id,
+      time,
+      title,
+      days: (Array.isArray(a && a.days) ? a.days : []).map((n) => parseInt(n, 10)).filter((n) => n >= 0 && n <= 6).slice(0, 7),
+      on: (a && a.on) !== false,
+    };
+  }).filter(Boolean);
+  return { alarms: list };
 }
 
 /* ────────────────────────────── 7) 앱 상태 ↔ 문서 묶음 ────────────────────────────── */

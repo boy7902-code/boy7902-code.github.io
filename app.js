@@ -46,6 +46,8 @@
   const addDays = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  /* ⏰ 알람 판단 도우미(alarm-core.js) — 미션·일정·맞춤 알람 중 '지금 울릴 것'을 고르는 계산만 담당합니다 */
+  const ALARM = window.FamilyAlarmCore || null;
   const fmtMD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? `${+m[2]}/${+m[3]}` : ''; };
   const isDateStr = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
   // 완료 이력 보존: 오래된 기록은 잘라내되 최소 400일은 그대로 남깁니다 (동기화 patch에도 그대로 반영)
@@ -457,6 +459,15 @@
   const WISH_CAT_KEYS = WISH_CATS.map((c) => c.key);
   const wishCatOf = (key) => WISH_CATS.find((c) => c.key === key) || WISH_CATS[WISH_CATS.length - 1];
 
+  /* ⏰ 기본 맞춤 알람 — 평일 아침 두 가지(아이 등교 준비). 보호자가 설정에서 고치거나 지울 수 있습니다.
+     id 를 고정해 두어 기기마다 같은 알람으로 인식되고, Firestore 에도 한 번만 생깁니다. */
+  function defaultAlarms() {
+    return [
+      { id: 'def-morning-done', time: '07:15', title: '밥 먹기 끝', days: [1, 2, 3, 4, 5], on: true },
+      { id: 'def-ready-done', time: '08:05', title: '준비 끝', days: [1, 2, 3, 4, 5], on: true },
+    ];
+  }
+
   const DEFAULT_STATE = () => ({
     v: 3,
     theme: 'light',
@@ -515,6 +526,10 @@
     event7: event7Default(),
     // 🏫 학교 급식·시간표 — 학교 이름을 코드에 넣지 않고 이 기기 설정값으로만 그립니다
     school: { name: '', cls: '', byDate: {} },
+    // ⏰ 맞춤 알람 — 보호자가 정한 고정 알람 { id, time:'HH:MM', title, days:[], on }
+    //    (미션 마감·가족 일정 알람은 저장하지 않고 그때그때 계산합니다)
+    //    처음 쓰는 기기에는 평일 기본 알람 2개가 들어 있습니다 — 보호자가 켜고 끌거나 고칠 수 있어요.
+    alarms: defaultAlarms(),
   });
 
   function mergeState(raw) {
@@ -639,6 +654,11 @@
       .filter((w) => w.title);
 
     if (!out.members.length) out.members = base.members;
+    // ⏰ 맞춤 알람 — 처음 쓰는 기기(저장된 목록이 아예 없는 경우)에만 기본 알람 2개를 넣고,
+    //    시각·제목이 깨진 값은 버리며 개수는 40개까지만 남깁니다.
+    //    보호자가 지우면 빈 목록도 그대로 존중합니다(배열이 있으면 그 값을 씁니다).
+    const rawAlarms = raw.alarms === undefined ? defaultAlarms() : raw.alarms;
+    out.alarms = ALARM ? ALARM.normalizeAlarms(rawAlarms) : (Array.isArray(rawAlarms) ? rawAlarms : []);
     // 🎪 이벤트 설정/상태 — 깨진 값은 기본값으로 조용히 돌립니다
     out.event7 = normalizeEvent7(out.event7);
     return out;
@@ -669,6 +689,7 @@
       fbLocalChanged();          // 🔥 Firebase 연결 중이면 변경분만 Firestore 로 보냅니다 (연동 초안)
       evtSyncMaybe();            // 🎪 이벤트 설정·상태 → child_state/event_center (부모 기기만)
       schoolSyncMaybe();         // 🏫 급식·시간표 → child_state/today_school (부모 기기만)
+      alarmSyncMaybe();          // ⏰ 맞춤 알람 → child_state/custom_alarms (부모 기기만)
     }, 120);
   }
 
@@ -1081,6 +1102,379 @@
       o.start(t);
       o.stop(t + 0.26);
     });
+  }
+
+  /* ==================================================== 🔔 알람 (미션·일정·맞춤)
+     서버 푸시나 브라우저 알림 권한 없이, 화면이 켜져 있는 동안 스스로 울리는 알람입니다.
+       · 미션 : 오늘 할 미션 중 아직 끝내지 않은 것 → 마감 5분 전과 정각
+       · 일정 : 오늘 가족 일정·구글 캘린더 일정(시각이 있는 것) → 10분 전과 정각
+       · 맞춤 : 보호자가 정한 고정 알람(시간·제목·요일) → 정각
+     소리는 파일 없이 Web Audio 로 그 자리에서 만든 차임벨입니다.
+     브라우저는 '사용자가 한 번 터치한 뒤'에만 소리를 내 주므로, 첫 터치에서
+     AudioContext 를 깨우고 그때까지는 헤더 🔔 버튼에 '1번 터치' 배지를 보여 줍니다. */
+  const ALARM_SOUND_KEY = 'family-dashboard:alarm-sound';
+  const ALARM_FIRED_KEY = 'family-dashboard:alarm-fired';
+  const ALARM_TICK_MS = 10000;        // 10초마다 '지금 울릴 알람'이 있는지 봅니다
+  const ALARM_GRACE_MIN = 2;          // 화면이 잠깐 멈췄다 돌아와도 2분 안이면 한 번은 울립니다
+  const ALARM_MAX = ALARM ? ALARM.MAX_ALARMS : 40;
+  const ALARM_TIME_QUICK = ['07:00', '07:15', '08:00', '08:25', '20:00', '21:30'];
+  let alarmSoundPref = true;          // 소리 켜기/끄기 — 기기에 기억합니다(localStorage)
+  let alarmAudioLive = false;         // 브라우저가 실제로 소리를 낼 수 있게 풀렸는지
+  let alarmFiredDate = '';
+  let alarmFiredKeys = new Set();
+  let alarmPopKeys = [];              // 지금 떠 있는 알람 창에 들어 있는 항목
+  let alarmClockOn = false;
+  let alarmUnlockedAt = 0;            // 마지막으로 소리가 풀린 시각 — 첫 터치와 토글을 구분하려고
+  try { alarmSoundPref = localStorage.getItem(ALARM_SOUND_KEY) !== 'off'; } catch (e) { /* 저장소를 못 써도 소리는 켜 둡니다 */ }
+
+  let alarmSoundSig = '';
+  function renderAlarmSoundBtn() {
+    const b = $('#alarmSoundBtn');
+    if (!b) return;
+    const on = alarmSoundPref;
+    const live = on && alarmAudioLive;
+    const state = !on ? 'off' : (live ? 'on' : 'locked');
+    const sig = `${state}|${on ? 'on' : 'off'}`;
+    if (sig === alarmSoundSig && b.dataset.state === state) return;   // 바뀐 게 없으면 그대로 둡니다
+    alarmSoundSig = sig;
+    b.dataset.state = state;
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.innerHTML = `<span aria-hidden="true">${on ? '🔔' : '🔕'}</span>`
+      + `<span class="alarm-word">${on ? '알람 소리' : '소리 꺼짐'}</span>`
+      + (on && !alarmAudioLive ? '<span class="alarm-tap">1번 터치</span>' : '');
+    b.title = !on ? '알람 소리가 꺼져 있어요 · 눌러서 켜기'
+      : live ? '알람 소리 켜짐 · 누르면 끄기'
+        : '눌러서 알람 소리를 켜세요 (브라우저가 처음 한 번의 터치를 기다려요)';
+  }
+
+  /* 첫 터치·키 입력에서 AudioContext 를 깨웁니다 — 그 전에는 소리가 나지 않습니다 */
+  function unlockAlarmAudio() {
+    const ctx = ensureAudio();
+    if (!ctx) { renderAlarmSoundBtn(); return false; }
+    const mark = () => {
+      if (ctx.state === 'running') alarmAudioLive = true;
+      renderAlarmSoundBtn();
+    };
+    try {
+      const p = ctx.resume();
+      if (p && typeof p.then === 'function') p.then(mark).catch(() => {});
+    } catch (e) { /* noop */ }
+    mark();
+    return alarmAudioLive;
+  }
+
+  /* 부드러운 3음 차임벨 — 배음을 조금 섞어 '딩동' 느낌을 냅니다(파일 없음) */
+  function chimeAlarm(volume = 1) {
+    const ctx = ensureAudio();
+    if (!ctx) return false;
+    if (ctx.state !== 'running') unlockAlarmAudio();
+    if (ctx.state !== 'running') return false;
+    const vol = clamp(+volume || 1, 0.15, 1);
+    const t0 = ctx.currentTime + 0.04;
+    const ring = (freq, at, dur, gain) => {
+      [1, 2.01, 2.99].forEach((mult, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq * mult;
+        const peak = gain * (i === 0 ? 1 : i === 1 ? 0.26 : 0.09);
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.linearRampToValueAtTime(peak, at + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        o.connect(g).connect(ctx.destination);
+        o.start(at);
+        o.stop(at + dur + 0.05);
+      });
+    };
+    const notes = [784.0, 987.77, 1318.51];        // 솔5 · 시5 · 미6
+    notes.forEach((f, i) => ring(f, t0 + i * 0.24, 1.15, 0.13 * vol));
+    notes.forEach((f, i) => ring(f, t0 + 1.05 + i * 0.2, 0.95, 0.08 * vol));   // 한 번 더 은은하게
+    alarmAudioLive = true;
+    renderAlarmSoundBtn();
+    return true;
+  }
+
+  function setAlarmSound(on, { quiet = false } = {}) {
+    alarmSoundPref = !!on;
+    try { localStorage.setItem(ALARM_SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* noop */ }
+    if (on) unlockAlarmAudio();
+    renderAlarmSoundBtn();
+    if (typeof renderAlarmSettings === 'function') renderAlarmSettings();
+    if (quiet) return;
+    if (on) {
+      chimeAlarm(0.7);
+      toast(alarmAudioLive ? '🔔 알람 소리를 켰어요' : '🔔 알람 소리를 켰어요 · 화면을 한 번 더 터치하면 들려요', 'mint', 2600);
+    } else {
+      toast('🔕 알람 소리를 껐어요 · 화면 알람은 그대로 떠요', '', 2600);
+    }
+  }
+  /* 처음 한 번의 터치로 소리를 풀어 줍니다(헤더 버튼을 누르지 않아도) */
+  let alarmUnlockTriedAt = 0;
+  function alarmFirstTouch() {
+    if (!alarmSoundPref || alarmAudioLive) return;
+    if (Date.now() - alarmUnlockTriedAt < 1200) return;   // 터치마다 다시 시도하지 않습니다
+    alarmUnlockTriedAt = Date.now();
+    unlockAlarmAudio();
+    if (alarmAudioLive) alarmUnlockedAt = Date.now();
+  }
+  /* 헤더 🔔 · 설정 버튼 — 방금 터치로 소리가 풀렸을 때는 끄지 않고 그대로 켜 둡니다 */
+  function toggleAlarmSoundByUser() {
+    if (!alarmSoundPref) { setAlarmSound(true); return; }
+    if (alarmAudioLive && Date.now() - alarmUnlockedAt < 900) { chimeAlarm(0.6); return; }
+    setAlarmSound(false);
+  }
+  ['pointerdown', 'keydown'].forEach((type) => {
+    window.addEventListener(type, alarmFirstTouch, { passive: true, capture: true });
+  });
+
+  /* ---- 오늘 울릴 수 있는 알람 ---- */
+  function alarmItemsOn(date = todayStr()) {
+    if (!ALARM) return [];
+    return ALARM.collectItems({
+      missions: S.missions || [],
+      events: (S.events || []).concat(GCAL.on ? GCAL.events : []),
+      alarms: S.alarms || [],
+      date,
+      dow: new Date().getDay(),
+      includeAdults: !!S.showAdultMissions,
+      kidId: KID_ID,
+    });
+  }
+
+  /* ---- 같은 날·같은 항목·같은 시점은 한 번만 (새로 고쳐도 다시 울리지 않게 기기에 기록) ---- */
+  function alarmFiredSet(date) {
+    if (alarmFiredDate === date) return alarmFiredKeys;
+    alarmFiredDate = date;
+    alarmFiredKeys = new Set();
+    try {
+      const raw = JSON.parse(localStorage.getItem(ALARM_FIRED_KEY) || 'null');
+      if (raw && raw.date === date && Array.isArray(raw.keys)) raw.keys.forEach((k) => alarmFiredKeys.add(String(k)));
+    } catch (e) { /* noop */ }
+    return alarmFiredKeys;
+  }
+  function markAlarmFired(date, key) {
+    const set = alarmFiredSet(date);
+    set.add(key);
+    try { localStorage.setItem(ALARM_FIRED_KEY, JSON.stringify({ date, keys: Array.from(set).slice(-200) })); } catch (e) { /* noop */ }
+  }
+
+  function checkAlarms() {
+    if (!ALARM || !S) return [];
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const date = todayStr();
+    const hits = ALARM.targetsAt(alarmItemsOn(date), nowMin, { grace: ALARM_GRACE_MIN });
+    if (!hits.length) return [];
+    const fired = alarmFiredSet(date);
+    const due = hits.filter((h) => !fired.has(ALARM.fireKeyOf(date, h, h.slot)));
+    due.forEach((h) => markAlarmFired(date, ALARM.fireKeyOf(date, h, h.slot)));
+    if (due.length) ringAlarms(due);
+    return due;
+  }
+
+  function ringAlarms(hits) {
+    if (alarmSoundPref) chimeAlarm(1);
+    showAlarmPop(hits);
+  }
+
+  /* ---- 화면 가운데 알람 창 — 대기화면(🖼️) 위에도 그대로 뜨고, 한 번에 여러 개를 모아 보여 줍니다 ---- */
+  function showAlarmPop(hits) {
+    const box = $('#alarmPop');
+    const list = $('#alarmPopMsgs');
+    if (!box || !list || !ALARM || !Array.isArray(hits) || !hits.length) return;
+    if (box.hidden) { list.innerHTML = ''; alarmPopKeys = []; }
+    hits.forEach((h) => {
+      const key = ALARM.fireKeyOf(todayStr(), h, h.slot);
+      if (alarmPopKeys.indexOf(key) >= 0) return;
+      alarmPopKeys.push(key);
+      const msg = ALARM.alarmMessage(h);
+      const li = document.createElement('li');
+      li.className = 'alarm-msg ' + (h.kind || 'custom');
+      li.innerHTML = `<span class="am-ico" aria-hidden="true">${h.kind === 'mission' ? '🎯' : h.kind === 'event' ? '📅' : '⏰'}</span>`
+        + `<span class="am-body"><b>${esc(msg.title)}</b><span>${esc(msg.sub)}</span></span>`;
+      list.appendChild(li);
+    });
+    const at = $('#alarmPopTime');
+    if (at) at.textContent = hhmm();
+    const titleEl = $('#alarmPopTitle');
+    if (titleEl) titleEl.textContent = list.children.length > 1 ? `알람 ${list.children.length}개` : '알람';
+    const hint = $('#alarmPopHint');
+    if (hint) {
+      let text = '';
+      if (!alarmSoundPref) text = '🔕 소리는 꺼져 있어요 · 헤더의 🔔 알람 소리를 누르면 켜져요';
+      else if (!alarmAudioLive) text = '🔔 소리를 들으려면 화면을 한 번 터치하거나 헤더의 🔔를 눌러 주세요';
+      hint.textContent = text;
+      hint.hidden = !text;
+    }
+    box.hidden = false;
+    const ok = $('#alarmPopOk');
+    if (ok) { try { ok.focus({ preventScroll: true }); } catch (e) { try { ok.focus(); } catch (e2) { /* noop */ } } }
+  }
+  function closeAlarmPop() {
+    const box = $('#alarmPop');
+    if (box) box.hidden = true;
+    const list = $('#alarmPopMsgs');
+    if (list) list.innerHTML = '';
+    alarmPopKeys = [];
+  }
+
+  /* ---- 소리·알람 창 미리 보기 (설정에서 씁니다) ---- */
+  function previewAlarm() {
+    if (!ALARM) return;
+    unlockAlarmAudio();
+    if (alarmSoundPref) chimeAlarm(0.9);
+    showAlarmPop([{ key: 'preview', kind: 'custom', title: '알람 미리 보기', time: hhmm(), slot: 'now' }]);
+    toast(alarmAudioLive ? '🔔 알람이 울릴 때 이 소리와 화면이 나와요' : '🔔 화면은 이렇게 떠요 · 소리는 화면을 한 번 터치하면 들려요', '', 2800);
+  }
+
+  function startAlarmClock() {
+    if (alarmClockOn) return;
+    alarmClockOn = true;
+    renderAlarmSoundBtn();
+    setTimeout(checkAlarms, 1500);          // 화면이 다 그려진 뒤 한 번
+    setInterval(checkAlarms, ALARM_TICK_MS);
+  }
+
+  /* ---- ⏰ 맞춤 알람 관리 (설정 · 보호자 전용) ---- */
+  function renderAlarmSettings() {
+    const b2 = $('#alarmSoundBtn2');
+    if (b2) {
+      b2.textContent = alarmSoundPref ? '🔔 알람 소리 켜짐' : '🔕 알람 소리 꺼짐';
+      b2.dataset.state = alarmSoundPref ? 'on' : 'off';
+    }
+    const note = $('#alarmSoundNote');
+    if (note) {
+      note.textContent = !alarmSoundPref
+        ? '지금은 소리 없이 화면 알람만 떠요. 위 버튼을 누르면 소리가 켜져요.'
+        : alarmAudioLive
+          ? '소리 준비됨 · 알람이 울리면 차임벨과 함께 화면 가운데 알람 창이 떠요.'
+          : '처음 한 번은 화면(또는 위 버튼)을 터치해야 브라우저가 소리를 허락해요.';
+    }
+    const today = $('#alarmToday');
+    if (today) {
+      if (!ALARM) today.innerHTML = '';
+      else {
+        const now = new Date();
+        const rows = ALARM.upcoming(alarmItemsOn(todayStr()), now.getHours() * 60 + now.getMinutes(), 3);
+        today.innerHTML = '<b>⏭ 다음 알람</b>' + (rows.length
+          ? rows.map((r) => `<span class="at-row"><b>${esc(ALARM.minToHhmm(r.at))}</b> ${esc(r.title)}<i>${r.slot === 'pre' ? (r.kind === 'mission' ? '마감 5분 전' : '10분 전') : '정각'}</i></span>`).join('')
+          : '<span class="at-row">오늘 남은 알람이 없어요</span>');
+      }
+    }
+    const box = $('#alarmList');
+    if (!box) return;
+    const list = Array.isArray(S.alarms) ? S.alarms : [];
+    box.innerHTML = list.length
+      ? list.map((a) => `<div class="alarm-row${a.on ? '' : ' off'}">
+          <b class="ar-time">${esc(a.time)}</b>
+          <span class="ar-title">${esc(a.title)}</span>
+          <span class="ar-days">${esc(daysLabel(a.days))}</span>
+          <button class="btn icon sm ghost" type="button" data-act="alarm-on" data-id="${esc(a.id)}" title="${a.on ? '이 알람 끄기' : '이 알람 켜기'}" aria-label="${a.on ? '알람 끄기' : '알람 켜기'}">${a.on ? '🔔' : '🔕'}</button>
+          <button class="btn icon sm ghost" type="button" data-act="alarm-edit" data-id="${esc(a.id)}" aria-label="알람 수정">✎</button>
+          <button class="btn icon sm ghost" type="button" data-act="alarm-del" data-id="${esc(a.id)}" aria-label="알람 삭제">✕</button>
+        </div>`).join('')
+      : '<p class="settings-note">맞춤 알람이 아직 없어요. 아래 <b>＋ 맞춤 알람 추가</b>로 ‘등교 출발’ 같은 알람을 만들어 보세요.</p>';
+  }
+
+  async function addAlarm() {
+    if ((S.alarms || []).length >= ALARM_MAX) { toast(`맞춤 알람은 ${ALARM_MAX}개까지 만들 수 있어요`, '', 2600); return; }
+    const r = await askModal({
+      title: '⏰ 맞춤 알람 추가',
+      hint: '정한 시각에 화면 알람과 차임벨이 울려요. 미션·일정 알람은 저절로 울립니다.',
+      fields: [
+        { name: 'title', label: '알람 제목', placeholder: '예: 등교 출발', maxlength: 30 },
+        { name: 'time', label: '시각', type: 'time', value: '08:25', quick: ALARM_TIME_QUICK },
+        { name: 'days', label: '요일', type: 'days', value: [] },
+      ],
+      okText: '추가',
+    });
+    if (!r) return;
+    const title = String(r.title || '').trim().slice(0, 30);
+    const time = String(r.time || '');
+    if (!title) { toast('알람 제목을 적어 주세요', '', 2400); return; }
+    if (!ALARM || !ALARM.isHhmm(time)) { toast('시각을 골라 주세요', '', 2400); return; }
+    S.alarms.push({ id: uid(), time, title, days: parseDays(r.days), on: true });
+    save(); renderAlarmSettings();
+    toast(`⏰ ${time} ${title} 알람을 만들었어요`, 'mint', 2800);
+  }
+
+  async function editAlarm(id) {
+    const a = (S.alarms || []).find((x) => x.id === id);
+    if (!a) return;
+    const r = await askModal({
+      title: '⏰ 맞춤 알람 고치기',
+      fields: [
+        { name: 'title', label: '알람 제목', value: a.title, maxlength: 30 },
+        { name: 'time', label: '시각', type: 'time', value: a.time, quick: ALARM_TIME_QUICK },
+        { name: 'days', label: '요일', type: 'days', value: a.days || [] },
+      ],
+      okText: '저장',
+      extraAction: { label: '이 알람 삭제', act: 'del' },
+    });
+    if (!r) return;
+    if (r === 'del') { deleteAlarm(id); return; }
+    const title = String(r.title || '').trim().slice(0, 30);
+    const time = String(r.time || '');
+    if (!title || !ALARM || !ALARM.isHhmm(time)) { toast('제목과 시각을 다시 확인해 주세요', '', 2400); return; }
+    a.title = title; a.time = time; a.days = parseDays(r.days);
+    save(); renderAlarmSettings();
+    toast('⏰ 알람을 고쳤어요', 'mint');
+  }
+
+  function deleteAlarm(id) {
+    const a = (S.alarms || []).find((x) => x.id === id);
+    if (!a) return;
+    S.alarms = S.alarms.filter((x) => x.id !== id);
+    save(); renderAlarmSettings();
+    toast(`⏰ ${a.time} ${a.title} 알람을 지웠어요`, '', 2400);
+  }
+
+  function toggleAlarm(id) {
+    const a = (S.alarms || []).find((x) => x.id === id);
+    if (!a) return;
+    a.on = !a.on;
+    save(); renderAlarmSettings();
+    toast(a.on ? `🔔 ${a.time} ${a.title} 알람을 켰어요` : `🔕 ${a.time} ${a.title} 알람을 껐어요`, '', 2200);
+  }
+
+  /* ---- ⏰ 맞춤 알람 → Firestore child_state/custom_alarms (가족 읽기 · 부모 쓰기) ----
+     규칙의 child_state/{docId} 한 칸을 그대로 쓰므로 firestore.rules 를 고치지 않습니다.
+     아이 기기·태블릿은 읽기만 하고, 맞춤 알람을 만들고 지우는 것은 보호자만 합니다. */
+  var alarmSyncTimer = null;
+  var alarmSyncedSig = '';
+  function alarmDocPayload() {
+    return {
+      alarms: (S.alarms || []).map((a) => ({ id: a.id, time: a.time, title: a.title, days: (a.days || []).slice(), on: a.on !== false })),
+    };
+  }
+  function alarmSigOf(d) {
+    const list = (d && Array.isArray(d.alarms)) ? d.alarms : [];
+    return JSON.stringify(list.map((a) => [String((a && a.id) || ''), String((a && a.time) || ''), String((a && a.title) || ''), (a && Array.isArray(a.days)) ? a.days.join(',') : '', a && a.on !== false]));
+  }
+  function alarmSyncMaybe(force) {
+    const fb = fbReady();
+    if (!fb || !fb.on || fb.role !== 'parent' || !fb.sync || typeof fb.sync.pushAlarms !== 'function') return;
+    if (!fb.readyData) return;                 // 서버 문서를 받기 전에 빈 값으로 덮어쓰지 않습니다
+    const payload = alarmDocPayload();
+    const sig = alarmSigOf(payload);
+    if (!force && sig === alarmSyncedSig) return;
+    alarmSyncedSig = sig;
+    clearTimeout(alarmSyncTimer);
+    alarmSyncTimer = setTimeout(() => {
+      fb.sync.pushAlarms(payload).then((r) => {
+        if (r && !r.ok && !r.cancelled) toast('맞춤 알람을 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
+      }).catch(() => {});
+    }, 600);
+  }
+  function applyAlarmDoc(doc) {
+    if (!doc || typeof doc !== 'object' || !ALARM) return;
+    const next = ALARM.normalizeAlarms(doc.alarms);
+    const sig = alarmSigOf({ alarms: next });
+    if (sig === alarmSyncedSig) return;
+    alarmSyncedSig = sig;                      // 서버에서 받은 값은 다시 보내지 않습니다
+    S.alarms = next;
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
+    renderAlarmSettings();
   }
 
   /* -------------------------------------------------------------------- clock */
@@ -4138,6 +4532,7 @@
       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
     } catch (e) { $('#storageNote').textContent = ''; }
     renderSyncBadge();
+    renderAlarmSettings();      // ⏰ 맞춤 알람·소리 상태·다음 알람
   }
 
   // 설정은 보호자만 — 부모 모드가 잠겨 있으면 PIN을 먼저 받습니다
@@ -5227,6 +5622,8 @@
         // 🏠 홈으로 버튼은 예전처럼 바로 나갑니다.
         const t = event.target;
         if (t && typeof t.closest === 'function' && t.closest('#standbyExit')) return;
+        // ⏰ 알람 창의 '확인'은 대기화면 유지 탭으로 세지 않습니다
+        if (t && typeof t.closest === 'function' && t.closest('#alarmPop')) { requestScreenWakeLock(); return; }
         const r = standbyTapGate.tap();
         if (r.done) {
           clearTimeout(standbyHintTimer);
@@ -5300,6 +5697,12 @@
         });
       } else if (act === 'ev-edit') {
         asParent('일정 수정은 보호자만 할 수 있어요.', () => editEvent(id));
+      } else if (act === 'alarm-on') {
+        asParent('맞춤 알람은 보호자만 바꿀 수 있어요.', () => toggleAlarm(id));
+      } else if (act === 'alarm-edit') {
+        asParent('맞춤 알람은 보호자만 바꿀 수 있어요.', () => editAlarm(id));
+      } else if (act === 'alarm-del') {
+        asParent('맞춤 알람은 보호자만 바꿀 수 있어요.', () => deleteAlarm(id));
       } else if (act === 'cal-day') {
         // 달력에서 날짜를 고르면 그 날 일정이 아래에 펼쳐집니다
         const ds = t.dataset.date;
@@ -5383,6 +5786,15 @@
     schedEnsure();
     addEvent({ date: SCHED_UI.sel || todayStr() });
   }));
+  /* 🔔 알람 소리 — 헤더 버튼은 대기화면·아이 화면에서도 보이고, 아이도 켜고 끌 수 있습니다 */
+  if ($('#alarmSoundBtn')) $('#alarmSoundBtn').addEventListener('click', toggleAlarmSoundByUser);
+  if ($('#alarmSoundBtn2')) $('#alarmSoundBtn2').addEventListener('click', toggleAlarmSoundByUser);
+  if ($('#alarmPreviewBtn')) $('#alarmPreviewBtn').addEventListener('click', previewAlarm);
+  if ($('#alarmAddBtn')) $('#alarmAddBtn').addEventListener('click', () => asParent('맞춤 알람은 보호자만 바꿀 수 있어요.', addAlarm));
+  if ($('#alarmPopOk')) $('#alarmPopOk').addEventListener('click', closeAlarmPop);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('#alarmPop') && !$('#alarmPop').hidden) closeAlarmPop();
+  });
   if ($('#calPrev')) $('#calPrev').addEventListener('click', () => schedShift(-1));
   if ($('#calNext')) $('#calNext').addEventListener('click', () => schedShift(1));
   if ($('#calToday')) $('#calToday').addEventListener('click', () => {
@@ -5871,6 +6283,7 @@
     summary: null, partner: {}, monthLogs: [], pendingLogs: [],
     notedDenied: '', pill: null, gate: null, card: null,
     schoolSeeded: false,
+    alarmsSeeded: false,
     deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
   };
 
@@ -6155,6 +6568,15 @@
         }
       }
     }
+    else if (key === 'alarms') {
+      // ⏰ 맞춤 알람 — 서버에 아직 문서가 없고 이 기기(부모)에 알람이 있으면 한 번 올립니다
+      const doc = docs[0] || null;
+      if (doc) applyAlarmDoc(doc);
+      else if (FB.role === 'parent' && !FB.alarmsSeeded) {
+        FB.alarmsSeeded = true;
+        if ((S.alarms || []).length) alarmSyncMaybe(true);
+      }
+    }
     else fbMergeCollection(key, docs);
     FB.received.add(key);
     if (!FB.readyData && [...FB.requiredData].every((required) => FB.received.has(required))) {
@@ -6243,7 +6665,7 @@
     if (r.state === 'ready') {
       FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
       FB.requiredData = new Set([
-        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school',
+        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school', 'alarms',
         ...(r.role === 'parent' ? ['parentConfig'] : []),
       ]);
       fbGate(false);
@@ -6440,6 +6862,7 @@
   // 레거시 PIN 동기화는 자동 시작하지 않습니다. Firebase 시작은 위 fbBootWait()가 담당합니다.
   renderSyncBadge();
   renderLegacySyncInfo();
+  startAlarmClock();          // ⏰ 알람 감시 시작 (미션 마감·일정·맞춤)
   resetStandbyIdleTimer();
   requestScreenWakeLock();
   document.addEventListener('visibilitychange', () => {
@@ -6452,6 +6875,7 @@
     }
     resetStandbyIdleTimer();
     requestScreenWakeLock();
+    checkAlarms();              // 화면으로 돌아오면 지난 1~2분 안의 알람을 한 번 확인합니다
     if (SY.cfg) setTimeout(() => { syncTick(); }, 400);
   });
   window.addEventListener('pagehide', () => {
@@ -6491,6 +6915,13 @@
     }),
     lines: () => ({ gen1: GEN1_LINES.length, extra: EXTRA_LINES.length, total: LINES.length, species: POKE_NOS.length }),
     standby: () => ({ on: standbyOn, text: standbyOn ? ($('#sbTime') || {}).textContent : '', idleTimeoutMs: STANDBY_IDLE_MS, screenAwake: !!(screenWakeLock && !screenWakeLock.released) }),
+    alarms: () => ({
+      sound: alarmSoundPref, live: alarmAudioLive, open: !!($('#alarmPop') && !$('#alarmPop').hidden),
+      list: (S.alarms || []).map((a) => ({ id: a.id, time: a.time, title: a.title, days: (a.days || []).slice(), on: a.on !== false })),
+      today: alarmItemsOn(todayStr()).map((i) => ({ key: i.key, kind: i.kind, title: i.title, time: i.time })),
+    }),
+    alarmCheck: () => checkAlarms().map((h) => ({ key: h.key, slot: h.slot, kind: h.kind, title: h.title })),
+    alarmPreview: () => previewAlarm(),
     pokemonStatus: () => $$('img[data-poke]').map((i) => ({
       name: i.dataset.pokeName || i.alt, id: i.dataset.poke,
       ok: i.naturalWidth > 0, width: i.naturalWidth,
