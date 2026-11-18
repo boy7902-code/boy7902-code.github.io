@@ -5450,10 +5450,15 @@
   });
   // ⛶ 전체 화면 — 주소창·작업 표시줄까지 가려 화면을 가장 넓게 (2026-11-19)
   const fsBtn = $('#fullscreenBtn');
+  const fsMode = (name) => Boolean(window.matchMedia && window.matchMedia('(display-mode: ' + name + ')').matches);
   const fullscreenCtl = (fsBtn && window.FamilyFullscreen)
     ? window.FamilyFullscreen.createFullscreenController({
         doc: document,
-        onUnsupported: (msg) => toast(msg, '', 5200),
+        onUnsupported: (msg) => {
+          // 이미 홈 화면 앱으로 열었다면 '홈 화면에 추가'를 안내할 이유가 없습니다.
+          const installed = fsMode('standalone') || fsMode('fullscreen');
+          toast(installed ? '이 브라우저에서는 전체 화면 버튼을 쓸 수 없어요. 홈 화면 앱은 열 때 전체 화면으로 떠요.' : msg, '', 5200);
+        },
       })
     : null;
 
@@ -5473,6 +5478,8 @@
     // 일부 웹뷰는 이벤트를 안 보내므로 화면으로 돌아올 때도 한 번 더 맞춥니다.
     document.addEventListener('visibilitychange', syncFullscreenBtn);
     syncFullscreenBtn();
+    // 홈 화면 앱이 이미 풀스크린 모드로 떠 있으면 이 버튼이 할 일이 없습니다.
+    if (fsMode('fullscreen') && !fullscreenCtl.isOn()) fsBtn.hidden = true;
   }
 
   // 🖼️ 대기화면 ↔ 홈
