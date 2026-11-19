@@ -530,3 +530,43 @@ test('google calendar list and query window are prepared without hard-coded ids'
   assert.equal(gcalBoundaryIso('2026-11-18'), '2026-11-18T00:00:00+09:00');
   assert.equal(gcalBoundaryIso('2026-11-18', true), '2026-11-18T23:59:59+09:00');
 });
+
+test('streak journal uses authoritative transaction logs, freezes targets and never touches points', async () => {
+  const fake = fakeSdk();
+  const records = new Map();
+  const snap = (value) => ({ exists: () => value != null, data: () => value });
+  fake.sdk.runTransaction = async (_db, fn) => fn({
+    get: async (ref) => snap(records.get(ref.path)),
+    set: (ref, data) => { records.set(ref.path, data); fake.writes.push({ path: ref.path, data }); },
+  });
+  const auth = { currentUser: userWithRole('parent-streak', 'parent') };
+  let now = new Date('2026-11-20T08:00:00+09:00');
+  const sync = createFamilySync({ sdk: fake.sdk, auth, db: {}, now: () => now });
+  await sync.applyAuthUser(auth.currentUser);
+  const root = 'households/main/';
+  const logPath = root + 'logs/2026-11-20_a_m3';
+  records.set(logPath, { date: '2026-11-20', mid: 'a', member: 'm3' });
+  let out = await sync.observeStreak({ date: '2026-11-20', required: ['a'], logs: [] });
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.data.days['2026-11-20'].done, ['a'], 'client missing log cannot erase a server completion');
+  records.delete(logPath);
+  out = await sync.observeStreak({ date: '2026-11-20', required: ['changed'], logs: [{ date: '2026-11-20', mid: 'a', member: 'm3' }] });
+  assert.deepEqual(out.data.days['2026-11-20'].required, ['a']);
+  assert.deepEqual(out.data.days['2026-11-20'].done, [], 'server undo overrides a stale client completion');
+  records.set(logPath, { date: '2026-11-20', mid: 'a', member: 'm3' });
+  now = new Date('2026-11-21T08:00:00+09:00');
+  out = await sync.observeStreak({ date: '2026-11-21', required: [], skip: true });
+  assert.equal(out.data.days['2026-11-20'].finalized, true);
+  assert.deepEqual(out.data.days['2026-11-20'].done, ['a'], 'last open day checked from server even after midnight');
+  assert.ok(fake.writes.every((w) => w.path.endsWith('/child_state/mission_streak')), 'points, summary and logs are never written');
+  assert.equal((await sync.observeStreak({ date: '2026-11-20', required: ['x'] })).ok, false, 'stale date rejected');
+});
+test('child sessions cannot write streak history', async () => {
+  const fake = fakeSdk();
+  fake.sdk.runTransaction = async () => { throw new Error('must not be called'); };
+  const auth = { currentUser: userWithRole('child-streak', 'child') };
+  const sync = createFamilySync({ sdk: fake.sdk, auth, db: {} });
+  await sync.applyAuthUser(auth.currentUser);
+  assert.equal((await sync.observeStreak({ date: '2026-11-20' })).ok, false);
+  assert.equal(fake.writes.length, 0);
+});
