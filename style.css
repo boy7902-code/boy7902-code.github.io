@@ -3770,7 +3770,9 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
     overflow: hidden;
     white-space: nowrap;
   }
-  #cardOverview .outfit-item b,
+  #cardOverview .outfit-item b {
+    display: none;
+  }
   #cardOverview .outfit-item small {
     font-size: 9.5px;
     white-space: nowrap;
