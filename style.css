@@ -367,18 +367,13 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; font-size
   min-height: 92px; display: flex; flex-direction: column; gap: 3px; overflow: hidden;
 }
 .wday.today { background: linear-gradient(160deg, var(--sky-soft), transparent); border-color: rgba(79,149,255,.4); }
-.wday.sun .wd-name { color: var(--coral); }
-.wday.sat .wd-name { color: var(--sky); }
-.wd-name { font-size: 10.5px; font-weight: 800; color: var(--text-2); }
-.wd-date { font-size: 13px; font-weight: 800; }
-.wd-ico { font-size: 15px; line-height: 1.1; }
-.wd-ev {
-  font-size: 9.5px; font-weight: 700; color: var(--text-2);
-  background: var(--surface-solid); border-radius: 5px; padding: 1px 3px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left;
-  border-left: 2px solid var(--coral);
-}
-.wd-more { font-size: 9px; color: var(--text-3); font-weight: 700; }
+
+
+
+
+
+
+
 
 /* ============================ 할 일 & 캐릭터 ============================ */
 .chore-wrap { display: flex; gap: 14px; align-items: stretch; }
@@ -624,9 +619,9 @@ html[data-theme="dark"] .char-stage .poke-img { filter: drop-shadow(0 10px 18px 
 @keyframes adoptPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 
 /* ---- 포켓몬 도감 ---- */
-.dex-wrap { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--border); }
-.dex-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--text); flex-wrap: wrap; }
-.dex-head .pill { font-size: 10.5px; padding: 2px 8px; }
+
+
+
 .dex-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 7px; }
 .dex-card {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -648,11 +643,11 @@ html[data-theme="dark"] .char-stage .poke-img { filter: drop-shadow(0 10px 18px 
 .use-amt { color: var(--coral); font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* ---- 도감 상세 모달 ---- */
-.dex-detail { text-align: center; }
-.dex-detail-img { width: 156px; height: 156px; margin: 0 auto; }
-.dex-detail-img .poke-img { width: 100%; height: 100%; object-fit: contain; }
-.dex-line { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 4px; flex-wrap: wrap; }
-.dex-legend { font-size: 10.5px; font-weight: 700; color: var(--text-3); margin-top: 4px; }
+
+
+
+
+
 .levelup-card.dex { background: linear-gradient(160deg, #fff4d2, #fffdf8); }
 .levelup-card.dex h4 { color: #8a6a00; }
 html[data-theme="dark"] .levelup-card.dex { background: linear-gradient(160deg, #2b2a1d, #1b2233); }
@@ -721,13 +716,10 @@ html[data-theme="dark"] .done-badge.plain { color: #67e3bd; }
 .pts.goal { background: linear-gradient(120deg, #ffe08a, #ffd166); color: #6d5000; }
 
 /* ---- 오늘 완료 이력 ---- */
-.log-box { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 0 8px; }
-.log-box summary {
-  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 800; color: var(--text-2); padding: 7px 2px;
-}
-.log-box summary::-webkit-details-marker { display: none; }
-.log-box summary .pill { margin-left: auto; font-size: 10.5px; padding: 2px 8px; }
+
+
+
+
 .log-list { display: flex; flex-direction: column; gap: 1px; padding: 0 0 6px; max-height: 132px; overflow-y: auto; }
 .log-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 4px 2px; border-bottom: 1px dashed var(--border); }
 .log-row:last-child { border-bottom: none; }
@@ -770,12 +762,9 @@ html[data-theme="dark"] .log-pts { color: #ffcf7a; }
 .sticker-row span.new { animation: pop .6s ease 1; }
 
 /* ============================ 장보기 ============================ */
-.shop-tabs { display: flex; gap: 5px; padding: 4px; background: var(--surface-2); border-radius: 12px; }
-.shop-tabs button {
-  flex: 1; min-height: 34px; border: none; border-radius: 9px; background: transparent;
-  font-size: 12.5px; font-weight: 800; color: var(--text-2);
-}
-.shop-tabs button.on { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-sm); }
+
+
+
 .shop-item { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--border); }
 .shop-item:last-child { border-bottom: none; }
 .shop-item.done .shop-text { text-decoration: line-through; color: var(--text-3); }
@@ -783,17 +772,11 @@ html[data-theme="dark"] .log-pts { color: #ffcf7a; }
 .shop-empty { text-align: center; color: var(--text-3); font-size: 12.5px; padding: 18px 6px; font-weight: 600; }
 
 /* ============================ 사고 싶은 것(위시리스트) ============================ */
-.wish-balance {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 9px 12px; border-radius: var(--r-md);
-  background: linear-gradient(120deg, var(--amber-soft), rgba(255,127,178,.14));
-  border: 1px solid rgba(245,166,35,.35);
-  font-size: 12px; font-weight: 800; color: #8f5500;
-}
-.wish-balance b { font-size: 17px; font-weight: 900; letter-spacing: -.03em; color: #b06a00; font-variant-numeric: tabular-nums; }
-.wish-balance .wb-side { font-size: 11px; font-weight: 800; color: #a5611e; }
-html[data-theme="dark"] .wish-balance { color: #ffd88f; border-color: rgba(245,166,35,.4); }
-html[data-theme="dark"] .wish-balance b, html[data-theme="dark"] .wish-balance .wb-side { color: #ffcf7a; }
+
+
+
+
+
 
 .wish-list { display: flex; flex-direction: column; gap: 7px; overflow: auto; }
 .wish-item {
@@ -952,7 +935,7 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
 .modal-card .hint { font-size: 12.5px; color: var(--text-3); margin: 0 0 16px; line-height: 1.6; font-weight: 600; }
 .modal-fields { display: flex; flex-direction: column; gap: 12px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-.modal-close { position: absolute; }
+
 .letter-view img { width: 100%; border-radius: var(--r-md); background: #fff; }
 
 .toast-wrap { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
@@ -1059,13 +1042,9 @@ html[data-theme="dark"] .preset.on { color: #ff9c8f; }
   #wikiList { column-count: auto; column-width: auto; }   /* columns:1 은 일부 브라우저에서 2단으로 남아 오른쪽 단이 잘리므로 auto로 해제 */
 }
 /* ============================ 월간·연간 달성 현황 ============================ */
-.hist-entry {
-  width: 100%; justify-content: space-between; gap: 8px;
-  background: var(--surface-2); border: 1px dashed var(--border-strong);
-  color: var(--text-2); font-weight: 800;
-}
-.hist-entry:hover { background: var(--sky-soft); border-color: transparent; color: var(--sky); }
-.hist-entry .pill { font-size: 10.5px; padding: 2px 8px; }
+
+
+
 
 .hist-card { width: min(940px, 100%); }
 .hist-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -1261,10 +1240,10 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .weather-desc { font-size: 10.5px; }
   .weather-meta { flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
   .weather-place { display: none; }
-  .outfit-guide { order: 4; flex: 0 0 auto; gap: 4px; max-width: 34%; }
+  
   .top-actions { order: 5; }
-  .og-chip { font-size: 10px; padding: 2px 8px; gap: 3px; }
-  .og-chip .og-ico { font-size: 11px; }
+  
+  
   .weather-chips { flex-wrap: nowrap; overflow: hidden; gap: 4px; }
   .weather-chips .wchip:last-child { display: none; }   /* 폭이 모자라면 맨 뒤(체감) 칩은 숨깁니다 */
   .wchip { font-size: 10px; padding: 2px 7px; }
@@ -1317,12 +1296,12 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .event .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 11px; }
   .week { gap: 3px; }
   .wday { min-height: 46px; padding: 3px 2px 4px; gap: 0; border-radius: 8px; min-width: 0; }
-  .wd-name { font-size: 8.5px; }
-  .wd-date { font-size: 11px; line-height: 1.1; }
-  .wd-ico { font-size: 10px; }
+  
+  
+  
   /* 좁은 주간 칸에서는 일정 글자 대신 색 막대로만 표시합니다 (글자 잘림 방지) */
-  .wd-ev { font-size: 0; height: 4px; padding: 0; border-left-width: 3px; border-radius: 2px; margin-top: 1px; min-width: 0; max-width: 100%; }
-  .wd-more { font-size: 8px; }
+  
+  
   .free-day-banner { padding: 5px 8px; gap: 6px; border-radius: 12px; }
   .free-day-banner .fd-emoji { font-size: 16px; }
   .free-day-banner .fd-title { font-size: 11.5px; }
@@ -1335,7 +1314,7 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .wiki-val { font-size: 10.5px; line-height: 1.3; min-width: 0; }
 
   /* ---------------- 중앙 열: 미션 & 포켓몬 ---------------- */
-  .col-center > .card.chores { flex: 1 1 auto; }
+  
   .card.chores .card-body { min-height: 0; }
   .chore-wrap { flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; align-items: stretch; }
   .char-panel { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 14px; }
@@ -1390,17 +1369,17 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .pts { font-size: 9.5px; padding: 1px 6px; }
   .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
   .chore-off > summary { font-size: 10px; padding: 2px; }
-  .hist-entry { min-height: 24px; font-size: 10.5px; padding: 0 8px; border-radius: 8px; }
-  .hist-entry .pill { font-size: 9px; padding: 1px 6px; }
-  .log-box { border-radius: 9px; padding: 0 6px; }
-  .log-box summary { font-size: 10.5px; padding: 4px 2px; gap: 4px; }
-  .log-box summary .pill { font-size: 9px; padding: 1px 6px; }
+  
+  
+  
+  
+  
   .log-list { max-height: 62px; }
   .log-row { font-size: 10px; padding: 2px; }
   .use-row { font-size: 10px; padding: 2px; }
-  .dex-wrap { margin-top: 3px; padding-top: 4px; }
-  .dex-head { font-size: 10.5px; }
-  .dex-head .pill { font-size: 9px; padding: 1px 6px; }
+  
+  
+  
   .dex-row { gap: 4px; margin-top: 4px; flex-wrap: nowrap; overflow-x: auto; }
   .dex-card { width: 54px; padding: 3px 2px; }
   .dex-img-frame, .dex-art { width: 30px; height: 30px; }
@@ -1437,9 +1416,9 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .link-row > #linkAddBtn::before { content: "＋"; font-size: 13px; line-height: 1; }
 
   .card.wish .card-body { gap: 4px; }
-  .wish-balance { padding: 4px 8px; border-radius: 9px; font-size: 10px; gap: 5px; }
-  .wish-balance b { font-size: 13px; }
-  .wish-balance .wb-side { font-size: 9.5px; }
+  
+  
+  
   .wish-list { gap: 4px; min-height: 0; overflow-y: auto; padding-right: 2px; }
   .wish-item { padding: 4px 7px; gap: 6px; border-radius: 10px; }
   .wish-top { gap: 4px; }
@@ -1452,8 +1431,8 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .wish-tools .btn.icon.sm { width: 20px; min-width: 20px; min-height: 20px; font-size: 9.5px; }
 
   .card.shopping .card-body { gap: 4px; min-height: 0; }
-  .shop-tabs { padding: 2px; border-radius: 9px; gap: 3px; }
-  .shop-tabs button { min-height: 24px; font-size: 10.5px; border-radius: 7px; }
+  
+  
   .card.shopping .row { gap: 4px; min-width: 0; }
   .card.shopping #shopInput { flex: 1 1 auto; width: auto; min-width: 0; min-height: 28px; font-size: 11.5px; padding: 4px 8px; border-radius: 9px; }
   .card.shopping #shopAddBtn { flex: 0 0 auto; min-width: 46px; min-height: 28px; font-size: 10.5px; padding: 0 8px; border-radius: 9px; }
@@ -1594,8 +1573,8 @@ html[data-theme="dark"] .poke-say { background: #232c45; color: #eef2fb; border-
 }
 
 /* ---------------- 151 도감 (카드 안 버튼 + 모달) ---------------- */
-.dex-head { gap: 6px; }
-.dex-head .pill.ghost { background: var(--surface-2); color: var(--text-3); border: 1px dashed var(--border-strong); }
+
+
 .dex-open-btn {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: 999px; cursor: pointer;
@@ -1940,8 +1919,8 @@ html[data-quiet="1"] .standby * { animation: none !important; }
   .char-foot { justify-content: flex-start; }
   .evo-meter, .today-meter, .stat-cards { max-width: none; width: 100%; }
   /* 요일 칸은 좁아 일정 제목이 '가…'로 잘리므로, 색 막대로만 표시합니다(태블릿과 같은 방식) */
-  .wd-ev { font-size: 0; height: 4px; padding: 0; border-left-width: 3px; border-radius: 2px; margin-top: 1px; min-width: 0; max-width: 100%; }
-  .wd-more { font-size: 8.5px; }
+  
+  
   /* 마감 시각 안내가 폰에서 잘리지 않게 두 줄로 접힙니다 */
   .chore-meta .due-chip { white-space: normal; line-height: 1.3; text-align: left; word-break: keep-all; }
 }
@@ -2049,27 +2028,18 @@ html[data-quiet="1"] .standby * { animation: none !important; }
    ========================================================================== */
 
 /* ---------------- 헤더: 아이 눈높이 한 줄 안내 ---------------- */
-.outfit-guide {
-  display: flex; align-items: center; gap: 5px; flex-wrap: nowrap;
-  min-width: 0; overflow: hidden;
-}
-.outfit-guide[hidden] { display: none; }
-.og-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 9px; border-radius: 999px;
-  font-size: 11px; font-weight: 800; letter-spacing: -.01em;
-  background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto;
-}
-.og-chip .og-ico { font-size: 12px; line-height: 1; flex: 0 0 auto; }
-.og-chip.wear { background: var(--sky-soft); border-color: transparent; color: #2b6fd0; }
-.og-chip.rain, .og-chip.snow { background: var(--lilac-soft); border-color: transparent; color: #6b4bd6; }
-.og-chip.dust.good { background: var(--mint-soft); border-color: transparent; color: #0f8f6f; }
-.og-chip.dust.bad { background: var(--coral-soft); border-color: transparent; color: #c23b2c; }
-html[data-theme="dark"] .og-chip.wear { color: #9cc4ff; }
-html[data-theme="dark"] .og-chip.rain, html[data-theme="dark"] .og-chip.snow { color: #c3aaff; }
-html[data-theme="dark"] .og-chip.dust.good { color: #67e3bd; }
-html[data-theme="dark"] .og-chip.dust.bad { color: #ff9c8f; }
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ---------------- 한 달 달력 ---------------- */
 .cal-top { display: flex; align-items: center; gap: 4px; min-width: 0; }
@@ -2180,12 +2150,8 @@ html[data-theme="dark"] .sch-chip.time { color: #9cc4ff; }
 html[data-theme="dark"] .merge-tabs button.on { background: #2b3550; }
 .merge-pane[hidden] { display: none !important; }
 .card-head .card-tools .btn[hidden] { display: none !important; }
-.card-title .ttl-badge {
-  display: inline-flex; align-items: center; margin-left: 4px; padding: 0 6px;
-  font-size: 10px; font-weight: 900; border-radius: 999px;
-  color: #a8680a; background: var(--amber-soft);
-}
-.card-title .ttl-badge[hidden] { display: none !important; }
+
+
 .wiki-pane-note {
   flex: 0 0 auto; font-size: 11px; line-height: 1.35; font-weight: 700; color: var(--text-3);
   background: var(--mint-soft); border-radius: 9px; padding: 6px 9px;
@@ -2342,12 +2308,8 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   html[data-theme="dark"] .merge-tabs button.on { background: #2b3550; }
   .merge-pane[hidden] { display: none !important; }
 
-  .card-title .ttl-badge {
-    display: inline-flex; align-items: center; margin-left: 4px; padding: 0 6px;
-    font-size: 9.5px; font-weight: 900; border-radius: 999px;
-    color: #a8680a; background: var(--amber-soft);
-  }
-  .card-title .ttl-badge[hidden] { display: none !important; }
+  
+  
   .card-head .card-tools .btn[hidden] { display: none !important; }
 
   /* ---------------- 왼쪽 열: 가족 일정(달력 + 우리 집 위키) · 오늘 학교 ---------------- */
@@ -2447,11 +2409,11 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
   .chore-off > summary { font-size: 10px; padding: 1px 2px; }
   .chore-off-list { gap: 3px; margin-top: 3px; }
-  .hist-entry.btn { min-height: 23px; font-size: 10.5px; border-radius: 8px; padding: 0 9px; }
-  .hist-entry .pill { font-size: 9px; padding: 0 6px; }
-  .log-box { border-radius: 9px; padding: 0 8px; }
-  .log-box summary { font-size: 10px; padding: 1px 2px; gap: 5px; }
-  .log-box summary .pill { font-size: 9px; padding: 0 6px; }
+  
+  
+  
+  
+  
   .log-list { max-height: 62px; }
   .log-row, .use-row { font-size: 10px; padding: 2px; }
   .sticker-row span { font-size: 12px; }
@@ -2479,8 +2441,8 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .card.wish .wish-top { grid-column: 1 / -1; }
   .card.wish .wish-state { grid-column: 1; grid-row: 2; }
   .card.wish .wish-bar { grid-column: 2; grid-row: 2; }
-  .wish-balance { padding: 5px 9px; border-radius: 10px; font-size: 11px; }
-  .wish-balance b { font-size: 14px; }
+  
+  
   .card.wish .wish-item { padding: 3px 7px; gap: 5px; border-radius: 10px; }
   .card.wish .wish-title { line-height: 1.15; }
   .card.wish .wish-main { row-gap: 1px; }
@@ -2493,7 +2455,7 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .card.wish .wish-tools .btn.icon.sm { width: 18px; min-width: 18px; min-height: 18px; font-size: 9px; }
   .card.wish .merge-tabs { margin-bottom: 4px; }
   .card.wish .merge-tabs button { min-height: 24px; font-size: 10.5px; }
-  .card.shopping-shop .shop-body .row { gap: 5px; }
+  
   .card.wish #shopInput { min-height: 30px; font-size: 12px; border-radius: 9px; }
   .card.wish #shopAddBtn { flex: 0 0 auto; min-width: 46px; min-height: 30px; max-height: 30px; font-size: 11px; border-radius: 9px; white-space: nowrap; }
   .card.wish #shopInput { max-height: 30px; }
@@ -2720,7 +2682,7 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .weather-temp small { color: var(--text-2); }
   .weather-meta { flex: 0 1 auto; flex-direction: row; align-items: center; gap: 4px; overflow: hidden; }
   .weather-chips { display: none; }          /* 최고·최저·미세먼지는 아래 그림 알약이 대신 보여 줍니다 */
-  .outfit-guide { flex: 1 1 auto; max-width: none; overflow: visible; gap: 5px; justify-content: flex-end; }
+  
 }
 
 /* ---------------- ⑤ 핵심 글자 확대 (거실 태블릿) ---------------- */
@@ -2916,19 +2878,16 @@ html[data-theme="dark"] .mbtn.ev { color: #c9b8ff; }
 .ev-state { font-size: 11px; font-weight: 900; padding: 3px 9px; border-radius: 999px; }
 .ev-state.on { background: var(--mint-soft); color: #0f8a66; }
 .ev-state.off { background: var(--surface-2); color: var(--text-3); }
-.ev-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
 .stamp-board { border: 1px dashed var(--border-strong); border-radius: 12px; padding: 7px 8px; }
-.sb-head { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 900; }
-.sb-head .sb-ico { font-size: 16px; }
-.sb-head .sb-done { margin-left: auto; font-size: 10.5px; color: var(--text-3); }
+
+
+
 .stamp-cells { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 6px 0; }
-.stamp-cell {
-  display: grid; place-items: center; height: 26px; border-radius: 8px;
-  background: var(--surface-2); color: var(--text-3); font-size: 10.5px; font-style: normal; font-weight: 800;
-}
-.stamp-cell.on { background: linear-gradient(140deg, #ffd166, #ffb03a); color: #7a4a00; font-size: 14px; }
-.sb-actions { display: flex; gap: 4px; }
-.sb-actions .btn { flex: 1 1 auto; }
+
+
+
+
 
 .ev-secret {
   display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 13px;
@@ -3071,9 +3030,9 @@ html[data-theme="dark"] .mvp-kpi { background: rgba(255, 255, 255, .08); }
   .weather-temp small { font-size: 10px; }
   .weather-desc { display: block; font-size: 10px; }
   .weather-place { display: none; }
-  .outfit-guide { order: 4; flex: 0 0 auto; gap: 4px; max-width: none; overflow: visible; }
-  .og-chip { font-size: 9.5px; padding: 2px 8px; gap: 3px; }
-  .og-chip .og-ico { font-size: 11px; }
+  
+  
+  
   .top-actions { order: 5; margin-left: auto; gap: 5px; flex: 0 0 auto; }
   .top-actions .btn { min-height: 28px; padding: 0 9px; font-size: 10.5px; border-radius: 999px; gap: 4px; }
   .top-actions .btn.icon { width: 30px; min-width: 30px; padding: 0; font-size: 13px; }
@@ -3222,8 +3181,8 @@ html[data-theme="dark"] .mvp-kpi { background: rgba(255, 255, 255, .08); }
   #cardWish .merge-tabs [role="tab"] { min-width: 30px; min-height: 22px; height: 22px; padding: 0 6px; }
   #cardWish .merge-tabs .tab-ico { font-size: 12px; }
   .card.wish .card-body { gap: 5px; }
-  .wish-balance { padding: 4px 8px; font-size: 10px; gap: 7px; border-radius: 9px; }
-  .wish-balance b { font-size: 13px; }
+  
+  
   .wish-list { gap: 5px; }
   .wish-item, .wish-card { min-height: 44px; padding: 5px 10px; border-radius: 10px; }
   .wish-title { font-size: 13px; }
@@ -3421,7 +3380,7 @@ html[data-theme="dark"] .alarm-msg.custom { background: rgba(33, 195, 154, .16);
 
 /* ---------------- 태블릿 개편: 한 줄 시간·날씨, 월간 일정, 공유 미션 도장판 ---------------- */
 #shopPane { display: none !important; }
-.stamp-wish-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+
 .reading-stamp-board, .wish-panel {
   min-width: 0; border: 1px solid var(--border); border-radius: 13px;
   background: var(--surface-2); padding: 10px;
@@ -3441,16 +3400,16 @@ html[data-theme="dark"] .alarm-msg.custom { background: rgba(33, 195, 154, .16);
 html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, .25); color: #ffd479; }
 .stamp-board-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text-2); font-size: 11px; font-weight: 800; }
 .stamp-board-note { margin: 1px 0 0; color: var(--text-3); font-size: 10.5px; font-weight: 700; line-height: 1.35; }
-.wish-panel { display: flex; flex-direction: column; gap: 7px; }
-.wish-panel h3 { font-size: 13px; }
-.wish-panel .wish-body { display: flex; flex-direction: column; min-height: 0; padding: 0; background: none; border: 0; box-shadow: none; }
-.wish-panel .wish-list { min-height: 0; max-height: 240px; overflow-y: auto; }
+
+
+
+
 
 .weather-overview { min-width: 0; overflow: visible; }
-.overview-head { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 12px; align-items: stretch; }
-.overview-time { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 2px 5px; }
-.overview-eyebrow { color: var(--text-3); font-size: 12px; font-weight: 800; }
-.overview-helper { margin-top: 5px; color: var(--text-3); font-size: 10.5px; font-weight: 700; }
+
+
+
+
 .weather-overview .clock { display: block; margin: 4px 0 0; padding: 0; text-align: left; }
 .weather-overview .clock-time { font-size: clamp(38px, 4.2vw, 54px); line-height: 1; }
 .weather-overview .clock-date { margin-top: 5px; font-size: 12px; white-space: normal; }
@@ -3490,14 +3449,14 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   #cardSchedule > #schedPaneCal { min-height: 0; overflow-y: auto; overflow-x: hidden; }
   #cardSchedule .cal-grid { flex: 0 0 auto; grid-auto-rows: minmax(30px, auto); }
   #cardSchedule .cal-cell { min-height: 30px; }
-  .stamp-wish-grid { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: stretch; }
+  
   .reading-stamp-board, .wish-panel { padding: 10px; }
   .stamp-board-title h3 { font-size: 13px; }
   .stamp-cells { gap: 4px; }
   .stamp-cells li { font-size: 10px; }
   .stamp-board-meta { font-size: 10.5px; }
   .stamp-board-note { font-size: 10px; }
-  .wish-panel .wish-list { max-height: 190px; }
+  
   .card.wish .card-head { margin-bottom: 8px; }
   #cardChores .chore { padding: 4px 9px; gap: 9px; }
   #cardChores .chore-title { font-size: 14px; line-height: 1.25; }
@@ -3509,11 +3468,11 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
 
 @media (max-width: 1023px) {
   .weather-overview { padding: 12px; }
-  .stamp-wish-grid { grid-template-columns: 1fr; }
-  .wish-panel .wish-list { max-height: 280px; }
+  
+  
 }
 @media (max-width: 600px) {
-  .overview-head { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 8px; }
+  
   .weather-overview .clock-time { font-size: clamp(31px, 9vw, 40px); }
   .weather-overview .weather { padding: 8px; }
   .weather-overview .weather-icon { font-size: 26px; }
@@ -3571,7 +3530,7 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   #cardWish .wish-body { flex: 1 1 auto; min-height: 0; }
   #cardWish:not(.is-empty) .wish-list { max-height: 104px; overflow-y: auto; }
   #cardWish.is-empty { min-height: 70px; }
-  #cardWish.is-empty .wish-balance { display: none; }
+  
   #cardWish.is-empty .wish-list { overflow: visible; max-height: none; }
   #cardWish.is-empty .wish-list .shop-empty { padding: 2px 3px !important; text-align: left; font-size: 9.5px; }
   #cardTimer .card-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: center; gap: 7px; }
@@ -3640,7 +3599,7 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
 .card.weather-overview .weather-week { margin-top: 0; }
 
 .card.wish { min-width: 0; }
-.card.wish.is-empty .wish-balance { display: none; }
+
 .card.wish.is-empty .wish-list { overflow: visible; max-height: none; }
 .card.wish.is-empty .wish-list .shop-empty { padding: 5px 4px !important; text-align: left; }
 .chore.overdue { opacity: .56; transition: opacity .16s ease; }
