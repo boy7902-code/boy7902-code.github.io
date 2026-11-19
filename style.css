@@ -1998,12 +1998,12 @@ html[data-quiet="1"] .standby * { animation: none !important; }
    상태 알약 · 권한 없음 안내 화면 · 거절/재시도 카드
    ========================================================================== */
 .fb-pill {
-  position: fixed; left: 14px; bottom: 14px; z-index: 60;
+  position: static; z-index: auto; flex: 0 1 auto; min-width: 0;
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 12px; border-radius: 999px;
+  padding: 5px 9px; border-radius: 999px;
   background: var(--surface-solid); border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-sm); font-size: 12px; color: var(--text-2);
-  cursor: pointer; max-width: 70vw;
+  box-shadow: var(--shadow-sm); font-size: 10px; color: var(--text-2);
+  cursor: pointer; max-width: min(180px, 40vw); min-height: 28px;
 }
 .fb-pill .fb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: none; }
 .fb-pill[data-kind="on"] .fb-dot { background: var(--mint); box-shadow: 0 0 0 3px var(--mint-soft); }
@@ -2481,8 +2481,6 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .card.wish .wish-bar { grid-column: 2; grid-row: 2; }
   .wish-balance { padding: 5px 9px; border-radius: 10px; font-size: 11px; }
   .wish-balance b { font-size: 14px; }
-  /* 태블릿에서는 잔액을 카드 부제 한 줄로 옮겨 목록 자리를 넓힙니다 */
-  .card.wish .wish-balance { display: none; }
   .card.wish .wish-item { padding: 3px 7px; gap: 5px; border-radius: 10px; }
   .card.wish .wish-title { line-height: 1.15; }
   .card.wish .wish-main { row-gap: 1px; }
@@ -3836,4 +3834,93 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   .card.weather-overview .weather-chips { justify-content: flex-start; flex-wrap: wrap; }
   .weather-week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #cardChores .mission-stamp-board .stamp-cells li { min-height: 27px; }
+}
+
+/* 업무 3: 작은 화면에서 목록은 각 열 안에서 읽고, 배지·도움말은 잘리지 않게 합니다. */
+@media (min-width: 1024px) {
+  .card.wish .wish-balance { display: flex; }
+  .card.wish .wish-body,
+  .card.wish .wish-list,
+  .card.chores .chore-list { min-height: 0; }
+  .card.wish .wish-list,
+  .card.chores .chore-list { overflow-y: auto; }
+  #cardSchool { overflow: hidden; }
+  .card.school .card-body {
+    flex: 1 1 auto; min-height: 0; gap: 2px; overflow-x: hidden; overflow-y: auto;
+    overscroll-behavior: contain; scrollbar-width: thin;
+  }
+  .card.school .sch-row { flex: 0 0 auto; min-width: 0; gap: 4px; }
+  .card.school .sch-tag { line-height: 1.05; padding: 1px 6px; }
+  .card.school .sch-chips {
+    min-width: 0; max-width: 100%; max-height: none; flex-wrap: wrap; overflow: visible;
+  }
+  .card.school .sch-chip {
+    min-width: 0; max-width: 100%; line-height: 1.05; padding: 1px 6px;
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .card.chores .chore-title {
+    min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 640px) {
+  .col { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; }
+  .col-right > #cardChores { flex: 0 0 440px; min-height: 440px; }
+  .col-right > #cardTimer { flex: 0 0 110px; min-height: 110px; }
+}
+
+@media (max-width: 1023px) {
+  #cardWish { height: auto; min-height: 0; max-height: none; overflow: visible; }
+  .card.school .sch-chips { max-height: none; overflow: visible; }
+  .card.school .sch-chip {
+    min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  }
+  .card.chores .chore-title {
+    min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
+  }
+}
+
+/* 위시 잔액은 모바일에서도 카드 부제 한 줄에만 표시합니다. */
+.card.wish .card-head > div:nth-child(2) { min-width: 0; }
+#cardWish #wishSub {
+  display: block !important; max-width: 100%; margin-top: 0; font-size: 9.5px; line-height: 1.05;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 업무 3 보완: 위시 잔액은 제목 아래 한 줄, 목록은 96px 카드 안에서 스크롤합니다. */
+@media (min-width: 1024px) {
+  .support-grid > #cardWish { padding-top: 6px; padding-bottom: 6px; }
+  #cardWish .card-head { margin-bottom: 2px; }
+  .card.wish .wish-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .card.wish .wish-list {
+    flex: 1 1 auto; min-height: 44px; max-height: none; overflow-y: auto;
+    scroll-snap-type: y proximity; scroll-padding-block: 3px;
+  }
+  .card.wish .wish-item { scroll-snap-align: start; scroll-margin-block: 2px; }
+
+  .card.school .card-body { scroll-snap-type: y proximity; scroll-padding-block: 2px; }
+  .card.school .sch-row { align-items: center; scroll-snap-align: start; scroll-margin-block: 2px; }
+  .card.school .sch-chips { flex: 1 1 auto; flex-wrap: nowrap; align-items: center; overflow: hidden; }
+  .card.school .sch-chips:not(.is-expanded) .sch-chip:not(.sch-more) {
+    flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .card.school .sch-chips.is-expanded { flex-wrap: wrap; overflow: visible; }
+  .card.school .sch-chips.is-expanded .sch-chip:not(.sch-more) {
+    flex: 0 1 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  }
+  .card.school .sch-chip[hidden] { display: none !important; }
+  .card.school .sch-chip.sch-more {
+    flex: 0 0 auto; padding: 1px 5px; color: var(--sky); font-size: 9.5px; font-weight: 900; cursor: pointer;
+  }
+
+  .card.chores .chore-list {
+    scroll-snap-type: y proximity; scroll-padding-block: 4px; padding-bottom: 6px;
+  }
+  .card.chores .chore-list > .chore { scroll-snap-align: start; scroll-margin-block: 3px; }
+}
+
+/* 업무 3 보완(인스팅트): 1024×600처럼 낮은 화면에서는 일정 카드가 내용 높이를 갖고 열이 스크롤되어 선택일 영역이 잘리지 않게 합니다. */
+@media (min-width: 1024px) and (max-height: 640px) {
+  .col-left > #cardSchedule { flex: 0 0 auto; min-height: 0; }
+  .col-right > #cardChores { flex-basis: 480px; min-height: 480px; }
 }

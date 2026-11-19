@@ -3477,6 +3477,14 @@
   /* ----------------------------------------------------------------- shopping */
   /* 사고 싶은 것 카드 안의 탭: wish(사고 싶은 것) · buy(장보기) · fridge(냉장고) */
   let shopTab = 'wish';
+  function wishHeaderSubtitle(left = S.shopping.filter((x) => x.cat === 'buy' && !x.done).length) {
+    const waiting = (S.wishlist || []).filter((w) => !w.boughtAt).length;
+    const can = (S.wishlist || []).filter((w) => !w.boughtAt && +w.need > 0 && balancePts() >= +w.need).length;
+    if (shopTab === 'wish') return `🪙 ${balancePts()}P · 위시 ${waiting}개${can ? ` · ${can} 가능` : ''}`;
+    if (shopTab === 'buy') return left ? `장볼 것 ${left}개 남았어요` : '장보기 목록이 비었어요';
+    return '냉장고에 있는 것을 적어 둬요';
+  }
+
   function renderShopping() {
     $$('[data-shoptab]').forEach((b) => {
       const on = b.dataset.shoptab === shopTab;
@@ -3511,15 +3519,7 @@
       $('#wishBadge').textContent = left ? `🛒 ${left}` : '';
       $('#wishBadge').hidden = !left;
     }
-    if ($('#wishSub')) {
-      const waiting = (S.wishlist || []).filter((w) => !w.boughtAt).length;
-      const can = (S.wishlist || []).filter((w) => !w.boughtAt && +w.need > 0 && balancePts() >= +w.need).length;
-      $('#wishSub').textContent = shopTab === 'wish'
-        ? `🪙 선물 코인 ${balancePts()}P · 사고 싶은 것 ${waiting}개${can ? ` · 지금 살 수 있는 것 ${can}개` : ''}`
-        : (shopTab === 'buy'
-          ? (left ? `장볼 것 ${left}개 남았어요` : '장보기 목록이 비었어요')
-          : '냉장고에 있는 것을 적어 둬요');
-    }
+    if ($('#wishSub')) $('#wishSub').textContent = wishHeaderSubtitle(left);
   }
 
   function addShopItem() {
@@ -3542,12 +3542,7 @@
     const items = wishItems().slice().sort((a, b) => (a.boughtAt ? 1 : 0) - (b.boughtAt ? 1 : 0));
     const card = $('#cardWish');
     if (card) card.classList.toggle('is-empty', items.length === 0);
-    const waiting = items.filter((w) => !w.boughtAt);
-    const canCount = waiting.filter((w) => w.need > 0 && bal >= w.need).length;
-    if ($('#wishBalance')) {
-      $('#wishBalance').innerHTML = `<span>🪙 선물 코인 <b>${bal}P</b></span>
-        <span class="wb-side">${waiting.length ? `사고 싶은 것 ${waiting.length}개${canCount ? ` · 지금 살 수 있는 것 ${canCount}개` : ''}` : '갖고 싶은 걸 적어 보세요'}</span>`;
-    }
+    if ($('#wishSub')) $('#wishSub').textContent = wishHeaderSubtitle();
     box.innerHTML = items.length
       ? items.map((w) => {
           const need = Math.max(0, Math.round(+w.need || 0));
@@ -4086,16 +4081,23 @@
       box.innerHTML = '<div class="shop-empty school-empty">오늘 시간표와 급식 정보가 아직 없어요</div>';
       return;
     }
-    const chips = (arr, empty, extra) => arr.length
-      ? arr.map((x) => `<span class="sch-chip ${extra || ''}">${esc(x)}</span>`).join('')
-      : `<span class="sch-none">${empty}</span>`;
+    const chips = (arr, empty, extra, label) => {
+      if (!arr.length) return `<span class="sch-none">${empty}</span>`;
+      const hidden = arr.slice(1);
+      const first = `<span class="sch-chip ${extra || ''}" title="${esc(arr[0])}">${esc(arr[0])}</span>`;
+      const rest = hidden.map((x) => `<span class="sch-chip sch-extra ${extra || ''}" hidden>${esc(x)}</span>`).join('');
+      const more = hidden.length
+        ? `<button type="button" class="sch-chip sch-more${extra ? ` ${extra}` : ''}" data-act="school-chips-toggle" data-count="${hidden.length}" data-kind="${esc(label)}" aria-expanded="false" aria-label="추가 ${esc(label)} 항목 ${hidden.length}개 펼치기">+${hidden.length}개</button>`
+        : '';
+      return first + rest + more;
+    };
     box.innerHTML = `<div class="sch-row">
         <span class="sch-tag meal">🍚 급식</span>
-        <div class="sch-chips">${chips(meal, '오늘 급식이 아직 없어요')}</div>
+        <div class="sch-chips">${chips(meal, '오늘 급식이 아직 없어요', '', '급식')}</div>
       </div>
       <div class="sch-row">
         <span class="sch-tag time">📚 시간표 · 준비물</span>
-        <div class="sch-chips">${chips(tt, '오늘 시간표가 아직 없어요', 'time')}</div>
+        <div class="sch-chips">${chips(tt, '오늘 시간표가 아직 없어요', 'time', '시간표')}</div>
       </div>`;
   }
 
@@ -5759,6 +5761,20 @@
         S.links = S.links.filter((x) => x.id !== id); save(); renderLinks();
       } else if (act === 'member-edit') {
         editMember(id);
+      } else if (act === 'school-chips-toggle') {
+        const row = t.closest('.sch-row');
+        const chipList = row && row.querySelector('.sch-chips');
+        const expanded = t.getAttribute('aria-expanded') === 'true';
+        if (chipList) {
+          chipList.classList.toggle('is-expanded', !expanded);
+          chipList.querySelectorAll('.sch-extra').forEach((item) => { item.hidden = expanded; });
+          t.setAttribute('aria-expanded', String(!expanded));
+          const count = Number(t.dataset.count) || 0;
+          t.textContent = expanded ? `+${count}개` : '접기';
+          t.setAttribute('aria-label', expanded
+            ? `추가 ${t.dataset.kind} 항목 ${count}개 펼치기`
+            : `추가 ${t.dataset.kind} 항목 접기`);
+        }
       } else if (act === 'wish-buy') {
         asParent('선물 사주기는 보호자만 할 수 있어요.', () => buyWish(id));
       } else if (act === 'wish-edit') {
@@ -6285,7 +6301,8 @@
     el.id = 'fbPill';
     el.innerHTML = '<span class="fb-dot"></span><span class="fb-text">로컬 모드</span>';
     el.addEventListener('click', () => { if (!FB.on) fbSignIn(); });
-    document.body.appendChild(el);
+    const host = document.querySelector('.top-actions') || document.querySelector('.topbar') || document.body;
+    host.appendChild(el);
     FB.pill = el;
     return el;
   }
@@ -6529,13 +6546,13 @@
     $('#readingBadges').textContent = `🏅 완주 ${completed}회`;
     $('#readingReward').textContent = `누적 +${totalBonus}P`;
     $('#readingPoints').textContent = connected
-      ? `모든 미션 성공 ${completed * 10 + progress}회 · 성공 1회마다 도장 1개`
-      : '성공 미션 1회마다 도장 1개 · 가족 동기화 후 진행이 보여요';
+      ? `모든 미션 성공 ${completed * 10 + progress}회`
+      : '가족 동기화 전 · 성공 기록은 연결 후 표시돼요';
     $('#readingNote').textContent = completing
-      ? `🎉 10/10 완주 · 기본 미션 포인트와 별도로 +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
+      ? `🎉 도장판 완성 · 기본 미션 포인트와 별도로 +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
       : (connected
-        ? `현재 판 ${completed + 1} · ${progress}/10 · 기본 포인트와 별도 · 10/10 때만 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
-        : '기본 미션 포인트와 별도 · 10/10 완성 시에만 +3P · 가족 동기화 후 진행이 보여요');
+        ? `미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 때만 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
+        : '미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 완성 시 +3P');
     const board = cells.closest('.stamp-board');
     if (board) board.classList.toggle('is-completing', completing);
   }
