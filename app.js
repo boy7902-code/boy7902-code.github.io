@@ -6166,7 +6166,7 @@
     return {
       text: st.known ? `연속 ${st.count}${st.capped ? '+' : ''}일 · ${st.started.slice(5).replace('-', '/')}~` : '연속 기록 준비 중',
       title: st.started
-        ? `${st.started}부터 확인된 기록만 계산 · 한국 시간 기준 · 매일 처음 기록한 아이·공용 미션 전부 완료=1일 · 일요일/미션 없는 날 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
+        ? `${st.started}부터 확인된 기록만 계산 · 한국 시간 기준 · 매일 처음 기록한 아이·공용 미션 전부 완료=1일 · 일요일은 접속 없이 건너뜀 · 미션 없는 날은 관찰된 날만 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
         : '보호자 기기가 연결되면 오늘부터 기록합니다. 과거 연속 일수는 추정하지 않아요. 점수 추가 없음',
     };
   }
@@ -6185,7 +6185,8 @@
     }).finally(() => { if (session === FB.session) FB.streakBusy = false; });
   }
   function fbRecalc() {
-    if (!FB.on || !FB.core) return;
+    // Partial snapshots must not erase cached totals/completions before all inputs arrive.
+    if (!FB.on || !FB.core || !FB.readyData) return;
     const logs = fbMergeLogs();
     S.logs = logs;
     const stats = FB.core.computeScreenStats({
