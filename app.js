@@ -2358,8 +2358,11 @@
     const at = esc(c.doneAt || '');
     if (!c.due) return `<span class="done-badge plain">${at ? at + ' 완료' : '완료'}</span>`;
     const early = Math.max(0, Math.round(+c.earlyBonusEarned || 0));
-    if (early) return `<span class="done-badge early">${at} 완료 · ⚡ 조기 +${early}P</span>`;
-    if (c.goalMet) return `<span class="done-badge goal">${at} 완료 · 마감 전 완료</span>`;
+    // 마감보다 몇 분 일찍 끝냈는지도 같이 보여 줍니다(점수 계산은 그대로, 표시만 추가)
+    const dueM = minOf(c.due), doneM = minOf(c.doneAt);
+    const ahead = dueM != null && doneM != null && dueM > doneM ? ` · ${durText(dueM - doneM)} 일찍` : '';
+    if (early) return `<span class="done-badge early">${at} 완료${ahead} · ⚡ 조기 +${early}P</span>`;
+    if (c.goalMet) return `<span class="done-badge goal">${at} 완료${ahead || ' · 마감 전 완료'}</span>`;
     return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
   }
 
