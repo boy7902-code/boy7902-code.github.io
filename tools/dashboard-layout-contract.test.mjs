@@ -98,3 +98,15 @@ test('captured-target delete warning honors cancellation, approval and unaffecte
   assert.equal(await confirmDelete({ id: 'a', doneOn: date }), false);
   assert.equal(asked, 3);
 });
+
+test('partial subscription input cannot recalculate or persist empty derived values', () => {
+  const source = app.slice(app.indexOf('  function fbRecalc() {'), app.indexOf('  function fbSnapOf() {'));
+  let merged = 0;
+  const FB = { on: true, core: {}, readyData: false };
+  const recalc = new Function('FB', 'fbMergeLogs', `${source}; return fbRecalc;`)(FB, () => { merged++; throw new Error('full-data-path'); });
+  recalc();
+  assert.equal(merged, 0, 'cached totals and logs must not be touched before readiness');
+  FB.readyData = true;
+  assert.throws(recalc, /full-data-path/);
+  assert.equal(merged, 1, 'normal recalculation resumes once the complete snapshot set is present');
+});
