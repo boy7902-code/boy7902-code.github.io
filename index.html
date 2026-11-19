@@ -773,10 +773,11 @@
         가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 기본 포인트(+P)가 그 사람 몫으로 쌓입니다.
         미션마다 <b>요일</b>(매일 / 평일(월~금) / 주말(토·일) / 요일별)을 정할 수 있어, 그 요일에만 오늘 미션 목록에 나옵니다.
         오늘 쉬는 미션은 목록 아래 <b>😴 오늘은 ○요일이라 쉬는 미션</b>에 접혀 있습니다.
+        미션은 <b>행 전체</b>나 왼쪽 체크 칸을 눌러 완료할 수 있습니다.
         오늘 끝낸 미션은 목록에서 사라져 아래 <b>✅ 오늘 끝낸 미션</b> 접힘 줄로 내려가고, 펼치면 체크를 되돌릴 수 있습니다.
-        미션마다 <b>목표 시간</b>(예: 08:00)과 <b>시간 내 완료 보너스</b>(예: +3P)를 정할 수 있고,
-        목표 시간 안에 체크하면 기본 포인트에 보너스까지 더해지며 <b>⏰ 목표 시간 달성!</b> 배지가 붙습니다.
-        시간이 지나 체크하면 기본 포인트만 쌓이고 실제 완료 시각과 함께 <b>⏱️ 목표 시간 초과</b>로 표시됩니다.
+        미션마다 <b>마감 시간</b>(예: 08:00)을 정할 수 있습니다. 마감 5~9분 전에 끝내면 <b>+1P</b>, 10분 이상 일찍 끝내면 <b>+2P</b>(총 +2P) 조기 보너스를 받고,
+        마감 4분 전부터 마감 시각·마감 후 완료까지는 기본 포인트만 쌓입니다. 예전의 미션별 마감 보너스 설정은 더 이상 적용되지 않습니다.
+        완료 시각과 조기 보너스는 미션 카드와 완료 이력에 따로 표시됩니다.
         아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.<br />
         <b>📅 월간·연간 달성</b>을 누르면 이번 달 달력과 1년 12개월 요약이 열려, 날짜별 완료·목표 달성·획득 포인트를 되돌아볼 수 있습니다.<br />
         <b>🎉 일요일은 <span data-freeday-kid>아이</span>의 자유의 날</b>입니다. 숙제를 쉬는 날이라 일요일이 되면
@@ -949,8 +950,9 @@
 <script src="standby-guard.js?v=2"></script>
 <script src="alarm-core.js?v=1"></script>
 <script src="fullscreen-guard.js?v=1"></script>
-<script src="app.js?v=v12-shared-stamps"></script>
+<script src="mission-rewards.js?v=early-bonus-1"></script>
+<script src="app.js?v=v13-early-mission-bonus"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=8"></script>
+<script type="module" src="firebase-boot.js?v=9"></script>
 </body>
 </html>

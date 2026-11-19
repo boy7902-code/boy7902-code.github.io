@@ -491,12 +491,12 @@
       { id: uid(), date: fmtDate(addDays(new Date(), 3)), time: '10:00', title: '주말 나들이', member: '', done: false },
     ],
     missions: [
-      { id: uid(), title: '아침 먹기', points: 5, due: '08:00', bonus: 3, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '씻기 · 양치하기', points: 3, due: '08:10', bonus: 2, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '옷 입기', points: 3, due: '07:50', bonus: 2, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '가방 챙기기', points: 4, due: '08:20', bonus: 3, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '분리수거 내놓기', points: 3, due: '21:00', bonus: 2, member: 'm1', days: [], doneOn: null, doneAt: '', earned: 0, goalMet: false },
-      { id: uid(), title: '설거지하기', points: 3, due: '', bonus: 0, member: 'm2', days: [1, 3, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false },
+      { id: uid(), title: '아침 먹기', points: 5, due: '08:00', bonus: 0, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+      { id: uid(), title: '씻기 · 양치하기', points: 3, due: '08:10', bonus: 0, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+      { id: uid(), title: '옷 입기', points: 3, due: '07:50', bonus: 0, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+      { id: uid(), title: '가방 챙기기', points: 4, due: '08:20', bonus: 0, member: 'm3', days: [1, 2, 3, 4, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+      { id: uid(), title: '분리수거 내놓기', points: 3, due: '21:00', bonus: 0, member: 'm1', days: [], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+      { id: uid(), title: '설거지하기', points: 3, due: '', bonus: 0, member: 'm2', days: [1, 3, 5], doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
     ],
     logs: [],
     points: { total: 0, byMember: {} },
@@ -556,7 +556,7 @@
       const legacyPts = Math.max(0, Math.round(+raw.stickers || 0)) * 3;
       out.points = { total: legacyPts, byMember: legacyPts ? { '': legacyPts } : {} };
     }
-    // 미션 형식 보정: 목표 시간·보너스·오늘 완료 시각/획득 포인트
+    // 구형 bonus 값은 호환을 위해 보존하지만 새 보상 계산에는 사용하지 않습니다.
     out.missions.forEach((m) => {
       m.points = Math.max(0, Math.round(+m.points || 0));
       m.member = m.member || '';
@@ -567,12 +567,14 @@
       if (m.doneOn && typeof m.earned !== 'number') m.earned = m.points;   // 예전 기록은 기본 포인트만 받은 것으로 본다
       m.earned = Math.max(0, Math.round(+m.earned || 0));
       m.goalMet = !!m.goalMet;
+      m.earlyBonusEarned = Math.max(0, Math.round(+m.earlyBonusEarned || 0));
       m.days = normDays(m.days);      // 요일 정보가 없던 예전 기록은 '매일([])'로 그대로 동작합니다
     });
     out.logs = out.logs.filter((l) => l && typeof l === 'object' && l.date && l.at);
     out.logs = keepLogs(out.logs);
     out.logs.forEach((l) => {
       ['base', 'bonus', 'earned'].forEach((k) => { l[k] = Math.max(0, Math.round(+l[k] || 0)); });
+      l.earlyBonus = Math.max(0, Math.round(+l.earlyBonus || 0));
       l.member = l.member || '';
       l.title = l.title || '';
       l.due = l.due || '';
@@ -2242,15 +2244,9 @@
     S.points.byMember[k] = Math.max(0, Math.round((+S.points.byMember[k] || 0) + delta));
   }
   const basePtsOf = (c) => Math.max(0, Math.round(+c.points || 0));
-  const bonusPtsOf = (c) => (c.due ? Math.max(0, Math.round(+c.bonus || 0)) : 0);
   const earnOf = (c) => Math.max(0, Math.round(typeof c.earned === 'number' ? c.earned : basePtsOf(c)));
   function missionEarn(c, atHM) {
-    const base = basePtsOf(c);
-    const bonus = bonusPtsOf(c);
-    const a = minOf(atHM);
-    const d = minOf(c.due);
-    const goalMet = !!(c.due && a != null && d != null && a <= d);
-    return { base, bonus, goalMet, earned: base + (goalMet ? bonus : 0) };
+    return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM);
   }
 
   /* ---- 아이 포인트: 누적 경험치 · 사용 가능 포인트(잔액) · 사용 내역 ---- */
@@ -2274,10 +2270,10 @@
     const t = todayStr();
     return S.missions.filter((x) => x.member === KID_ID && x.doneOn === t).reduce((s, x) => s + earnOf(x), 0);
   }
-  // 오늘 요일에 해당하는 '아이' 미션으로 오늘 하루 모을 수 있는 최대 포인트(기본 + 목표 시간 보너스)
+  // 오늘 요일에 해당하는 '아이' 미션으로 모을 수 있는 최대 포인트(기본 + 조기 완료 보너스)
   function kidTodayGoal(dow = new Date().getDay()) {
     const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
-    const goal = list.reduce((s, m) => s + basePtsOf(m) + bonusPtsOf(m), 0);
+    const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(m.due), 0);
     const got = kidTodayPts();
     return { count: list.length, goal, got, left: Math.max(0, goal - got) };
   }
@@ -2310,7 +2306,7 @@
       // 로그의 member 는 '완료한 사람'. 공용 미션(member:'')도 이 기기에서 끝냈으면 아이(m3)로 남깁니다.
       // (서버 규칙: 아이 기기가 만드는 로그의 member 는 항상 m3)
       id: uid(), date: t, at: at || hhmm(), mid: c.id, title: c.title, member: c.member || KID_ID,
-      base: r.base || 0, bonus: r.goalMet ? (r.bonus || 0) : 0, earned: r.earned || 0,
+      base: r.base || 0, bonus: 0, earlyBonus: r.earlyBonus || 0, earned: r.earned || 0,
       due: c.due || '', goalMet: !!r.goalMet,
     });
     S.logs = keepLogs(S.logs);
@@ -2323,7 +2319,9 @@
   function doneBadge(c) {
     const at = esc(c.doneAt || '');
     if (!c.due) return `<span class="done-badge plain">${at ? at + ' 완료' : '완료'}</span>`;
-    if (c.goalMet) return `<span class="done-badge goal">${at} 완료 · ⏰ 목표 시간 달성!</span>`;
+    const early = Math.max(0, Math.round(+c.earlyBonusEarned || 0));
+    if (early) return `<span class="done-badge early">${at} 완료 · ⚡ 조기 +${early}P</span>`;
+    if (c.goalMet) return `<span class="done-badge goal">${at} 완료 · 마감 전 완료</span>`;
     return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
   }
 
@@ -2347,7 +2345,7 @@
         : `<div class="log-row">
           <span class="log-time">${esc(l.at)}</span>
           <span class="log-title">${esc(l.title)}</span>
-          ${l.goalMet ? '<span class="log-badge goal">⏰ 목표 달성</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>')}
+          ${l.earlyBonus ? `<span class="log-badge early">⚡ 조기 +${Math.max(0, Math.round(+l.earlyBonus || 0))}P</span>` : (l.goalMet ? '<span class="log-badge goal">⏰ 마감 전</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>'))}
           <b class="log-pts">+${Math.max(0, Math.round(+l.earned || 0))}P</b>
         </div>`).join('')
       : '<div class="shop-empty" style="padding:8px 4px">오늘 끝낸 미션이 완료 시각과 함께 이곳에 쌓여요</div>';
@@ -2501,7 +2499,7 @@
               <span class="t">${esc(l.at || '')}</span>
               <span class="n">${esc(l.title || '미션')}</span>
               ${histMemberChip(l.member)}
-              ${l.goalMet ? '<span class="log-badge goal">⏰ 목표 달성</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>')}
+              ${l.earlyBonus ? `<span class="log-badge early">⚡ 조기 +${Math.max(0, Math.round(+l.earlyBonus || 0))}P</span>` : (l.goalMet ? '<span class="log-badge goal">⏰ 마감 전</span>' : (l.due ? '<span class="log-badge late">⏱️ 초과</span>' : '<span class="log-badge plain">완료</span>'))}
               <b class="p">+${Math.max(0, Math.round(+l.earned || 0))}P</b>
             </div>`).join('')}</div>` : '<div class="shop-empty" style="padding:8px 4px">이 날은 완료 기록이 없어요</div>'}
         </div>`
@@ -2586,24 +2584,30 @@
     const done = c.doneOn === t;
     const m = memberById(c.member);
     const base = basePtsOf(c);
-    const bonus = bonusPtsOf(c);
     const di = (done || offday) ? null : dueInfo(c.due, nowMin);
+    const dueMin = minOf(c.due);
+    const minutesLeft = dueMin == null || nowMin == null ? 0 : dueMin - nowMin;
+    const earlyBonus = Math.max(0, Math.round(+c.earlyBonusEarned || 0));
+    const earlyHint = !done && !offday && c.due && minutesLeft >= 5
+      ? `<span class="early-chip" data-earlychip data-due="${esc(c.due)}">${minutesLeft >= 10 ? '⚡ 10분+ 전 +2P(총) · 5~9분 전 +1P' : '⚡ 5~9분 전 +1P'}</span>`
+      : '';
     const chip = done
       ? doneBadge(c)
       : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i></span>` : '');
     const pts = done ? earnOf(c) : base;
     const dl = daysLabel(c.days);
-    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}" data-id="${c.id}">
+    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}" data-act="chore-toggle" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <div class="chore-main">
               <div class="chore-top">
                 <span class="chore-title">${esc(c.title)}</span>
-                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && c.goalMet && bonus ? ' ⚡' : ''}</span>
+                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && earlyBonus ? ' ⚡' : ''}</span>
               </div>
               <div class="chore-meta">
                 <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
                 <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
                 ${chip}
+                ${earlyHint}
               </div>
             </div>
             <div class="chore-tools">
@@ -3095,7 +3099,7 @@
       addPoints(key, -undo);
       // 아이 미션 체크를 취소했을 때만 파트너 경험치도 되돌아갑니다 (포인트 사용으로는 절대 줄지 않음)
       if (isKid) S.pokemon.xp = clamp(beforeXp - undo, 0, FINAL_P);
-      c.doneOn = null; c.doneAt = ''; c.earned = 0; c.goalMet = false;
+      c.doneOn = null; c.doneAt = ''; c.earned = 0; c.goalMet = false; c.earlyBonusEarned = 0;
       dropLog(c.id);
       save(); renderMissions();
       toast(isKid ? `완료를 취소했어요 · 파트너 경험치 -${undo}P` : '완료를 취소했어요', '', 1600);
@@ -3108,6 +3112,7 @@
     c.doneAt = at;
     c.earned = r.earned;
     c.goalMet = r.goalMet;
+    c.earlyBonusEarned = r.earlyBonus;
     addPoints(key, r.earned);
     // 파트너 경험치는 '아이(m3)'의 미션에서만 오릅니다. 성인 미션은 자기 통계에만 쌓여요.
     if (isKid) S.pokemon.xp = clamp(beforeXp + r.earned, 0, FINAL_P);
@@ -3130,12 +3135,14 @@
       confetti(90);
       beep('up');
       showLevelUp(after);
-    } else if (r.goalMet && r.bonus) {
+    } else if (r.earlyBonus) {
       confetti(40);
       beep('up');
-      toast(`+${r.earned}P · ⏰ 목표 시간 달성! (보너스 +${r.bonus}P)`, 'mint', 2600);
+      toast(`+${r.earned}P · 조기 완료 보너스 +${r.earlyBonus}P`, 'mint', 2600);
+    } else if (c.due && r.goalMet) {
+      toast(`+${r.earned}P · 마감 시간 안에 완료했어요`, 'mint', 2000);
     } else if (c.due) {
-      toast(`+${r.earned}P · ⏱️ 목표 시간은 지났지만 끝냈어요`, '', 2600);
+      toast(`+${r.earned}P · 마감 후 완료 · 시간 보너스 없음`, '', 2600);
     } else {
       toast(`+${r.earned}P ⭐ 잘했어요!`, 'mint', 1600);
     }
@@ -3208,6 +3215,12 @@
       if (!di) return;
       el.className = 'due-chip ' + di.cls;
       el.innerHTML = `⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i>`;
+    });
+    $$('[data-earlychip]').forEach((el) => {
+      const dueMin = minOf(el.dataset.due);
+      const minutesLeft = dueMin == null || nowMin == null ? 0 : dueMin - nowMin;
+      el.hidden = minutesLeft < 5;
+      if (minutesLeft >= 5) el.textContent = minutesLeft >= 10 ? '⚡ 10분+ 전 +2P(총) · 5~9분 전 +1P' : '⚡ 5~9분 전 +1P';
     });
   }
 
@@ -3315,14 +3328,13 @@
     const presetDays = Array.isArray(opts.days) ? normDays(opts.days) : [];
     const r = await askModal({
       title: opts.titleHint ? `미션 추가 · ${opts.titleHint}` : '미션 추가',
-      hint: '언제 하는 미션인지(매일·평일·주말 또는 요일별)를 고르면 그 요일에만 오늘 미션으로 나와요. 목표 시간을 비우거나 [없음]을 고르면 시간 보너스 없이 기본 포인트만 쌓입니다.',
+      hint: '마감 시간이 있는 미션은 5분 전 완료 시 +1P, 10분 이상 전 완료 시 +2P(총점) 조기 보너스를 받아요. 마감 시간이 없거나 마감 시각에 끝내면 기본 포인트만 쌓입니다.',
       fields: [
         { name: 'title', label: '미션', placeholder: '예: 신발 정리하기', value: opts.title || '' },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: 3 },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: (S.members[S.members.length - 1] || {}).id || '' },
         { name: 'days', label: '언제 하는 미션인가요?', type: 'days', value: presetDays },
         { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: '', quick: TIME_QUICK },
-        { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: 3 },
       ],
       okText: '추가',
     });
@@ -3333,14 +3345,14 @@
       title: r.title.trim(),
       points: Math.max(0, Math.round(+r.points || 0)),
       due: r.due || '',
-      bonus: r.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0,
+      bonus: 0,
       member: r.member || '',
       days,
-      doneOn: null, doneAt: '', earned: 0, goalMet: false,
+      doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0,
     });
     save(); renderMissions();
     const dl = daysLabel(days);
-    toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due}까지 +${Math.max(0, Math.round(+r.bonus || 0))}P 보너스` : `미션을 추가했어요 · ${dl}`), 'mint');
+    toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due} 마감 · 5~9분 전 +1P / 10분 이상 전 +2P(총)` : `미션을 추가했어요 · ${dl}`), 'mint');
   }
 
   async function editMission(id) {
@@ -3348,14 +3360,13 @@
     if (!c) return;
     const r = await askModal({
       title: '미션 수정',
-      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 목표 시간과 보너스 포인트를 바꾸면 오늘 완료 기록도 새 기준으로 다시 계산됩니다.',
+      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 마감 시간을 바꾸면 오늘 완료 기록도 새 조기 보너스 기준으로 다시 계산됩니다.',
       fields: [
         { name: 'title', label: '미션', value: c.title },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: basePtsOf(c) },
         { name: 'member', label: '누구 미션인가요?', type: 'select', options: missionMemberOptions(), value: c.member || '' },
         { name: 'days', label: '언제 하는 미션인가요?', type: 'days', value: daysOf(c) },
         { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: c.due || '', quick: TIME_QUICK },
-        { name: 'bonus', label: '시간 내 완료 보너스 (P)', type: 'number', value: bonusPtsOf(c) || 3 },
       ],
       okText: '저장',
       extraAction: { label: '삭제', act: 'del' },
@@ -3380,7 +3391,6 @@
     c.title = r.title.trim();
     c.points = Math.max(0, Math.round(+r.points || 0));
     c.due = r.due || '';
-    c.bonus = c.due ? Math.max(0, Math.round(+r.bonus || 0)) : 0;
     c.member = r.member || '';
     c.days = parseDays(r.days);
 
@@ -3400,6 +3410,7 @@
       else if (oldKey === KID_ID && c.member === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp + delta, 0, FINAL_P);
       c.earned = rr.earned;
       c.goalMet = rr.goalMet;
+      c.earlyBonusEarned = rr.earlyBonus;
       addLog(c, rr, c.doneAt || hhmm());
     }
     syncDex();
@@ -3422,7 +3433,7 @@
     S.pokemon.xp = 0;
     S.pokemon.dex = [];
     S.missions.forEach((m) => {
-      if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; }
+      if (m.doneOn === t) { m.doneOn = null; m.doneAt = ''; m.earned = 0; m.goalMet = false; m.earlyBonusEarned = 0; }
     });
     S.logs = (S.logs || []).filter((l) => l.date !== t);
     save(); renderMissions(); toast('포인트를 0으로 되돌렸어요');
@@ -5610,6 +5621,7 @@
   /* -------------------------------------------------------------------- events */
   // 전역 클릭 위임
   document.addEventListener('click', (e) => {
+    if (e.target.closest('.chore-tools') && !e.target.closest('.chore-tools [data-act]')) return;
     const t = e.target.closest('[data-act]');
     if (t) {
       const act = t.dataset.act;

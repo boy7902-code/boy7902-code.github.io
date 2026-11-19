@@ -17,6 +17,8 @@
       저장하는 확정값은 `stats/summary` 뿐이고, 그 합계는 **정산 트랜잭션**만 올립니다.
    ========================================================================== */
 
+import './mission-rewards.js?v=early-bonus-1';
+
 /* ────────────────────────────── 상수 ────────────────────────────── */
 export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
 export const FINAL_P = 200;              // 최종 진화 기준 경험치 (앱과 동일)
@@ -174,14 +176,14 @@ export function eventCenterDoc(data = {}) {
   return doc;
 }
 
-/** 미션 문서 — '정의'만 저장합니다. 오늘 완료 여부는 logs 에서 계산합니다. */
+/** 미션 문서 — '정의'만 저장합니다. 구형 bonus는 호환용으로 남기며 오늘 완료 점수는 logs 에서 계산합니다. */
 export function missionDocOf(m, { stamp } = {}) {
   const doc = {
     id: m.id,
     title: String(m.title || ''),
     points: intOf(m.points),
     due: isHhmm(m.due) ? m.due : '',
-    bonus: isHhmm(m.due) ? intOf(m.bonus) : 0,
+    bonus: isHhmm(m.due) ? intOf(m.bonus) : 0, // Compatibility data only; new scoring ignores it.
     member: (m.member === 'm1' || m.member === 'm2' || m.member === KID_ID) ? m.member : '',
     days: Array.isArray(m.days) ? m.days.filter((n) => n >= 0 && n <= 6) : [],
   };
@@ -296,11 +298,13 @@ export function reconcileMissionCompletions(missions, logs, date, kidId = KID_ID
       mission.doneAt = log.at;
       mission.earned = Math.max(0, Math.round(+log.earned || 0));
       mission.goalMet = !!log.goalMet;
+      mission.earlyBonusEarned = Math.max(0, Math.round(+log.earlyBonus || 0));
     } else if (mission.doneOn === date) {
       mission.doneOn = null;
       mission.doneAt = '';
       mission.earned = 0;
       mission.goalMet = false;
+      mission.earlyBonusEarned = 0;
     }
   });
   return missions;
@@ -318,6 +322,7 @@ export function logDocOf(l, { uid, stamp }) {
     member,
     base: intOf(l.base),
     bonus: intOf(l.bonus),
+    earlyBonus: intOf(l.earlyBonus),
     earned: intOf(l.earned),
     due: isHhmm(l.due) ? l.due : '',
     goalMet: !!l.goalMet,
@@ -801,13 +806,15 @@ export function createFamilySync(deps = {}) {
     const day = date || kstTodayStr(nowFn());
     const base = intOf(mission.points);
     const due = isHhmm(mission.due) ? mission.due : '';
-    const goalMet = !!(due && toMin(when) != null && toMin(when) <= toMin(due));
-    const bonus = goalMet ? intOf(mission.bonus) : 0;
+    const reward = globalThis.MissionRewards.calculateMissionReward({ points: base, due }, when);
+    const goalMet = reward.goalMet;
+    const bonus = 0;
+    const earlyBonus = reward.earlyBonus;
     const who = (member === 'm1' || member === 'm2' || member === kidId || member === '') ? member : kidId;
     return {
       id: `${day}_${mission.id}_${who}`,
       date: day, at: when, mid: mission.id, title: String(mission.title || ''),
-      member: who, base, bonus, earned: base + bonus, due, goalMet,
+      member: who, base, bonus, earlyBonus, earned: base + earlyBonus, due, goalMet,
       settled: false,
       createdAt: sdk.serverTimestamp(),
       createdBy: by || '',
@@ -1124,7 +1131,7 @@ export function createFamilySync(deps = {}) {
       }
       const data = r === 'parent'
         ? { ...l, id: l.id, member: l.member || kidId, settled: l.settled === true, createdBy: by, createdAt: stamp }
-        : { ...buildLogPayload({ id: l.mid, title: l.title, points: l.base, due: l.due, bonus: bonusOfLog(l) }, { at: l.at, date: l.date, by }) };
+        : { ...buildLogPayload({ id: l.mid, title: l.title, points: l.base, due: l.due }, { at: l.at, date: l.date, by }) };
       pushOp(async () => sdk.setDoc(docRef(pathOf(`logs/${logDocId(l)}`)), data));
       written.push({ collection: 'logs', id: logDocId(l), op: 'create' });
     });
@@ -1166,8 +1173,6 @@ export function createFamilySync(deps = {}) {
     }
     return { ok: !failed, written, denied, errors, role: r };
   }
-
-  const bonusOfLog = (l) => (l.goalMet ? intOf(l.bonus) : 0);
 
   /* ---- 백업 (부모 기기 전용) · 복원 ---- */
   async function readAllRecords(session = activeSession({ r: 'parent' })) {

@@ -34,6 +34,13 @@ const adminAuth = getAdminAuth(adminApp);
 const sdk = { ...authSdk, ...firestoreSdk };
 const sync = createFamilySync({ sdk, auth, db });
 let serial = 0;
+function kstMinuteNow() {
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return now.getUTCHours() * 60 + now.getUTCMinutes();
+}
+function hhmmOfMinute(value) {
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+}
 
 async function createClaimedUser(role) {
   const n = ++serial;
@@ -68,11 +75,20 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
       member: 'm3',
       days: [],
     };
+    const earlyAtMinute = kstMinuteNow();
+    const earlyAt = hhmmOfMinute(earlyAtMinute);
+    const earlyDueMinute = earlyAtMinute + 10;
+    const earlyMission = earlyDueMinute < 1430 ? {
+      id: 'emulator-early-bonus', title: '조기 보너스 테스트 미션', points: 5,
+      due: hhmmOfMinute(earlyDueMinute), bonus: 3, member: 'm3', days: [],
+    } : null;
+    const forgedMission = earlyMission ? { ...earlyMission, id: 'emulator-forged-bonus' } : null;
+    const missions = [mission, ...(earlyMission ? [earlyMission, forgedMission] : [])];
     const parentWrite = await sync.pushPatch({
-      prev: {}, next: { missions: [mission] }, by: parent.uid, r: 'parent', skipLogs: true,
+      prev: {}, next: { missions }, by: parent.uid, r: 'parent', skipLogs: true,
     });
     assert.equal(parentWrite.ok, true);
-    assert.equal(parentWrite.written.length, 1);
+    assert.equal(parentWrite.written.length, missions.length);
     const pinWrite = await sync.saveParentPin({ pin: '2468', by: parent.uid });
     assert.equal(pinWrite.ok, true);
     const privateConfig = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/private/parent_config`));
@@ -124,7 +140,32 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     const logResult = await sync.writeLog(mission, { by: child.uid, member: 'm3' });
     assert.equal(logResult.ok, true, JSON.stringify(logResult.error || {}));
     assert.equal(logResult.payload.member, 'm3');
+    assert.equal(logResult.payload.bonus, 0);
+    assert.equal(logResult.payload.earlyBonus, 0);
+    assert.equal(logResult.payload.earned, 5);
     assert.equal(logResult.payload.settled, false);
+    if (earlyMission && forgedMission) {
+      const earlyLog = await sync.writeLog(earlyMission, { at: earlyAt, by: child.uid, member: 'm3' });
+      assert.equal(earlyLog.ok, true, JSON.stringify(earlyLog.error || {}));
+      assert.equal(earlyLog.payload.bonus, 0);
+      assert.equal(earlyLog.payload.earlyBonus, 2);
+      assert.equal(earlyLog.payload.earned, 7);
+      const earlyLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${earlyLog.payload.id}`);
+      const savedEarlyLog = await firestoreSdk.getDoc(earlyLogRef);
+      assert.equal(savedEarlyLog.data().earlyBonus, 2);
+      assert.equal(savedEarlyLog.data().earned, 7);
+
+      const forged = sync.buildLogPayload(forgedMission, { at: earlyAt, by: child.uid, member: 'm3' });
+      forged.earlyBonus = 1;
+      forged.earned = forged.base + 1;
+      await assert.rejects(
+        firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${forged.id}`), forged),
+        (error) => error.code === 'permission-denied',
+        'Firestore rejects an early bonus that disagrees with the fixed tier',
+      );
+      await firestoreSdk.deleteDoc(earlyLogRef);
+      assert.equal((await firestoreSdk.getDoc(earlyLogRef)).exists(), false, 'test early log is removed before settlement');
+    }
 
     await clearSignedInUser();
     const { user: signedInParent } = await createClaimedUser('parent');

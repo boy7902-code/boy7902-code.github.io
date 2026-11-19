@@ -86,6 +86,12 @@ service cloud.firestore {
     function goalMetOf(atStr, dueStr) {
       return dueStr != '' && isHhmm(dueStr) && hhmmToMin(atStr) <= hhmmToMin(dueStr);
     }
+    function earlyBonusOf(atStr, dueStr) {
+      return dueStr != '' && isHhmm(dueStr) && isHhmm(atStr)
+        ? (hhmmToMin(dueStr) - hhmmToMin(atStr) >= 10 ? 2
+          : (hhmmToMin(dueStr) - hhmmToMin(atStr) >= 5 ? 1 : 0))
+        : 0;
+    }
 
     /* ───────────────────────── 가족 문서 ───────────────────────── */
     match /households/{hh} {
@@ -142,9 +148,9 @@ service cloud.firestore {
       let d = request.resource.data;
       let m = get(/databases/$(database)/documents/households/$(hh)/missions/$(d.mid)).data;
       let due = m.get('due', '');
-      return d.keys().hasAll(['id', 'date', 'at', 'mid', 'title', 'member', 'base', 'bonus',
+      return d.keys().hasAll(['id', 'date', 'at', 'mid', 'title', 'member', 'base', 'bonus', 'earlyBonus',
                               'earned', 'due', 'goalMet', 'settled', 'createdAt', 'createdBy'])
-        && d.keys().hasOnly(['id', 'date', 'at', 'mid', 'title', 'member', 'base', 'bonus',
+        && d.keys().hasOnly(['id', 'date', 'at', 'mid', 'title', 'member', 'base', 'bonus', 'earlyBonus',
                              'earned', 'due', 'goalMet', 'settled', 'createdAt', 'createdBy'])
         // 문서 ID = 날짜_미션_구성원 (중복·중복 ID 조작 차단)
         && logId == d.date + '_' + d.mid + '_' + d.member
@@ -168,10 +174,11 @@ service cloud.firestore {
         && d.settled == false
         // 완료 시각은 서버 시각과 15분 이내
         && atNearServerTime(d.at)
-        // 목표 시간 달성 여부·보너스·획득 점수는 미션 문서의 고정 점수와 일치해야 함
+        // 마감 상태와 점수는 서버가 계산하며, 구형 미션별 마감 보너스는 더 이상 허용하지 않음
         && d.goalMet == goalMetOf(d.at, due)
-        && d.bonus == (d.goalMet == true ? m.get('bonus', 0) : 0)
-        && d.earned == d.base + d.bonus;
+        && d.bonus is int && d.bonus == 0
+        && d.earlyBonus is int && d.earlyBonus == earlyBonusOf(d.at, due)
+        && d.earned == d.base + d.earlyBonus;
     }
 
     // 아이는 자기가 만든 · 오늘 · 아직 정산되지 않은 기록만 지울 수 있습니다(체크 취소).

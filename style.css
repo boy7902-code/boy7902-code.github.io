@@ -567,16 +567,16 @@ html[data-theme="dark"] .free-day-banner .fd-sub { color: #ffc98f; }
   display: flex; align-items: center; gap: 9px;
   padding: 7px 9px; border-radius: var(--r-md);
   background: var(--surface-solid); border: 1px solid var(--border);
-  transition: background .2s, border-color .2s, transform .12s;
+  transition: background .2s, border-color .2s, transform .12s; cursor: pointer;
 }
 .chore:active { transform: scale(.99); }
 .chore.done { background: var(--mint-soft); border-color: transparent; }
 .chore.done .chore-title { text-decoration: line-through; color: var(--text-2); }
 .chore-check {
-  width: 44px; height: 44px; flex: 0 0 44px; border-radius: 14px;
+  width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border-radius: 14px;
   border: 2px solid var(--border-strong); background: var(--surface-2);
   display: grid; place-items: center; font-size: 20px; color: var(--text-3);
-  transition: all .18s ease;
+  transition: all .18s ease; cursor: pointer; touch-action: manipulation;
 }
 .chore.done .chore-check {
   background: linear-gradient(140deg, var(--mint), #66e5bd);
@@ -584,7 +584,7 @@ html[data-theme="dark"] .free-day-banner .fd-sub { color: #ffc98f; }
   box-shadow: 0 8px 18px rgba(33, 195, 154, .32);
 }
 .chore-title { font-size: 14px; font-weight: 700; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chore-tools { display: flex; gap: 2px; opacity: .5; align-self: center; }
+.chore-tools { display: flex; gap: 2px; opacity: .5; align-self: center; cursor: default; }
 .chore:hover .chore-tools { opacity: 1; }
 
 /* ---- 포켓몬 파트너 ---- */
@@ -668,9 +668,11 @@ html[data-theme="dark"] .levelup-card.dex h4 { color: #ffd97a; }
 .due-chip.soon { background: var(--amber-soft); color: #a86a00; }
 .due-chip.late { background: var(--coral-soft); color: #c23b2c; }
 .due-chip .dc-long { font-style: normal; opacity: .85; }
+.early-chip { display: inline-flex; align-items: center; font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--mint-soft); color: #0f8f6f; white-space: nowrap; }
 html[data-theme="dark"] .due-chip { color: #8fbaff; }
 html[data-theme="dark"] .due-chip.soon { color: #ffcf7a; }
 html[data-theme="dark"] .due-chip.late { color: #ff9c8f; }
+html[data-theme="dark"] .early-chip { color: #67e3bd; }
 
 /* ---- 요일 반복(매일·평일·주말) ---- */
 .days-chip {
@@ -708,9 +710,11 @@ html[data-theme="dark"] .days-chip.all { color: var(--text-2); }
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .done-badge.goal { background: linear-gradient(100deg, #d8f7c4, #ffe9a8); color: #55720f; box-shadow: 0 0 0 1px rgba(180, 150, 20, .18) inset; }
+.done-badge.early { background: var(--mint-soft); color: #0f8f6f; }
 .done-badge.late { background: var(--surface-2); color: #c23b2c; border: 1px solid rgba(255, 122, 107, .35); }
 .done-badge.plain { background: var(--mint-soft); color: #0f8f6f; }
 html[data-theme="dark"] .done-badge.goal { background: linear-gradient(100deg, rgba(120, 200, 90, .28), rgba(255, 209, 102, .26)); color: #ffeb9e; }
+html[data-theme="dark"] .done-badge.early { color: #67e3bd; }
 html[data-theme="dark"] .done-badge.late { color: #ff9c8f; }
 html[data-theme="dark"] .done-badge.plain { color: #67e3bd; }
 .pts.goal { background: linear-gradient(120deg, #ffe08a, #ffd166); color: #6d5000; }
@@ -730,9 +734,11 @@ html[data-theme="dark"] .done-badge.plain { color: #67e3bd; }
 .log-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .log-badge { font-size: 9.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
 .log-badge.goal { background: linear-gradient(100deg, #d8f7c4, #ffe9a8); color: #55720f; }
+.log-badge.early { background: var(--mint-soft); color: #0f8f6f; }
 .log-badge.late { background: var(--surface-solid); color: #c23b2c; border: 1px solid rgba(255, 122, 107, .3); }
 .log-badge.plain { background: var(--mint-soft); color: #0f8f6f; }
 html[data-theme="dark"] .log-badge.goal { background: rgba(255, 209, 102, .22); color: #ffeb9e; }
+html[data-theme="dark"] .log-badge.early { color: #67e3bd; }
 html[data-theme="dark"] .log-badge.late { background: transparent; color: #ff9c8f; }
 html[data-theme="dark"] .log-badge.plain { color: #67e3bd; }
 .log-pts { color: var(--amber); font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -1376,10 +1382,10 @@ html[data-theme="dark"] .hist-day-row .p { color: #67e3bd; }
   .mstat-name { min-width: 0; max-width: 70px; }
   .chore-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; gap: 4px; padding-right: 2px; }
   .chore { padding: 4px 7px; gap: 7px; border-radius: 10px; }
-  .chore-check { width: 32px; height: 32px; flex: 0 0 32px; font-size: 15px; border-radius: 10px; }
+  .chore-check { width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; font-size: 18px; border-radius: 10px; }
   .chore-title { font-size: 12px; }
   .chore-meta { font-size: 9px; gap: 2px 5px; }
-  .days-chip, .due-chip, .done-badge { font-size: 9px; padding: 1px 6px; }
+  .days-chip, .due-chip, .done-badge, .early-chip { font-size: 9px; padding: 1px 6px; }
   .pts { font-size: 9.5px; padding: 1px 6px; }
   .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
   .chore-off > summary { font-size: 10px; padding: 2px; }
@@ -2430,10 +2436,10 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
   .mstat-name { max-width: 84px; }
   .chore-list { gap: 3px; }
   .chore { padding: 3px 9px; gap: 9px; border-radius: 11px; }
-  .chore-check { width: 31px; height: 31px; flex: 0 0 31px; font-size: 15px; border-radius: 9px; }
+  .chore-check { width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; font-size: 18px; border-radius: 9px; }
   .chore-title { font-size: 13px; }
   .chore-meta { font-size: 9.5px; gap: 2px 5px; margin-top: 0; }
-  .days-chip, .due-chip, .done-badge { font-size: 8.5px; padding: 0 6px; }
+  .days-chip, .due-chip, .done-badge, .early-chip { font-size: 8.5px; padding: 0 6px; }
   .pts { font-size: 10.5px; padding: 2px 7px; border-radius: 7px; }
   .chore-tools { gap: 1px; }
   .chore-tools .btn.icon.sm { width: 22px; min-width: 22px; min-height: 22px; font-size: 10px; }
@@ -2742,9 +2748,9 @@ html[data-theme="dark"] .dex-play::before, html[data-theme="dark"] .dex-play::af
 
   .chore { padding: 5px 8px; gap: 8px; }
   .chore-title { font-size: 14px; }
-  .chore-check { width: 34px; height: 34px; flex-basis: 34px; font-size: 16px; border-radius: 11px; }
+  .chore-check { width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; font-size: 18px; border-radius: 11px; }
   .chore-meta { font-size: 10.5px; }
-  .days-chip, .due-chip, .done-badge { font-size: 10px; padding: 2px 7px; }
+  .days-chip, .due-chip, .done-badge, .early-chip { font-size: 10px; padding: 2px 7px; }
   .pts { font-size: 11px; padding: 2px 7px; }
   .mstat { font-size: 10.5px; padding: 3px 7px; }
   .chore-off > summary { font-size: 11px; }
@@ -3192,10 +3198,10 @@ html[data-theme="dark"] .mvp-kpi { background: rgba(255, 255, 255, .08); }
   .chore-list { gap: 4px; }
   .chore { padding: 1px 8px; gap: 8px; border-radius: 9px; }
   .chore-title { font-size: 12.5px; line-height: 1.15; }
-  .chore-check { width: 20px; height: 20px; flex: 0 0 20px; font-size: 10px; border-radius: 7px; }
+  .chore-check { width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; font-size: 18px; border-radius: 7px; }
   .chore-meta { font-size: 8.5px; line-height: 1.05; gap: 2px 5px; }
   .chore .pts { font-size: 9.5px; padding: 1px 6px; }
-  .days-chip, .due-chip, .done-badge { font-size: 8.5px; padding: 1px 5px; }
+  .days-chip, .due-chip, .done-badge, .early-chip { font-size: 8.5px; padding: 1px 5px; }
   .chore-off > summary { font-size: 10px; padding: 1px 0; }
   .mission-badges { gap: 4px; }
   .mbtn { font-size: 10.5px; padding: 3px 4px; min-height: 26px; border-radius: 8px; gap: 3px; }
@@ -3489,9 +3495,9 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   #cardChores .chore { padding: 4px 9px; gap: 9px; }
   #cardChores .chore-title { font-size: 14px; line-height: 1.25; }
   #cardChores .chore-meta { font-size: 10px; line-height: 1.25; gap: 3px 7px; }
-  #cardChores .chore-check { width: 24px; height: 24px; flex-basis: 24px; font-size: 12px; }
+  #cardChores .chore-check { width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; font-size: 18px; }
   #cardChores .chore .pts { font-size: 11px; }
-  #cardChores .days-chip, #cardChores .due-chip, #cardChores .done-badge { font-size: 9.5px; }
+  #cardChores .days-chip, #cardChores .due-chip, #cardChores .done-badge, #cardChores .early-chip { font-size: 9.5px; }
 }
 
 @media (max-width: 1023px) {

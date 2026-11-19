@@ -43,28 +43,49 @@ const userWithRole = (uid, role) => ({
 
 test('today mission completion is restored from the matching member log', () => {
   const missions = [
-    { id: 'adult-1', member: 'm1', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-    { id: 'adult-2', member: 'm2', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-    { id: 'kid-1', member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-    { id: 'shared-1', member: '', doneOn: null, doneAt: '', earned: 0, goalMet: false },
-    { id: 'missed', member: 'm1', doneOn: '2026-11-18', doneAt: '08:00', earned: 9, goalMet: true },
+    { id: 'adult-1', member: 'm1', doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+    { id: 'adult-2', member: 'm2', doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+    { id: 'kid-1', member: 'm3', doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+    { id: 'shared-1', member: '', doneOn: null, doneAt: '', earned: 0, goalMet: false, earlyBonusEarned: 0 },
+    { id: 'missed', member: 'm1', doneOn: '2026-11-18', doneAt: '08:00', earned: 9, goalMet: true, earlyBonusEarned: 2 },
   ];
   const logs = [
-    { mid: 'adult-1', date: '2026-11-18', member: 'm1', at: '07:30', earned: 8, goalMet: true },
+    { mid: 'adult-1', date: '2026-11-18', member: 'm1', at: '07:30', earned: 8, goalMet: true, earlyBonus: 2 },
     { mid: 'adult-2', date: '2026-11-18', member: 'm2', at: '08:10', earned: 4, goalMet: false },
-    { mid: 'kid-1', date: '2026-11-18', member: 'm3', at: '07:50', earned: 6, goalMet: true },
+    { mid: 'kid-1', date: '2026-11-18', member: 'm3', at: '07:50', earned: 6, goalMet: true, earlyBonus: 1 },
     { mid: 'shared-1', date: '2026-11-18', member: '', at: '09:00', earned: 3, goalMet: false },
   ];
 
   reconcileMissionCompletions(missions, logs, '2026-11-18');
 
-  assert.deepEqual(missions.slice(0, 4).map((mission) => [mission.doneOn, mission.doneAt, mission.earned, mission.goalMet]), [
-    ['2026-11-18', '07:30', 8, true],
-    ['2026-11-18', '08:10', 4, false],
-    ['2026-11-18', '07:50', 6, true],
-    ['2026-11-18', '09:00', 3, false],
+  assert.deepEqual(missions.slice(0, 4).map((mission) => [mission.doneOn, mission.doneAt, mission.earned, mission.goalMet, mission.earlyBonusEarned]), [
+    ['2026-11-18', '07:30', 8, true, 2],
+    ['2026-11-18', '08:10', 4, false, 0],
+    ['2026-11-18', '07:50', 6, true, 1],
+    ['2026-11-18', '09:00', 3, false, 0],
   ]);
-  assert.deepEqual([missions[4].doneOn, missions[4].doneAt, missions[4].earned, missions[4].goalMet], [null, '', 0, false]);
+  assert.deepEqual([missions[4].doneOn, missions[4].doneAt, missions[4].earned, missions[4].goalMet, missions[4].earlyBonusEarned], [null, '', 0, false, 0]);
+});
+
+test('Firebase log payload ignores legacy deadline bonus and records early bonus separately', () => {
+  const { sdk } = fakeSdk();
+  const sync = createFamilySync({ sdk, auth: { currentUser: null }, db: {} });
+  const mission = { id: 'mission-early', title: '아침 준비', points: 5, due: '08:00', bonus: 3 };
+  const atFiveEarly = sync.buildLogPayload(mission, { at: '07:55', date: '2026-11-18', by: 'child-user', member: 'm3' });
+  assert.equal(atFiveEarly.base, 5);
+  assert.equal(atFiveEarly.bonus, 0);
+  assert.equal(atFiveEarly.earlyBonus, 1);
+  assert.equal(atFiveEarly.earned, 6);
+  assert.equal(atFiveEarly.goalMet, true);
+  const atTenEarly = sync.buildLogPayload(mission, { at: '07:50', date: '2026-11-18', by: 'child-user', member: 'm3' });
+  assert.equal(atTenEarly.earlyBonus, 2);
+  assert.equal(atTenEarly.earned, 7);
+  const atDue = sync.buildLogPayload(mission, { at: '08:00', date: '2026-11-18', by: 'child-user', member: 'm3' });
+  assert.equal(atDue.earlyBonus, 0);
+  assert.equal(atDue.earned, 5);
+  const noDue = sync.buildLogPayload({ ...mission, due: '' }, { at: '07:00', date: '2026-11-18', by: 'child-user', member: 'm3' });
+  assert.equal(noDue.earlyBonus, 0);
+  assert.equal(noDue.earned, 5);
 });
 
 test('child can create wishlist, shopping, and letter documents using child-safe fields', async () => {
