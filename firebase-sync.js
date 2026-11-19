@@ -18,7 +18,7 @@
    ========================================================================== */
 
 import './mission-rewards.js?v=early-bonus-1';
-import './streak-core.js?v=journal-2';
+import './streak-core.js?v=journal-3';
 
 /* ────────────────────────────── 상수 ────────────────────────────── */
 export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
@@ -1456,4 +1456,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-                                  }
+}
