@@ -387,7 +387,6 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; font-size
 }
 .mstat-name { font-weight: 800; color: var(--text); min-width: 44px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mstat-today { color: var(--text-3); white-space: nowrap; }
-.mstat-streak { color: var(--amber); font-weight: 800; white-space: nowrap; }
 .mstat-pts { margin-left: auto; color: var(--amber); font-weight: 800; white-space: nowrap; }
 .mstat-total { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 html[data-theme="dark"] .mstat-pts { color: #ffcf7a; }
