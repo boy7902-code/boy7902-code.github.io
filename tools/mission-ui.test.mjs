@@ -76,3 +76,8 @@ test('app version has one source and the overdue dim follows the clock', () => {
   assert.match(app, /row\.classList\.toggle\('overdue', di\.cls === 'late'\)/);
   assert.doesNotMatch(html.slice(html.indexOf('id="weather"'), html.indexOf('</button>', html.indexOf('id="weather"'))), /<div/);
 });
+
+test('done badge shows how many minutes early a deadline mission was finished', () => {
+  assert.match(app, /const ahead = dueM != null && doneM != null && dueM > doneM/);
+  assert.match(app, /완료\$\{ahead \|\| ' · 마감 전 완료'\}/);
+});
