@@ -23,15 +23,10 @@ test('short desktop columns scroll and mission rows snap to readable positions',
   assert.match(css, /\.chore-check\s*\{[^}]*width:\s*44px/);
 });
 
-test('school rows show one-line +N summaries with an accessible expansion control', () => {
-  assert.match(css, /#cardSchool\s*\{\s*overflow:\s*hidden/);
+test('school rows expose every chip without a disclosure control', () => {
   assert.match(css, /\.card\.school\s+\.card-body\s*\{[^}]*overflow-x:\s*hidden;\s*overflow-y:\s*auto/s);
-  assert.match(css, /\.card\.school\s+\.sch-chips\s*\{[^}]*flex-wrap:\s*nowrap/);
-  assert.match(css, /\.card\.school\s+\.sch-chips\.is-expanded\s*\{[^}]*flex-wrap:\s*wrap/);
-  assert.match(css, /\.card\.school\s+\.sch-row\s*\{[^}]*scroll-snap-align:\s*start/);
-  assert.match(app, /class="sch-chip sch-more[^>]*data-act="school-chips-toggle"/);
-  assert.match(app, /chipList\.querySelectorAll\('\.sch-extra'\)/);
-  assert.match(app, /function listOf\(v\)[\s\S]*?\.slice\(0, 8\)/);
+  assert.doesNotMatch(app, /data-act="school-chips-toggle"/);
+  assert.match(app, /return arr\.map\(\(x\) => `<span class="sch-chip/);
 });
 
 test('wish balance shares a single header line and preserves a usable list viewport', () => {
