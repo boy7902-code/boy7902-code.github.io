@@ -48,17 +48,16 @@
   function status(raw, today) {
     const journal = normalize(raw);
     if (!validDate(today) || !journal.started) return { count: 0, started: '', known: false };
-    let count = 0, day = today, gap = false, examined = 0;
+    let count = 0, day = today, gap = false, exhausted = true;
     for (let i = 0; i < KEEP_DAYS; i += 1, day = prevDay(day)) {
-      if (day < journal.started) break;
-      examined += 1;
+      if (day < journal.started) { exhausted = false; break; }
       const row = journal.days[day];
-      if (!row) { gap = true; break; }
+      if (!row) { gap = true; exhausted = false; break; }
       if (row.skip) continue;
       if (row.required.every((id) => row.done.includes(id))) count += 1;
-      else if (day !== today) break; // Today stays open until midnight.
+      else if (day !== today) { exhausted = false; break; } // Today stays open until midnight.
     }
-    return { count, started: journal.started, known: !!journal.days[today], gap, capped: examined === KEEP_DAYS };
+    return { count, started: journal.started, known: !!journal.days[today], gap, capped: exhausted };
   }
   root.FamilyStreak = Object.freeze({ normalize, observe, status, validDate });
 })(globalThis);
