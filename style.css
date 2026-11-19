@@ -3772,7 +3772,7 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   }
   #cardOverview .outfit-item b,
   #cardOverview .outfit-item small {
-    font-size: 8.5px;
+    font-size: 9.5px;
     white-space: nowrap;
   }
   #cardOverview .outfit-item small {
@@ -3788,12 +3788,12 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   #cardOverview .weather-week-item {
     flex-direction: column;
     gap: 0;
-    font-size: 8px;
+    font-size: 9.5px;
     line-height: 1.05;
   }
   #cardOverview .weather-week-item .wf-day,
   #cardOverview .weather-week-item .wf-temp {
-    font-size: 8px;
+    font-size: 9.5px;
   }
   #cardOverview .weather-week-item .wf-icon {
     font-size: 11px;
