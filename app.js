@@ -2748,9 +2748,14 @@
 
     // 구성원별 오늘 완료·오늘 포인트·누적 포인트 (성인 미션 숨김 모드에서는 아이·공용만)
     const stats = memberStats().filter((s) => S.showAdultMissions || s.m.id === KID_ID || s.m.id === '');
+    // 연속 달성: 표시 전용 (점수 없음). 그날 해야 할 아이 미션을 모두 끝낸 날을 이어서 셉니다.
+    const kidStreak = window.FamilyStreak
+      ? window.FamilyStreak.streakDays({ missions: (S.missions || []).filter((x) => x && (x.member || KID_ID) === KID_ID), logs: histAllLogs(), today: t })
+      : 0;
     $('#memberStats').innerHTML = stats.map((s) => `<div class="mstat" style="--c:${esc(s.m.color)}">
         <span class="mdot" style="background:${esc(s.m.color)}"></span>
         <span class="mstat-name">${esc(s.m.name)}${s.m.id === KID_ID ? ' 🧒' : ''}</span>
+        ${s.m.id === KID_ID && kidStreak >= 2 ? `<span class="mstat-streak" title="그날 해야 할 미션을 모두 끝낸 날이 이어진 횟수">🔥 연속 ${kidStreak}일</span>` : ''}
         <span class="mstat-today">오늘 ${s.today}개</span>
         <span class="mstat-pts">${s.ptsToday ? '+' + s.ptsToday + 'P' : '0P'}</span>
         <span class="mstat-total">누적 ${s.total}P</span>
