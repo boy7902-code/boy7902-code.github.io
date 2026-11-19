@@ -38,7 +38,7 @@ test('the schedule opens in month view by default', async () => {
   assert.match(html, /data-calmode="1m" aria-pressed="true"/);
 });
 
-test('the event center hides parent setups while the shared reading board has no manual reset action', async () => {
+test('the event center hides parent setups while the shared mission stamp board has no manual reset action', async () => {
   const app = await read('app.js');
   const html = await read('index.html');
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>①🔥 3일 연속 콤보/);
@@ -50,9 +50,11 @@ test('the event center hides parent setups while the shared reading board has no
   assert.match(app, /data-act="ev-gacha"\$\{tickets > 0 \? '' : ' disabled'\}/);
   assert.match(app, /data-act="ev-mvp"/);
   assert.doesNotMatch(app, /data-act="ev-stamp(?:-reset)?"/);
-  assert.match(html, /class="reading-stamp-board stamp-board"[^>]*aria-labelledby="readingBoardTitle"/);
+  assert.match(html, /class="reading-stamp-board stamp-board mission-stamp-board"[^>]*aria-labelledby="readingBoardTitle"/);
   assert.match(html, /id="readingCells" aria-label="미션 성공 도장 10칸"/);
-  assert.match(html, /id="readingNote">독서 외 미션도 포함 · 10칸 완성 시 \+3P/);
+  assert.match(html, /id="readingNote">기본 미션 포인트와 별도 · 10\/10 완성 시에만 \+3P/);
+  assert.match(app, /성공 1회마다 도장 1개/);
+  assert.match(app, /10\/10 때만 \+3P/);
 });
 
 test('the event button is a surprise on the child screen and always there in parent mode', async () => {

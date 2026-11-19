@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('mission row toggles completion while nested edit/delete keep their own actions', () => {
   assert.match(app, /<div class="chore[^\n]*data-act="chore-toggle" data-id="\$\{c\.id\}"/);
@@ -17,6 +18,42 @@ test('mission setup no longer exposes configurable legacy deadline bonus', () =>
   assert.doesNotMatch(app, /const bonusPtsOf/);
   assert.match(app, /MissionRewards\.calculateMissionReward/);
   assert.match(app, /earlyBonusEarned = r\.earlyBonus/);
+});
+
+test('confirmed dashboard mockup keeps the two-column cards and one-line time/weather header', () => {
+  assert.match(html, /class="clock header-clock"/);
+  assert.match(html, /class="weather topbar-weather" id="weather"/);
+  assert.doesNotMatch(html, /class="overview-time"/);
+  assert.match(html, /id="wTempCard"/);
+  assert.match(html, /id="weatherWeek" aria-label="주간 날씨 예보"/);
+  assert.match(html, /class="support-grid" id="supportCards"/);
+  assert.match(html, /id="cardWish"/);
+  const rightColumnStart = html.indexOf('class="col col-right"');
+  const supportGridStart = html.indexOf('id="supportCards"');
+  const timerIndex = html.indexOf('id="cardTimer"');
+  assert.ok(timerIndex > rightColumnStart, 'timer belongs in the right column');
+  assert.ok(timerIndex > html.indexOf('id="cardChores"'), 'timer follows the mission card');
+  assert.doesNotMatch(html.slice(supportGridStart, rightColumnStart), /id="cardTimer"/);
+  assert.match(html, /id="appVersion"[^>]*>v 3\.1\.0/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0, \.96fr\) minmax\(0, 1\.04fr\)/);
+  assert.match(css, /\.support-grid \{ order: 3; display: grid;/);
+  assert.match(css, /grid-template-areas: "school wish"; grid-template-rows: minmax\(70px, 190px\)/);
+  assert.match(css, /#cardSchool \.card-body \{ flex: 1 1 auto; min-height: 0; overflow: auto; \}/);
+  assert.match(css, /#cardWish:not\(\.is-empty\) \.wish-list \{ max-height: 104px; overflow-y: auto; \}/);
+  assert.match(css, /\.col-right > #cardTimer \{ flex: 0 0 120px; min-height: 120px; \}/);
+  assert.match(css, /#cardTimer \{ order: 5; \}/);
+  assert.match(css, /@media \(min-width: 1024px\) and \(max-height: 900px\)/);
+  assert.match(css, /#cardWish:not\(\.is-empty\) \.wish-list \{ max-height: 72px; \}/);
+  assert.match(css, /\.col-right > #cardTimer \{ flex-basis: 110px; min-height: 110px; \}/);
+  assert.match(css, /#shopPane \{ display: none !important; \}/);
+  assert.match(app, /if \(\$\('#wTempCard'\)\) \$\('#wTempCard'\)\.innerHTML = currentTemp/);
+});
+
+test('overdue unfinished missions are dimmed without changing mission reward calculations', () => {
+  assert.match(app, /const overdue = !done && !offday && dueMin != null && nowMin != null && dueMin < nowMin/);
+  assert.match(app, /overdue \? ' overdue' : ''/);
+  assert.match(css, /\.chore\.overdue \{ opacity: \.56;/);
+  assert.match(app, /MissionRewards\.calculateMissionReward/);
 });
 
 test('base and responsive mission checkbox rules all keep a 44px tap target', () => {

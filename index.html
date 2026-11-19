@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 시간·날씨·가족 일정·포켓몬 미션 포인트·독서 도장판·위시리스트·손글씨 편지." />
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 시계·날씨·가족 일정·포켓몬 미션 포인트·미션 도장판·위시리스트·손글씨 편지." />
 <meta name="theme-color" content="#f4f7ff" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=54-shared-stamps" />
+<link rel="stylesheet" href="style.css?v=56-overflow-safe" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
@@ -28,6 +28,17 @@
         <div class="brand-sub" id="brandSub">오늘도 좋은 하루</div>
       </div>
     </div>
+
+    <div class="clock header-clock" aria-label="현재 시각과 날짜">
+      <div class="clock-time" id="clockTime">--:--</div>
+      <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
+    </div>
+    <button type="button" class="weather topbar-weather" id="weather" title="탭하면 날씨를 새로 고칩니다" aria-label="현재 날씨 새로고침">
+      <div class="weather-now">
+        <div class="weather-icon" id="wIcon">🌤️</div>
+        <div class="weather-temp" id="wTemp">—<small>°</small></div>
+      </div>
+    </button>
 
     <div class="top-actions">
       <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
@@ -57,38 +68,34 @@
 
   <main class="grid" id="mainGrid" role="tabpanel" aria-label="대시보드">
 
-    <!-- 왼쪽 열 — 가족 일정 · 오늘 학교 · 타이머 -->
+    <!-- 왼쪽 열 — 날씨 · 가족 일정/위키 · 학교 · 위시리스트 · 타이머 -->
     <div class="col col-left">
 
-      <section class="card weather-overview" id="cardOverview" aria-label="오늘의 시간·날씨·옷차림">
-        <div class="overview-head">
-          <div class="overview-time">
-            <div class="overview-eyebrow">오늘의 시간</div>
-            <div class="clock">
-              <div class="clock-time" id="clockTime">--:--</div>
-              <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
-            </div>
-            <div class="overview-helper">가족의 하루와 외출 준비를 한눈에</div>
+      <section class="card weather-overview" id="cardOverview" aria-label="오늘 날씨와 옷차림">
+        <div class="card-head">
+          <div class="card-ico sky" aria-hidden="true">🌤️</div>
+          <div>
+            <div class="card-title">오늘 날씨 · 옷차림</div>
+            <div class="card-sub" id="weatherTodaySummary">오늘 날씨 정보를 불러오는 중</div>
           </div>
-          <div class="weather" id="weather" title="탭하면 날씨를 새로 고칩니다">
-            <div class="weather-now">
-              <div class="weather-icon" id="wIcon">🌤️</div>
-              <div>
-                <div class="weather-temp" id="wTemp">—<small>°</small></div>
-                <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
-              </div>
+          <div class="weather-place" id="wPlace" aria-live="polite">위치 확인 중…</div>
+        </div>
+        <div class="weather-meta">
+          <div class="weather-current">
+            <div class="weather-current-reading" aria-label="현재 기온">
+              <span class="weather-icon" id="wIconCard" aria-hidden="true">🌤️</span>
+              <span class="weather-temp" id="wTempCard">—<small>°</small></span>
             </div>
-            <div class="weather-meta">
-              <div class="weather-chips" id="wChips"></div>
-              <div class="weather-place" id="wPlace">위치 확인 중…</div>
-            </div>
+            <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
           </div>
+          <div class="weather-chips" id="wChips"></div>
         </div>
         <div class="outfit-suggestions" id="outfitSuggestions" aria-label="오늘 옷차림과 외출 준비" aria-live="polite">
           <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🧥</span><span><b>옷차림</b><small>날씨를 불러오는 중이에요</small></span></div>
           <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">☂️</span><span><b>우산</b><small>강수 정보를 확인하고 있어요</small></span></div>
           <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🌿</span><span><b>공기질</b><small>정보를 확인하고 있어요</small></span></div>
         </div>
+        <div class="weather-week" id="weatherWeek" aria-label="주간 날씨 예보" aria-live="polite"><span class="weather-week-empty">주간 예보를 불러오는 중이에요</span></div>
       </section>
 
       <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
@@ -140,55 +147,55 @@
         </div>
       </section>
 
-      <!-- 오늘 학교 — 학교 이름·반·급식·시간표는 설정에 저장된 데이터로 그립니다 -->
+      <div class="support-grid" id="supportCards">
+      <!-- 오늘 학교 — 저장된 시간표·준비물과 급식만 표시합니다 -->
       <section class="card school" id="cardSchool" aria-labelledby="tSchool">
         <div class="card-head">
           <div class="card-ico amber" aria-hidden="true">🏫</div>
           <div>
             <div class="card-title" id="tSchool">오늘 학교</div>
-            <div class="card-sub" id="schoolSub">🍚 급식 · 📚 시간표</div>
+            <div class="card-sub" id="schoolSub">📚 시간표 · 준비물 · 🍚 급식</div>
           </div>
           <div class="card-tools">
-            <button class="btn icon sm parent-only" id="schoolEditBtn" title="오늘 급식·시간표 적기" aria-label="오늘 급식·시간표 적기">✎</button>
+            <button class="btn icon sm parent-only" id="schoolEditBtn" title="오늘 시간표·준비물과 급식 적기" aria-label="오늘 시간표·준비물과 급식 적기">✎</button>
           </div>
         </div>
         <div class="card-body" id="schoolBody"></div>
       </section>
 
-      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+      <section class="card wish" id="cardWish" aria-labelledby="tWish">
         <div class="card-head">
-          <div class="card-ico coral" aria-hidden="true">⏳</div>
+          <div class="card-ico mint" aria-hidden="true">🎁</div>
           <div>
-            <div class="card-title" id="tTimer">타이머</div>
-            <div class="card-sub">🎵 🎧</div>
+            <div class="card-title" id="tWish">사고 싶은 것</div>
+            <div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
+          </div>
+          <div class="card-tools">
+            <button class="mic-btn wish-mic" id="wishMicBtn" type="button" aria-pressed="false" aria-label="말로 적기" title="말로 적기(음성 입력)">🎤</button>
+            <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
           </div>
         </div>
-        <div class="card-body">
-          <div class="timer-shell">
-            <div class="timer-ring" id="timerRing" style="--p:0">
-              <div class="timer-face">
-                <div class="timer-digits" id="timerDigits">15:00</div>
-                <div class="timer-state" id="timerState">준비</div>
-              </div>
-            </div>
-            <div class="timer-side">
-              <div class="presets" id="presets"></div>
-              <div class="row">
-                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
-                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
-              </div>
-            </div>
+        <div class="voice-note" id="wishVoiceNote" hidden></div>
+        <div class="card-body wish-body merge-pane" id="wishPane">
+          <div class="wish-balance" id="wishBalance"></div>
+          <div class="wish-list" id="wishList"></div>
+        </div>
+        <!-- 장보기·냉장고 화면은 숨기되 기존 공유 기록은 그대로 보존합니다. -->
+        <div class="card-body shop-body merge-pane" id="shopPane" hidden>
+          <div class="row parent-only">
+            <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
+            <button class="mic-btn shop-mic" id="shopMicBtn" type="button" aria-pressed="false" aria-label="말로 쓰기" title="말로 쓰기(음성 입력)">🎤</button>
+            <button class="btn primary" id="shopAddBtn">추가</button>
           </div>
-          <div class="link-row">
-            <div class="links" id="linkList"></div>
-            <button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
-          </div>
+          <div id="shopList"></div>
         </div>
       </section>
 
+      </div>
+
     </div>
 
-    <!-- 오른쪽 열 — 아이 미션 · 사고 싶은 것 -->
+    <!-- 오른쪽 열 — 아이 미션·미션 도장판·타이머 -->
     <div class="col col-right">
 
       <section class="card chores" id="cardChores" aria-labelledby="tChores">
@@ -306,26 +313,9 @@
             <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
             <button class="btn sm ghost parent-only" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">↺</button>
           </div>
-        </div>
-      </section>
-
-      <section class="card wish" id="cardWish" aria-labelledby="tWish">
-        <div class="card-head">
-          <div class="card-ico mint" aria-hidden="true">📚</div>
-          <div>
-            <div class="card-title" id="tWish">도장판 · 사고 싶은 것</div>
-            <div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
-          </div>
-          <div class="card-tools">
-            <button class="mic-btn wish-mic" id="wishMicBtn" type="button" aria-pressed="false" aria-label="말로 적기" title="말로 적기(음성 입력)">🎤</button>
-            <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
-          </div>
-        </div>
-        <div class="voice-note" id="wishVoiceNote" hidden></div>
-        <div class="stamp-wish-grid">
-          <section class="reading-stamp-board stamp-board" aria-labelledby="readingBoardTitle">
+          <section class="reading-stamp-board stamp-board mission-stamp-board" aria-labelledby="readingBoardTitle">
             <div class="stamp-board-title">
-              <h3 id="readingBoardTitle">📚 독서 도장판</h3>
+              <h3 id="readingBoardTitle">🏅 미션 도장판</h3>
               <b id="readingProgress">0/10</b>
             </div>
             <ol class="stamp-cells" id="readingCells" aria-label="미션 성공 도장 10칸">
@@ -335,31 +325,48 @@
               <span id="readingBadges">🏅 완주 0회</span>
               <span id="readingReward">누적 +0P</span>
             </div>
-            <p class="stamp-board-note" id="readingPoints">가족 동기화 연결 후 새 미션 성공이 모든 기기에서 반영돼요</p>
-            <p class="stamp-board-note" id="readingNote">독서 외 미션도 포함 · 10칸 완성 시 +3P</p>
-          </section>
-          <section class="wish-panel" aria-labelledby="wishPanelTitle">
-            <h3 id="wishPanelTitle">🎁 사고 싶은 것</h3>
-            <div class="card-body wish-body merge-pane" id="wishPane">
-              <div class="wish-balance" id="wishBalance"></div>
-              <div class="wish-list" id="wishList"></div>
-            </div>
+            <p class="stamp-board-note" id="readingPoints">가족 동기화 후 성공 미션마다 도장 1개가 찍혀요</p>
+            <p class="stamp-board-note" id="readingNote">기본 미션 포인트와 별도 · 10/10 완성 시에만 +3P</p>
           </section>
         </div>
-        <!-- 장보기·냉장고 화면은 숨기되 기존 공유 기록은 그대로 보존합니다. -->
-        <div class="card-body shop-body merge-pane" id="shopPane" hidden>
-          <div class="row parent-only">
-            <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
-            <button class="mic-btn shop-mic" id="shopMicBtn" type="button" aria-pressed="false" aria-label="말로 쓰기" title="말로 쓰기(음성 입력)">🎤</button>
-            <button class="btn primary" id="shopAddBtn">추가</button>
+      </section>
+
+      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+        <div class="card-head">
+          <div class="card-ico coral" aria-hidden="true">⏳</div>
+          <div>
+            <div class="card-title" id="tTimer">타이머</div>
+            <div class="card-sub">🎵 🎧</div>
           </div>
-          <div id="shopList"></div>
+        </div>
+        <div class="card-body">
+          <div class="timer-shell">
+            <div class="timer-ring" id="timerRing" style="--p:0">
+              <div class="timer-face">
+                <div class="timer-digits" id="timerDigits">15:00</div>
+                <div class="timer-state" id="timerState">준비</div>
+              </div>
+            </div>
+            <div class="timer-side">
+              <div class="presets" id="presets"></div>
+              <div class="row">
+                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
+                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
+              </div>
+            </div>
+          </div>
+          <div class="link-row">
+            <div class="links" id="linkList"></div>
+            <button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
+          </div>
         </div>
       </section>
 
     </div>
 
   </main>
+
+  <div class="app-version" id="appVersion" aria-label="앱 버전">v 3.1.0</div>
 
   <!-- ======================= 탭 화면 : 손글씨 편지 ======================= -->
   <section class="tabview" id="tabLetters" role="tabpanel" aria-label="손글씨 편지" hidden>
@@ -850,7 +857,7 @@
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br />
         <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
         <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
-        대시보드의 <b>📚 독서 도장판</b>은 승인 후 새로 완료한 가족 공유 미션을 모읍니다(독서 외 미션도 포함). 10칸 완성 때 기존 미션 점수와 중복 없이 <b>+3P</b>가 한 번 반영되고, 부모 정산 때 확정됩니다.<br />
+        대시보드의 <b>🏅 미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 한 번 반영되고 부모 정산 때 확정됩니다.<br />
         <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
     </div>
@@ -858,8 +865,8 @@
       <h4>10. 🏠 화면 구성 (탭 · 2열)</h4>
       <p class="settings-note">
         화면 위쪽에 <b>🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방</b> 세 탭이 있습니다. 태블릿을 옆으로 눕히면
-        <b>대시보드</b>는 왼쪽에 <b>가족 일정 · 오늘 학교 · 타이머</b>, 오른쪽에 <b>아이 미션 · 사고 싶은 것</b>이 놓인 <b>2열</b>로 펼쳐져
-        스크롤 없이 한 화면에 다 들어옵니다. 휴대폰처럼 좁은 화면에서는 카드가 위에서 아래로 차례로 쌓입니다.
+        <b>한 줄 상단바</b>에 제목·시계·날짜·현재 기온·기능 버튼이 모이고, 왼쪽에는 <b>오늘 날씨·옷차림 · 월간 달력/위키 · 학교 · 사고 싶은 것 · 타이머</b>, 오른쪽에는 <b>아이 미션 · 미션 도장판</b>이 놓이는 <b>2열</b> 화면으로 펼쳐집니다.
+        좁은 화면에서는 카드가 위에서 아래로 쌓이며, 앱 버전은 오른쪽 아래에 표시됩니다.
       </p>
     </div>
     <div class="settings-section">
@@ -951,7 +958,7 @@
 <script src="alarm-core.js?v=1"></script>
 <script src="fullscreen-guard.js?v=1"></script>
 <script src="mission-rewards.js?v=early-bonus-1"></script>
-<script src="app.js?v=v13-early-mission-bonus"></script>
+<script src="app.js?v=v14-dashboard-mockup"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=9"></script>
 </body>

@@ -1701,11 +1701,25 @@
   function renderWeather() {
     const loc = currentLoc();
     $('#wPlace').textContent = '📍 ' + (W && W.locName ? W.locName : loc.name);
-    if (!W || !W.now) { outfitGuide(); return; }
+    if (!W || !W.now) {
+      $('#wDesc').textContent = '날씨 정보를 기다리고 있어요';
+      if ($('#wTempCard')) $('#wTempCard').innerHTML = '—<small>°</small>';
+      if ($('#weatherTodaySummary')) $('#weatherTodaySummary').textContent = '오늘 날씨와 주간 예보를 불러오는 중';
+      renderWeekForecast();
+      outfitGuide();
+      return;
+    }
     const [icon, desc] = wmo(W.now.weather_code);
     $('#wIcon').textContent = icon;
-    $('#wTemp').innerHTML = Math.round(W.now.temperature_2m) + '<small>°</small>';
+    const currentTemp = Math.round(W.now.temperature_2m);
+    $('#wTemp').innerHTML = currentTemp + '<small>°</small>';
+    if ($('#wIconCard')) $('#wIconCard').textContent = icon;
+    if ($('#wTempCard')) $('#wTempCard').innerHTML = currentTemp + '<small>°</small>';
     $('#wDesc').textContent = desc;
+    if ($('#weatherTodaySummary')) {
+      const feel = W.now.apparent_temperature;
+      $('#weatherTodaySummary').textContent = feel == null ? '오늘 날씨 · 주간 예보' : `체감 ${Math.round(feel)}° · 옷차림 참고`;
+    }
     const d0 = W.daily && W.daily[0];
     const chips = [];
     if (d0) {
@@ -1721,8 +1735,27 @@
     }
     if (W.now.apparent_temperature != null) chips.push(`<span class="wchip">체감 <b>${Math.round(W.now.apparent_temperature)}°</b></span>`);
     $('#wChips').innerHTML = chips.join('');
+    renderWeekForecast();
     outfitGuide();
     if (standbyOn) renderStandby();
+  }
+
+  function renderWeekForecast() {
+    const box = $('#weatherWeek');
+    if (!box) return;
+    const days = W && Array.isArray(W.daily) ? W.daily.slice(0, 7) : [];
+    if (!days.length) {
+      box.innerHTML = '<span class="weather-week-empty">예보를 불러오는 중이에요</span>';
+      return;
+    }
+    box.innerHTML = days.map((d, i) => {
+      const day = new Date(`${d.date}T12:00:00`);
+      const label = i === 0 ? '오늘' : DAYS[day.getDay()];
+      const [icon, desc] = wmo(d.code);
+      const hi = d.max == null ? '—' : `${Math.round(d.max)}°`;
+      const lo = d.min == null ? '—' : `${Math.round(d.min)}°`;
+      return `<span class="weather-week-item" title="${esc(d.date)} · ${esc(desc)} · 최고 ${hi} · 최저 ${lo}"><span class="wf-day">${label}</span><span class="wf-icon" aria-hidden="true">${icon}</span><span class="wf-temp"><b>${hi}</b>/${lo}</span></span>`;
+    }).join('');
   }
 
   /* 🧥 아이 눈높이 한 줄 안내 — 기온·비·미세먼지에 따라 문장이 바뀝니다 */
@@ -2587,6 +2620,7 @@
     const di = (done || offday) ? null : dueInfo(c.due, nowMin);
     const dueMin = minOf(c.due);
     const minutesLeft = dueMin == null || nowMin == null ? 0 : dueMin - nowMin;
+    const overdue = !done && !offday && dueMin != null && nowMin != null && dueMin < nowMin;
     const earlyBonus = Math.max(0, Math.round(+c.earlyBonusEarned || 0));
     const earlyHint = !done && !offday && c.due && minutesLeft >= 5
       ? `<span class="early-chip" data-earlychip data-due="${esc(c.due)}">${minutesLeft >= 10 ? '⚡ 10분+ 전 +2P(총) · 5~9분 전 +1P' : '⚡ 5~9분 전 +1P'}</span>`
@@ -2596,7 +2630,7 @@
       : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i></span>` : '');
     const pts = done ? earnOf(c) : base;
     const dl = daysLabel(c.days);
-    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}" data-act="chore-toggle" data-id="${c.id}">
+    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <div class="chore-main">
               <div class="chore-top">
@@ -3360,7 +3394,7 @@
     if (!c) return;
     const r = await askModal({
       title: '미션 수정',
-      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 마감 시간을 바꾸면 오늘 완료 기록도 새 조기 보너스 기준으로 다시 계산됩니다.',
+      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 마감 시간에 따른 조기 보너스만 적용되며, 예전 미션별 보너스 값은 무시됩니다.',
       fields: [
         { name: 'title', label: '미션', value: c.title },
         { name: 'points', label: '기본 포인트 (P)', type: 'number', value: basePtsOf(c) },
@@ -3505,6 +3539,8 @@
     const bal = balancePts();
     // 아직 안 산 것을 위로, 선물 받은 것은 아래로
     const items = wishItems().slice().sort((a, b) => (a.boughtAt ? 1 : 0) - (b.boughtAt ? 1 : 0));
+    const card = $('#cardWish');
+    if (card) card.classList.toggle('is-empty', items.length === 0);
     const waiting = items.filter((w) => !w.boughtAt);
     const canCount = waiting.filter((w) => w.need > 0 && bal >= w.need).length;
     if ($('#wishBalance')) {
@@ -3541,7 +3577,7 @@
             </div>
           </div>`;
         }).join('')
-      : '<div class="shop-empty" style="padding:12px 4px">갖고 싶은 물건을 <b>＋</b> 로 적어 보세요</div>';
+      : '<div class="shop-empty" style="padding:12px 4px">갖고 싶은 것을 <b>＋</b>로 적어 보세요</div>';
   }
 
   async function addWish() {
@@ -4034,13 +4070,21 @@
     const cls = String(sc.cls || '').trim();
     const today = schoolToday();
     const sub = $('#schoolSub');
-    if (sub) sub.textContent = [name, cls].filter(Boolean).join(' · ') || '급식 · 시간표';
+    if (sub) sub.textContent = [name, cls].filter(Boolean).join(' · ') || '시간표 · 준비물 · 급식';
+    const card = $('#cardSchool');
     if (!name && !today) {
-      box.innerHTML = '<div class="shop-empty">🏫 설정에서 학교를 적고 오늘 급식·시간표를 넣으면 여기에 보여요</div>';
+      if (card) card.classList.add('is-empty');
+      box.innerHTML = '<div class="shop-empty school-empty">학교 설정에서 오늘 시간표·준비물과 급식을 적으면 보여요</div>';
       return;
     }
     const meal = today ? listOf(today.meal) : [];
     const tt = today ? listOf(today.timetable) : [];
+    const hasRecords = meal.length > 0 || tt.length > 0;
+    if (card) card.classList.toggle('is-empty', !hasRecords);
+    if (!hasRecords) {
+      box.innerHTML = '<div class="shop-empty school-empty">오늘 시간표와 급식 정보가 아직 없어요</div>';
+      return;
+    }
     const chips = (arr, empty, extra) => arr.length
       ? arr.map((x) => `<span class="sch-chip ${extra || ''}">${esc(x)}</span>`).join('')
       : `<span class="sch-none">${empty}</span>`;
@@ -4049,7 +4093,7 @@
         <div class="sch-chips">${chips(meal, '오늘 급식이 아직 없어요')}</div>
       </div>
       <div class="sch-row">
-        <span class="sch-tag time">📚 ${esc(cls || '시간표')}</span>
+        <span class="sch-tag time">📚 시간표 · 준비물</span>
         <div class="sch-chips">${chips(tt, '오늘 시간표가 아직 없어요', 'time')}</div>
       </div>`;
   }
@@ -4121,12 +4165,12 @@
     const today = schoolToday() || { meal: '', timetable: '' };
     const r = await askModal({
       title: '오늘 학교',
-      hint: '학교 이름·반은 이 기기에, 급식·시간표는 오늘 날짜 몫으로 저장됩니다.',
+      hint: '학교 이름·반은 이 기기에 저장되고, 오늘 시간표·준비물과 급식은 날짜별로 저장됩니다.',
       fields: [
         { name: 'name', label: '학교 이름', value: S.school.name || '', placeholder: '예: ○○초등학교' },
         { name: 'cls', label: '반', value: S.school.cls || '', placeholder: '예: 2학년 3반' },
-        { name: 'meal', label: '오늘 급식', type: 'textarea', value: today.meal || '', placeholder: '비빔밥, 계란실파국, 닭윙구이, 백김치' },
-        { name: 'timetable', label: '오늘 시간표', type: 'textarea', value: today.timetable || '', placeholder: '국어, 국어, 즐거운생활, 즐거운생활' },
+        { name: 'meal', label: '오늘 급식', type: 'textarea', value: today.meal || '', placeholder: '식단을 쉼표나 줄바꿈으로 적기' },
+        { name: 'timetable', label: '오늘 시간표 · 준비물', type: 'textarea', value: today.timetable || '', placeholder: '수업과 필요한 준비물을 적기' },
       ],
       okText: '저장',
     });
@@ -4143,14 +4187,14 @@
     const isMeal = which === 'meal';
     const cur = isMeal ? (today.meal || '') : (today.timetable || '');
     const r = await askModal({
-      title: isMeal ? '오늘 급식' : '오늘 시간표',
-      hint: isMeal ? '급식 식단을 쉼표나 줄바꿈으로 나눠 적어 주세요.' : '오늘 수업을 순서대로 적어 주세요.',
+      title: isMeal ? '오늘 급식' : '오늘 시간표 · 준비물',
+      hint: isMeal ? '급식 식단을 쉼표나 줄바꿈으로 나눠 적어 주세요.' : '오늘 수업과 필요한 준비물을 쉼표나 줄바꿈으로 적어 주세요.',
       fields: [{
         name: 'v',
-        label: isMeal ? '급식 식단' : '시간표',
+        label: isMeal ? '급식 식단' : '시간표 · 준비물',
         type: 'textarea',
         value: cur,
-        placeholder: isMeal ? '비빔밥, 계란실파국, 닭윙구이, 백김치' : '국어, 국어, 즐거운생활, 즐거운생활',
+        placeholder: isMeal ? '식단을 쉼표나 줄바꿈으로 적기' : '수업과 필요한 준비물을 적기',
       }],
       okText: '저장',
       extraAction: cur ? { label: '지우기', act: 'del' } : null,
@@ -6484,13 +6528,13 @@
     $('#readingBadges').textContent = `🏅 완주 ${completed}회`;
     $('#readingReward').textContent = `누적 +${totalBonus}P`;
     $('#readingPoints').textContent = connected
-      ? `모든 새 미션 성공 ${completed * 10 + progress}회 · 독서 외 미션도 포함`
-      : '가족 동기화에 연결하면 새 미션 성공을 함께 기록해요';
+      ? `모든 미션 성공 ${completed * 10 + progress}회 · 성공 1회마다 도장 1개`
+      : '성공 미션 1회마다 도장 1개 · 가족 동기화 후 진행이 보여요';
     $('#readingNote').textContent = completing
-      ? `🎉 10/10 완주 · +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
+      ? `🎉 10/10 완주 · 기본 미션 포인트와 별도로 +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
       : (connected
-        ? `현재 판 ${completed + 1} · ${progress}/10 · 10칸 완성 시 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
-        : '독서 외 미션도 포함 · 10칸 완성 시 +3P · 가족 동기화 후 진행이 보여요');
+        ? `현재 판 ${completed + 1} · ${progress}/10 · 기본 포인트와 별도 · 10/10 때만 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
+        : '기본 미션 포인트와 별도 · 10/10 완성 시에만 +3P · 가족 동기화 후 진행이 보여요');
     const board = cells.closest('.stamp-board');
     if (board) board.classList.toggle('is-completing', completing);
   }
