@@ -3669,6 +3669,12 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
 
 @media (min-width: 1024px) and (max-height: 900px) {
   .col-left > #cardSchedule { flex: 1 1 150px; min-height: 150px; }
+  /* 1달 그리드는 줄어들 수 있게 하고, 고른 날짜의 일정 영역은 보이도록 공간을 남깁니다. */
+  #cardSchedule .cal-top { flex: 0 0 24px; height: 24px; }
+  #cardSchedule .cal-grid { flex: 1 1 90px; min-height: 90px; grid-auto-rows: minmax(0, 1fr); }
+  #cardSchedule .cal-cell { min-height: 0; padding: 0 1px; }
+  #cardSchedule .cal-num { font-size: 10.5px; line-height: 1; }
+  #cardSchedule .cal-day { flex: 0 0 56px; min-height: 56px; max-height: none; }
   .support-grid { grid-template-rows: minmax(70px, 160px); }
   #cardSchool { max-height: 160px; }
   #cardWish:not(.is-empty) { max-height: 160px; }
