@@ -1758,7 +1758,7 @@
       const [icon, desc] = wmo(d.code);
       const hi = d.max == null ? '—' : `${Math.round(d.max)}°`;
       const lo = d.min == null ? '—' : `${Math.round(d.min)}°`;
-      return `<span class="weather-week-item" title="${esc(d.date)} · ${esc(desc)} · 최고 ${hi} · 최저 ${lo}"><span class="wf-day">${label}</span><span class="wf-icon" aria-hidden="true">${icon}</span><span class="wf-temp"><b>${hi}</b>/${lo}</span></span>`;
+      return `<span class="weather-week-item" title="${esc(d.date)} · ${esc(desc)} · 최고 ${hi} · 최저 ${lo}"><span class="wf-day">${label}</span><span class="wf-icon" aria-hidden="true">${icon}</span><span class="wf-temp"><b>${hi}</b><span class="wf-sep">/</span><span class="wf-lo">${lo}</span></span></span>`;
     }).join('');
   }
 

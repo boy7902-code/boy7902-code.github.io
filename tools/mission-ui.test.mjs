@@ -81,3 +81,7 @@ test('done badge shows how many minutes early a deadline mission was finished', 
   assert.match(app, /const ahead = dueM != null && doneM != null && dueM > doneM/);
   assert.match(app, /완료\$\{ahead \|\| ' · 마감 전 완료'\}/);
 });
+
+test('weekly forecast keeps high and low in separate spans so narrow cards can stack them', () => {
+  assert.match(app, /wf-temp"><b>\$\{hi\}<\/b><span class="wf-sep">\/<\/span><span class="wf-lo">\$\{lo\}<\/span>/);
+});
