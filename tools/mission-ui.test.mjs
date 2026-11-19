@@ -67,3 +67,17 @@ test('base and responsive mission checkbox rules all keep a 44px tap target', ()
   assert.match(css, /\.done-badge\.early/);
   assert.match(css, /\.log-badge\.early/);
 });
+
+test('app version has one source and the overdue dim follows the clock', () => {
+  assert.match(app, /const APP_VERSION = '(\d+\.\d+\.\d+)'/);
+  const v = app.match(/const APP_VERSION = '(\d+\.\d+\.\d+)'/)[1];
+  assert.ok(html.includes('id="appVersion" aria-label="앱 버전">v ' + v + '<'), 'index fallback text matches APP_VERSION');
+  assert.match(app, /version: APP_VERSION,/);
+  assert.match(app, /row\.classList\.toggle\('overdue', di\.cls === 'late'\)/);
+  assert.doesNotMatch(html.slice(html.indexOf('id="weather"'), html.indexOf('</button>', html.indexOf('id="weather"'))), /<div/);
+});
+
+test('done badge shows how many minutes early a deadline mission was finished', () => {
+  assert.match(app, /const ahead = dueM != null && doneM != null && dueM > doneM/);
+  assert.match(app, /완료\$\{ahead \|\| ' · 마감 전 완료'\}/);
+});
