@@ -7,6 +7,10 @@
 (() => {
   'use strict';
 
+  // 앱 버전은 여기 한 곳에서만 정합니다. 화면 표시(#appVersion)와 window.FamilyDashboard.version이 이 값을 읽습니다.
+  const APP_VERSION = '3.1.0';
+  { const vEl = document.getElementById('appVersion'); if (vEl) vEl.textContent = 'v ' + APP_VERSION; }
+
   /* ---------------------------------------------------------------- helpers */
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -3250,6 +3254,9 @@
       if (!di) return;
       el.className = 'due-chip ' + di.cls;
       el.innerHTML = `⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i>`;
+      // 마감이 지나면 줄 전체의 흐림(.overdue)도 시간이 가며 바로 반영합니다(다시 그리기 없이)
+      const row = el.closest('.chore');
+      if (row && !row.classList.contains('done') && !row.classList.contains('offday')) row.classList.toggle('overdue', di.cls === 'late');
     });
     $$('[data-earlychip]').forEach((el) => {
       const dueMin = minOf(el.dataset.due);
@@ -6939,7 +6946,7 @@
 
   window.FamilyDashboard = {
     get state() { return S; },
-    version: '3.1.0',
+    version: APP_VERSION,
     now: () => hhmm(),
     kid: () => ({ id: KID_ID, name: kidLabel() }),
     settings: () => ({
