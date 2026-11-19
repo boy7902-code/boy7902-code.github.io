@@ -5,7 +5,7 @@ import * as authSdk from 'firebase/auth';
 import * as firestoreSdk from 'firebase/firestore';
 import { initializeApp as initializeAdminApp, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { createFamilySync, FAMILY_ROOT } from '../firebase-sync.js';
+import { computeScreenStats, createFamilySync, FAMILY_ROOT } from '../firebase-sync.js';
 
 const PROJECT_ID = 'demo-family-dashboard';
 const AUTH_EMULATOR = '127.0.0.1:9099';
@@ -156,9 +156,49 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(summary.data().settledCount, 2);
     assert.equal(summary.data().byMember.m3, 5);
     assert.equal(summary.data().byMember.m1, 7);
+    assert.equal(summary.data().stampProgress, 2);
+    assert.equal(summary.data().stampBoardsCompleted, 0);
+
+    const stampMissions = Array.from({ length: 8 }, (_, i) => ({
+      id: `emulator-stamp-${i + 1}`,
+      title: `도장 테스트 미션 ${i + 1}`,
+      points: i % 2 ? 3 : 2,
+      due: '',
+      bonus: 0,
+    }));
+    let sevenMissionPoints = 0;
+    for (const missionToLog of stampMissions.slice(0, 7)) {
+      const created = await sync.writeLog(missionToLog, { by: signedInParent.uid, member: 'm3' });
+      assert.equal(created.ok, true, JSON.stringify(created.error || {}));
+      sevenMissionPoints += missionToLog.points;
+    }
+    const nineSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
+    assert.equal(nineSettlement.ok, true, JSON.stringify(nineSettlement));
+    assert.equal(nineSettlement.count, 7);
+    assert.equal(nineSettlement.bonusPoints, 0);
+    const atNine = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
+    assert.equal(atNine.data().stampProgress, 9);
+    assert.equal(atNine.data().stampBoardsCompleted, 0);
+    assert.equal(atNine.data().totalXp, 5 + sevenMissionPoints);
+    assert.equal(atNine.data().byMember.m3, 5 + sevenMissionPoints);
+
+    const tenthLog = await sync.writeLog(stampMissions[7], { by: signedInParent.uid, member: 'm3' });
+    assert.equal(tenthLog.ok, true, JSON.stringify(tenthLog.error || {}));
+    const tenthSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
+    assert.equal(tenthSettlement.ok, true, JSON.stringify(tenthSettlement));
+    assert.equal(tenthSettlement.count, 1);
+    assert.equal(tenthSettlement.bonusPoints, 3);
+    assert.equal(tenthSettlement.boardsCompleted, 1);
+    const atTen = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
+    assert.equal(atTen.data().stampProgress, 0);
+    assert.equal(atTen.data().stampBoardsCompleted, 1);
+    assert.equal(atTen.data().totalXp, 5 + sevenMissionPoints + stampMissions[7].points + 3);
+    assert.equal(atTen.data().byMember.m3, 5 + sevenMissionPoints + stampMissions[7].points + 3);
+    assert.equal(atTen.data().byMember.m1, 7);
+    assert.equal(atTen.data().monthly[logResult.payload.date.slice(0, 7)].total, 12 + sevenMissionPoints + stampMissions[7].points + 3);
 
     const adultLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${adultLogId}`);
-    const beforeRetry = summary.data();
+    const beforeRetry = atTen.data();
     const adultRetry = await sync.writeLog(
       { id: 'emulator-adult-mission', title: '어른 미션', points: 7, due: '', bonus: 0 },
       { by: signedInParent.uid, member: 'm1' },
@@ -175,9 +215,17 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(afterRetrySummary.data().totalXp, beforeRetry.totalXp);
     assert.equal(afterRetrySummary.data().settledCount, beforeRetry.settledCount);
     assert.deepEqual(afterRetrySummary.data().byMember, beforeRetry.byMember);
+    assert.equal(afterRetrySummary.data().stampProgress, 0);
+    assert.equal(afterRetrySummary.data().stampBoardsCompleted, 1);
 
     await clearSignedInUser();
     const { user: childAgain } = await createClaimedUser('child');
+    const sharedSummaryOnChild = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
+    const childStats = computeScreenStats({ summary: sharedSummaryOnChild.data(), logs: [] });
+    assert.equal(childStats.stampProgress, 0);
+    assert.equal(childStats.stampBoardsCompleted, 1);
+    assert.equal(childStats.stampBonusPoints, 3);
+    assert.equal(childStats.totalXp, beforeRetry.totalXp);
     const childDelete = await sync.deleteLog({ ...logResult.payload, settled: true });
     assert.equal(childDelete.ok, false);
     assert.equal(childDelete.error.kind, 'settled');

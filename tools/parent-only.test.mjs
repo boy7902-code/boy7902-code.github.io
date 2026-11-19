@@ -30,18 +30,29 @@ test('item level parent tools carry parent-only while the child check buttons do
   assert.match(app, /data-act="cal-add" data-date="\$\{sel\}"[\s\S]{0,40}parent-only|cal-add parent-only/);
 });
 
-test('the event center hides parent setups but keeps the child participation parts', async () => {
+test('the schedule opens in month view by default', async () => {
   const app = await read('app.js');
+  const html = await read('index.html');
+  assert.match(app, /const SCHED_UI = \{ y: null, m: null, sel: null, tab: 'cal', mode: '1m' \}/);
+  assert.match(app, /setCalMode\('1m'\);/);
+  assert.match(html, /data-calmode="1m" aria-pressed="true"/);
+});
+
+test('the event center hides parent setups while the shared reading board has no manual reset action', async () => {
+  const app = await read('app.js');
+  const html = await read('index.html');
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>①🔥 3일 연속 콤보/);
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>②⚡ 부모님 깜짝 보너스/);
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>③🎂 2배 데이/);
-  assert.match(app, /class="btn sm ghost parent-only" data-act="ev-stamp-reset"/);
   assert.match(app, /class="btn sm ghost parent-only" data-act="ev-gacha-edit"/);
-  // 아이가 직접 여는 비밀 상자·도장·뽑기·상장은 부모 전용이 아닙니다
+  // 아이 참여 영역은 유지하되, 새 공유 도장판에는 수동 적립·초기화 액션이 없습니다.
   assert.match(app, /data-act="ev-secret-open"/);
-  assert.match(app, /data-act="ev-stamp" data-id="\$\{kind\}"/);
   assert.match(app, /data-act="ev-gacha"\$\{tickets > 0 \? '' : ' disabled'\}/);
   assert.match(app, /data-act="ev-mvp"/);
+  assert.doesNotMatch(app, /data-act="ev-stamp(?:-reset)?"/);
+  assert.match(html, /class="reading-stamp-board stamp-board"[^>]*aria-labelledby="readingBoardTitle"/);
+  assert.match(html, /id="readingCells" aria-label="미션 성공 도장 10칸"/);
+  assert.match(html, /id="readingNote">독서 외 미션도 포함 · 10칸 완성 시 \+3P/);
 });
 
 test('the event button is a surprise on the child screen and always there in parent mode', async () => {

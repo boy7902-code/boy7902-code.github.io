@@ -3403,3 +3403,108 @@ html[data-theme="dark"] .alarm-msg.custom { background: rgba(33, 195, 154, .16);
 .alarm-row .ar-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .alarm-row .ar-days { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: var(--text-3); }
 .alarm-row .btn.icon.sm { width: 28px; min-width: 28px; height: 28px; min-height: 28px; font-size: 12px; padding: 0; }
+
+
+/* ---------------- 승인된 태블릿 개편: 시간·날씨, 월간 일정, 공유 독서 도장판 ---------------- */
+#shopPane { display: none !important; }
+.stamp-wish-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+.reading-stamp-board, .wish-panel {
+  min-width: 0; border: 1px solid var(--border); border-radius: 13px;
+  background: var(--surface-2); padding: 10px;
+}
+.reading-stamp-board { display: flex; flex-direction: column; gap: 4px; }
+.reading-stamp-board.is-completing { border-color: #efc25e; box-shadow: 0 0 0 2px rgba(255, 193, 77, .18); }
+.stamp-board-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stamp-board-title h3, .wish-panel h3 { margin: 0; color: var(--text); font-size: 14px; font-weight: 900; }
+.stamp-board-title > b { color: #a86a00; font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.stamp-cells { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; list-style: none; margin: 8px 0; padding: 0; }
+.stamp-cells li {
+  display: grid; place-items: center; min-width: 0; aspect-ratio: 1;
+  border: 1.5px dashed #cbb98d; border-radius: 50%; background: var(--surface-solid);
+  color: #a18d61; font-size: 11px; font-weight: 900; transition: background .18s, transform .18s;
+}
+.stamp-cells li.filled { border-style: solid; border-color: #efc25e; background: #fff1c9; color: #94660b; transform: scale(1.04); }
+html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, .25); color: #ffd479; }
+.stamp-board-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text-2); font-size: 11px; font-weight: 800; }
+.stamp-board-note { margin: 1px 0 0; color: var(--text-3); font-size: 10.5px; font-weight: 700; line-height: 1.35; }
+.wish-panel { display: flex; flex-direction: column; gap: 7px; }
+.wish-panel h3 { font-size: 13px; }
+.wish-panel .wish-body { display: flex; flex-direction: column; min-height: 0; padding: 0; background: none; border: 0; box-shadow: none; }
+.wish-panel .wish-list { min-height: 0; max-height: 240px; overflow-y: auto; }
+
+.weather-overview { min-width: 0; overflow: visible; }
+.overview-head { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 12px; align-items: stretch; }
+.overview-time { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 2px 5px; }
+.overview-eyebrow { color: var(--text-3); font-size: 12px; font-weight: 800; }
+.overview-helper { margin-top: 5px; color: var(--text-3); font-size: 10.5px; font-weight: 700; }
+.weather-overview .clock { display: block; margin: 4px 0 0; padding: 0; text-align: left; }
+.weather-overview .clock-time { font-size: clamp(38px, 4.2vw, 54px); line-height: 1; }
+.weather-overview .clock-date { margin-top: 5px; font-size: 12px; white-space: normal; }
+.weather-overview .weather {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 6px; min-width: 0; width: 100%; padding: 10px 12px; border-radius: 15px;
+}
+.weather-overview .weather-now { gap: 9px; }
+.weather-overview .weather-icon { font-size: 32px; }
+.weather-overview .weather-temp { font-size: 28px; }
+.weather-overview .weather-desc { font-size: 12px; }
+.weather-overview .weather-meta { display: flex; flex-direction: column; width: 100%; gap: 4px; }
+.weather-overview .weather-place { display: block; max-width: 100%; font-size: 10px; }
+.weather-overview .weather-chips { gap: 4px; }
+.weather-overview .wchip { padding: 3px 6px; font-size: 9.5px; }
+.outfit-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+.outfit-item {
+  display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px 8px;
+  border: 1px solid var(--border); border-radius: 11px; background: var(--surface-solid);
+}
+.outfit-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; background: var(--sky-soft); font-size: 17px; }
+.outfit-item > span:last-child { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.outfit-item b { color: var(--text); font-size: 10.5px; font-weight: 900; line-height: 1.2; }
+.outfit-item small { color: var(--text-2); font-size: 9.5px; font-weight: 700; line-height: 1.3; }
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+    gap: 12px; overflow: hidden;
+  }
+  .col { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; }
+  .col-left > #cardOverview { flex: 0 0 auto; }
+  .col-left > #cardSchedule { flex: 1 0 420px; min-height: 420px; }
+  .col-left > #cardSchool { flex: 0 0 96px; min-height: 0; }
+  .col-left > #cardTimer { flex: 0 0 120px; min-height: 0; }
+  .col-right > #cardChores { flex: 1 0 460px; min-height: 460px; }
+  .col-right > #cardWish { flex: 0 0 auto; min-height: 230px; }
+  #cardSchedule > #schedPaneCal { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+  #cardSchedule .cal-grid { flex: 0 0 auto; grid-auto-rows: minmax(30px, auto); }
+  #cardSchedule .cal-cell { min-height: 30px; }
+  .stamp-wish-grid { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: stretch; }
+  .reading-stamp-board, .wish-panel { padding: 10px; }
+  .stamp-board-title h3 { font-size: 13px; }
+  .stamp-cells { gap: 4px; }
+  .stamp-cells li { font-size: 10px; }
+  .stamp-board-meta { font-size: 10.5px; }
+  .stamp-board-note { font-size: 10px; }
+  .wish-panel .wish-list { max-height: 190px; }
+  .card.wish .card-head { margin-bottom: 8px; }
+  #cardChores .chore { padding: 4px 9px; gap: 9px; }
+  #cardChores .chore-title { font-size: 14px; line-height: 1.25; }
+  #cardChores .chore-meta { font-size: 10px; line-height: 1.25; gap: 3px 7px; }
+  #cardChores .chore-check { width: 24px; height: 24px; flex-basis: 24px; font-size: 12px; }
+  #cardChores .chore .pts { font-size: 11px; }
+  #cardChores .days-chip, #cardChores .due-chip, #cardChores .done-badge { font-size: 9.5px; }
+}
+
+@media (max-width: 1023px) {
+  .weather-overview { padding: 12px; }
+  .stamp-wish-grid { grid-template-columns: 1fr; }
+  .wish-panel .wish-list { max-height: 280px; }
+}
+@media (max-width: 600px) {
+  .overview-head { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 8px; }
+  .weather-overview .clock-time { font-size: clamp(31px, 9vw, 40px); }
+  .weather-overview .weather { padding: 8px; }
+  .weather-overview .weather-icon { font-size: 26px; }
+  .weather-overview .weather-temp { font-size: 23px; }
+  .outfit-suggestions { grid-template-columns: 1fr; gap: 5px; }
+  .outfit-item { padding: 6px 8px; }
+}

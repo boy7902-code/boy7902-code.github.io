@@ -20,6 +20,9 @@
 /* ────────────────────────────── 상수 ────────────────────────────── */
 export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
 export const FINAL_P = 200;              // 최종 진화 기준 경험치 (앱과 동일)
+export const STAMP_START_AT = '2026-11-19T08:22:29+09:00';
+export const STAMPS_PER_BOARD = 10;
+export const STAMP_BONUS_POINTS = 3;
 export const FAMILY_ROOT = 'households/main';
 export const SUMMARY_PATH = `${FAMILY_ROOT}/stats/summary`;
 export const PARTNER_PATH = `${FAMILY_ROOT}/child_state/partner`;
@@ -73,6 +76,69 @@ export const isHhmm = (s) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(s || 
 export const isDateStr = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const intOf = (v) => Math.max(0, Math.round(+v || 0));
+
+function timestampMillis(value) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return value;
+  if (value && typeof value.toMillis === 'function') {
+    try { return value.toMillis(); } catch (e) { return NaN; }
+  }
+  if (value && typeof value.toDate === 'function') {
+    try { return value.toDate().getTime(); } catch (e) { return NaN; }
+  }
+  if (value && typeof value.seconds === 'number') return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6);
+  return typeof value === 'string' ? Date.parse(value) : NaN;
+}
+
+/** Pending successful mission logs only; stamps count completions, not their point values. */
+export function advanceStampBoard({ progress = 0, completed = 0, logs = [], startAt = STAMP_START_AT } = {}) {
+  let nextProgress = Math.min(STAMPS_PER_BOARD - 1, intOf(progress));
+  let nextCompleted = intOf(completed);
+  const seen = new Set();
+  const cutoff = Date.parse(startAt);
+  const eligible = (Array.isArray(logs) ? logs : [])
+    .filter((log) => {
+      if (!log || log.settled !== false || log.kind === 'bonus') return false;
+      const createdAt = timestampMillis(log.createdAt);
+      if (!Number.isFinite(createdAt) || createdAt < cutoff) return false;
+      const source = String(log.mid || log.id || '');
+      return !/^(?:bonus|combo|dbl|surprise|secret|stamp)_/i.test(source);
+    })
+    .filter((log) => {
+      const id = String(log.id || `${log.date}_${log.mid}_${log.member || KID_ID}`);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .sort((a, b) => {
+      const left = `${a.date || ''}|${a.at || ''}|${a.id || ''}`;
+      const right = `${b.date || ''}|${b.at || ''}|${b.id || ''}`;
+      return left < right ? -1 : (left > right ? 1 : 0);
+    });
+  const bonusByMonth = {};
+  const bonusByDate = {};
+  let boardsAwarded = 0;
+  eligible.forEach((log) => {
+    nextProgress += 1;
+    if (nextProgress < STAMPS_PER_BOARD) return;
+    nextProgress = 0;
+    nextCompleted += 1;
+    boardsAwarded += 1;
+    const month = monthOf(log.date);
+    const date = String(log.date || '');
+    if (month) bonusByMonth[month] = intOf(bonusByMonth[month]) + STAMP_BONUS_POINTS;
+    if (date) bonusByDate[date] = intOf(bonusByDate[date]) + STAMP_BONUS_POINTS;
+  });
+  return {
+    progress: nextProgress,
+    completed: nextCompleted,
+    boardsAwarded,
+    bonusPoints: boardsAwarded * STAMP_BONUS_POINTS,
+    counted: eligible.length,
+    bonusByMonth,
+    bonusByDate,
+  };
+}
 
 /* ────────────────────────────── 진화 단계 ────────────────────────────── */
 /** 앱(app.js buildLine)과 같은 규칙: 1단계 [0], 2단계 [0,60], 3단계 [0,40,90] + 200(이로치) */
@@ -461,8 +527,9 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
   });
   const today = kstTodayStr(now);
   let todayXp = 0, todayCount = 0;
+  const pendingLogs = logs.filter((l) => l && l.settled === false);
 
-  logs.filter((l) => l && l.settled === false).forEach((l) => {
+  pendingLogs.forEach((l) => {
     const earned = intOf(l.earned);
     const key = l.member || '';
     byMember[key] = intOf(byMember[key]) + earned;
@@ -474,7 +541,24 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
     if (l.date === today) { todayXp += earned; todayCount += 1; }
   });
 
-  const totalXp = intOf(byMember[kidId]) || (intOf(summary.totalXp) + logs.filter((l) => l && l.settled === false && l.member === kidId).reduce((s, l) => s + intOf(l.earned), 0));
+  const stampBoard = advanceStampBoard({
+    progress: summary.stampProgress,
+    completed: summary.stampBoardsCompleted,
+    logs: pendingLogs,
+  });
+  const pendingKidEarned = pendingLogs.filter((l) => l.member === kidId).reduce((sum, l) => sum + intOf(l.earned), 0);
+  const kidMissionXp = Math.max(intOf(byMember[kidId]), intOf(summary.totalXp) + pendingKidEarned);
+  byMember[kidId] = kidMissionXp + stampBoard.bonusPoints;
+  Object.entries(stampBoard.bonusByMonth).forEach(([mk, bonus]) => {
+    const cur = monthly[mk] || { total: 0, count: 0, byMember: {} };
+    const bm = { ...(cur.byMember || {}) };
+    bm[kidId] = intOf(bm[kidId]) + bonus;
+    monthly[mk] = { total: intOf(cur.total) + bonus, count: intOf(cur.count), byMember: bm };
+  });
+  const bonusToday = intOf(stampBoard.bonusByDate[today]);
+  todayXp += bonusToday;
+
+  const totalXp = intOf(byMember[kidId]);
   const spent = pointUses.reduce((s, u) => s + intOf(u.amount), 0);
   const balance = Math.max(0, totalXp - spent);
   const sinceXp = intOf(partner.sinceXp);
@@ -482,17 +566,21 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
   const mins = stageMins(stageCount);
   const stage = stageIndexOf(partnerXp, mins);
 
-  const kidsToday = logs.filter((l) => l && l.date === today && (l.member === kidId || l.member === '') && l.settled === false);
+  const kidsToday = pendingLogs.filter((l) => l.date === today && (l.member === kidId || l.member === ''));
   return {
     totalXp,                         // 아이 누적 포인트 = 경험치
     spent, balance,
     partnerXp, stage, stageMins: mins,
     byMember,
     monthly,
-    todayXp: kidsToday.reduce((s, l) => s + intOf(l.earned), 0),
+    todayXp: kidsToday.reduce((s, l) => s + intOf(l.earned), 0) + bonusToday,
     todayCount: kidsToday.length,
     todayXpAll: todayXp, todayCountAll: todayCount,
-    pendingCount: logs.filter((l) => l && l.settled === false).length,
+    pendingCount: pendingLogs.length,
+    stampProgress: stampBoard.progress,
+    stampBoardsCompleted: stampBoard.completed,
+    stampBonusPending: stampBoard.bonusPoints,
+    stampBonusPoints: stampBoard.completed * STAMP_BONUS_POINTS,
     atFinal: partnerXp >= FINAL_P,
   };
 }
@@ -838,7 +926,7 @@ export function createFamilySync(deps = {}) {
     const id = String(mid || `bonus_${day}`).slice(0, 60);
     const payload = {
       id, date: day, at: when, mid: id, title: String(title || '보너스').slice(0, 60),
-      member: kidId, base: pts, bonus: 0, earned: pts, due: '', goalMet: false,
+      kind: 'bonus', member: kidId, base: pts, bonus: 0, earned: pts, due: '', goalMet: false,
       settled: false, createdAt: sdk.serverTimestamp(), createdBy: session.uid,
     };
     try {
@@ -859,7 +947,7 @@ export function createFamilySync(deps = {}) {
       const pendingSnap = await sdk.getDocs(sdk.query(colRef('logs'), sdk.where('settled', '==', false)));
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
       const refs = pendingSnap.docs.map((d) => d.ref);
-      let total = 0, count = 0, rounds = 0;
+      let total = 0, count = 0, rounds = 0, bonusPoints = 0, boardsCompleted = 0;
       for (let i = 0; i < refs.length; i += chunkSize) {
         if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
         const slice = refs.slice(i, i + chunkSize);
@@ -876,6 +964,11 @@ export function createFamilySync(deps = {}) {
           }
           if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
           if (!targets.length) return { total: 0, count: 0 };
+          const stampBoard = advanceStampBoard({
+            progress: before.stampProgress,
+            completed: before.stampBoardsCompleted,
+            logs: targets.map(({ log }) => log),
+          });
           const monthly = JSON.parse(JSON.stringify(before.monthly || {}));
           const byMember = { ...(before.byMember || {}) };
           let t = 0, kidT = 0, c = 0;
@@ -892,21 +985,32 @@ export function createFamilySync(deps = {}) {
             bm[key] = intOf(bm[key]) + earned;
             monthly[mk] = { total: intOf(cur.total) + earned, count: intOf(cur.count) + 1, byMember: bm };
           });
+          Object.entries(stampBoard.bonusByMonth).forEach(([mk, bonus]) => {
+            const cur = monthly[mk] || { total: 0, count: 0, byMember: {} };
+            const bm = { ...(cur.byMember || {}) };
+            bm[kidId] = intOf(bm[kidId]) + bonus;
+            monthly[mk] = { total: intOf(cur.total) + bonus, count: intOf(cur.count), byMember: bm };
+            byMember[kidId] = intOf(byMember[kidId]) + bonus;
+            kidT += bonus;
+          });
           const payload = {
             totalXp: intOf(before.totalXp) + kidT,
             settledCount: intOf(before.settledCount) + c,
+            stampProgress: stampBoard.progress,
+            stampBoardsCompleted: stampBoard.completed,
             monthly, byMember,
             updatedAt: sdk.serverTimestamp(),
           };
           if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
           if (snapExists(summSnap)) tx.update(summRef, payload); else tx.set(summRef, payload);
-          return { total: t, count: c };
+          return { total: t, count: c, bonusPoints: stampBoard.bonusPoints, boardsCompleted: stampBoard.boardsAwarded };
         });
         if (!sessionIsCurrent(session.generation, 'parent', session.uid) || res.cancelled) return { ok: false, cancelled: true, ...sessionChanged() };
         total += res.total; count += res.count; rounds += 1;
+        bonusPoints += intOf(res.bonusPoints); boardsCompleted += intOf(res.boardsCompleted);
         if (!res.count) break;
       }
-      return { ok: true, total, count, rounds };
+      return { ok: true, total, count, rounds, bonusPoints, boardsCompleted };
     } catch (e) {
       return { ok: false, ...classifyFirestoreError(e) };
     }

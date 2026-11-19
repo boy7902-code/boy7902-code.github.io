@@ -522,7 +522,7 @@
     links: [
       { id: uid(), title: '유튜브 뮤직 — 가족 플레이리스트', url: 'https://music.youtube.com/' },
     ],
-    // 🎪 가족 이벤트 7종 — 부모 설정 + 오늘의 상태 (이 기기 저장 · 부모 기기에서 child_state/event_center 로 동기화)
+    // 🎪 가족 이벤트 설정 — 이 기기에 저장하고 부모 기기에서 child_state/event_center 로 동기화
     event7: event7Default(),
     // 🏫 학교 급식·시간표 — 학교 이름을 코드에 넣지 않고 이 기기 설정값으로만 그립니다
     school: { name: '', cls: '', byDate: {} },
@@ -1480,8 +1480,9 @@
   /* -------------------------------------------------------------------- clock */
   function renderClock() {
     const now = new Date();
-    $('#clockTime').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    $('#clockDate').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${DAYS[now.getDay()]}요일`;
+    const displayNow = new Date(now.getTime() + 5 * 60 * 1000);
+    $('#clockTime').textContent = `${pad(displayNow.getHours())}:${pad(displayNow.getMinutes())}`;
+    $('#clockDate').textContent = `${displayNow.getMonth() + 1}월 ${displayNow.getDate()}일 ${DAYS[displayNow.getDay()]}요일`;
     const h = now.getHours();
     $('#brandSub').textContent = h < 6 ? '늦은 밤이에요 🌙' : h < 11 ? '좋은 아침이에요 ☀️' : h < 17 ? '좋은 오후예요 🌤️' : h < 21 ? '좋은 저녁이에요 🌆' : '편안한 밤 되세요 🌙';
     renderFreeDay(now);
@@ -1698,7 +1699,7 @@
   function renderWeather() {
     const loc = currentLoc();
     $('#wPlace').textContent = '📍 ' + (W && W.locName ? W.locName : loc.name);
-    if (!W || !W.now) return;
+    if (!W || !W.now) { outfitGuide(); return; }
     const [icon, desc] = wmo(W.now.weather_code);
     $('#wIcon').textContent = icon;
     $('#wTemp').innerHTML = Math.round(W.now.temperature_2m) + '<small>°</small>';
@@ -1724,44 +1725,30 @@
 
   /* 🧥 아이 눈높이 한 줄 안내 — 기온·비·미세먼지에 따라 문장이 바뀝니다 */
   function outfitGuide() {
-    const box = $('#outfitGuide');
+    const box = $('#outfitSuggestions');
     if (!box) return;
-    const chips = [];
     const now = W && W.now;
     const d0 = W && W.daily && W.daily[0];
     const feel = now && now.apparent_temperature != null ? now.apparent_temperature
       : (d0 && d0.max != null && d0.min != null ? (d0.max + d0.min) / 2 : null);
-    if (feel != null) {
-      const steps = [
-        [28, '🩳', '반팔'],
-        [23, '👕', '반팔+겉옷'],
-        [20, '👔', '긴팔'],
-        [17, '🧥', '얇은 겉옷'],
-        [12, '🧥', '따뜻한 겉옷'],
-        [5, '🧣', '코트'],
-        [-99, '🧤', '외투+장갑'],
-      ];
-      const pick = steps.find((s) => feel >= s[0]) || steps[steps.length - 1];
-      chips.push({ cls: 'wear', ico: pick[1], text: pick[2] });
-    }
-    const snowCodes = [71, 73, 75, 77, 85, 86];
-    if (d0 && snowCodes.indexOf(d0.code) >= 0) {
-      chips.push({ cls: 'snow', ico: '❄️', text: '눈' });
-    } else if (d0 && d0.pop != null && d0.pop >= 50) {
-      chips.push({ cls: 'rain', ico: '☔', text: `${Math.round(d0.pop)}%` });
-    }
-    if (W && W.air) {
-      const g1 = pm10Grade(W.air.pm10);
-      const g2 = pm25Grade(W.air.pm25);
-      const worse = (g) => g && (g[1] === 'bad' || g[1] === 'worst');
-      if (g1) {
-        chips.push(worse(g1) || worse(g2)
-          ? { cls: 'dust bad', ico: '😷', text: '나쁨' }
-          : { cls: 'dust good', ico: '😊', text: g1[0] });
-      }
-    }
-    box.innerHTML = chips.map((c) => `<span class="og-chip ${c.cls}"><b class="og-ico" aria-hidden="true">${c.ico}</b>${esc(c.text)}</span>`).join('');
-    box.hidden = !chips.length;
+    const steps = [[28, '🩳', '반팔'], [23, '👕', '반팔과 얇은 겉옷'], [20, '👔', '긴팔'], [17, '🧥', '얇은 겉옷'], [12, '🧥', '따뜻한 겉옷'], [5, '🧣', '코트'], [-99, '🧤', '두꺼운 외투와 장갑']];
+    const pick = feel == null ? null : (steps.find((s) => feel >= s[0]) || steps[steps.length - 1]);
+    const wearText = pick ? `${pick[2]}${feel != null ? ` · 체감 ${Math.round(feel)}°` : ''}` : '기온 정보를 확인할 수 없어요';
+    const pop = d0 && d0.pop != null ? Math.round(d0.pop) : null;
+    const snow = !!(d0 && [71, 73, 75, 77, 85, 86].includes(d0.code));
+    const rainText = snow ? '눈 예보가 있어요' : (pop == null ? '강수 정보가 없어요' : (pop >= 50 ? `우산 챙기기 · 강수 ${pop}%` : pop >= 20 ? `우산 여부 확인 · 강수 ${pop}%` : `비 걱정 적어요 · 강수 ${pop}%`));
+    const g1 = W && W.air ? pm10Grade(W.air.pm10) : null;
+    const g2 = W && W.air ? pm25Grade(W.air.pm25) : null;
+    const airText = g1 || g2
+      ? `미세먼지 ${g1 ? g1[0] : '정보 없음'} · 초미세 ${g2 ? g2[0] : '정보 없음'}`
+      : '공기질 정보를 확인할 수 없어요';
+    const badAir = [g1, g2].some((g) => g && (g[1] === 'bad' || g[1] === 'worst'));
+    const items = [
+      { icon: pick ? pick[1] : '🧥', title: '옷차림', text: wearText },
+      { icon: snow ? '❄️' : (pop != null && pop >= 20 ? '☂️' : '🌤️'), title: '우산·날씨', text: rainText },
+      { icon: badAir ? '😷' : '🌿', title: '공기질', text: airText },
+    ];
+    box.innerHTML = items.map((item) => `<div class="outfit-item"><span class="outfit-icon" aria-hidden="true">${item.icon}</span><span><b>${item.title}</b><small>${esc(item.text)}</small></span></div>`).join('');
   }
 
   function requestGeo() {
@@ -1807,7 +1794,7 @@
   }
 
   /* ---- 한 달 달력 상태 (이 기기에서만 유지) ---- */
-  const SCHED_UI = { y: null, m: null, sel: null, tab: 'cal', mode: '2w' };
+  const SCHED_UI = { y: null, m: null, sel: null, tab: 'cal', mode: '1m' };
   function schedEnsure() {
     if (SCHED_UI.sel) return;
     const t = new Date();
@@ -1887,7 +1874,7 @@
     schedShowMonth(y, ((m % 12) + 12) % 12);
   }
 
-  /* [2주] ↔ [1달] — 기본은 2주(이번 주 일~다음 주 토, 14칸) */
+  /* [2주] ↔ [1달] — 기본은 한 달 전체, 2주 보기에서는 이번 주 일~다음 주 토 */
   function setCalMode(mode) {
     schedEnsure();
     SCHED_UI.mode = mode === '1m' ? '1m' : '2w';
@@ -1914,7 +1901,7 @@
         : '📅 오늘 없음';
     }
 
-    // ① 달력 그리드 — 기본 2주(이번 주 + 다음 주) · [2주]/[1달] 전환
+    // ① 달력 그리드 — 기본 한 달 전체 · [2주]/[1달] 전환
     const two = SCHED_UI.mode !== '1m';
     const selD = new Date(sel + 'T00:00:00');
     const days = [];
@@ -2769,6 +2756,7 @@
     if (!stars) row = '<span style="font-size:11.5px;font-weight:700;color:var(--text-3)">미션을 끝내면 10P마다 ⭐ 하나씩 쌓여요</span>';
     $('#stickerRow').innerHTML = row;
 
+    renderStampBoards();
     renderDex();
     renderPointUses();
     renderWish();
@@ -4721,26 +4709,22 @@
   }
 
   /* ==========================================================================
-     🎪 가족 이벤트 7종 (2026-11-18 추가)
+     🎪 가족 이벤트 (2026-11-18 추가)
        ① 3일 연속 콤보 보너스      ② 부모님 깜짝 보너스 · 주말 특별 미션
        ③ 생일·명절 2배 데이        ④ 오늘의 비밀 미션 상자
-       ⑤ 야구·독서 10회 도장판     ⑥ 월말 MVP 상장        ⑦ 50P마다 가족 쿠폰 뽑기
+       ⑤ 월말 MVP 상장             ⑥ 50P마다 가족 쿠폰 뽑기
 
      저장 위치(규칙 확인 완료 — firestore.rules 수정 없음)
        · 이 기기: localStorage (S.event7)
        · 가족 공유: households/main/child_state/event_center
          → 기존 규칙 `match /households/{hh}/child_state/{docId}` : 가족 읽기 · 부모 쓰기
-       · 보너스 포인트: logs 문서(부모 create 는 기존 규칙에서 모양 검사 없음)로 남겨
-         정산(settleUnsettled) 때 stats/summary 에 함께 합산됩니다.
+       · 기존 이벤트 보너스는 logs 문서에 남겨 정산(settleUnsettled) 때 합산합니다.
+       · 공유 도장판의 +3P 는 stats/summary 의 진행 필드와 정산 트랜잭션에서 한 번 확정합니다.
      ========================================================================== */
   const SECRET_POOL = [
     '가족에게 안마 5분 ❤️', '고마운 사람에게 쪽지 한 장 ✍️', '책 10분 소리 내어 읽기 📚',
     '장난감 정리 5분 🧺', '물 한 컵 마시고 스트레칭 💧', '오늘 하루 칭찬 3번 듣기 🌟',
     '양말 정리 돕기 🧦', '식탁 닦기 한 번 🍽️',
-  ];
-  const STAMP_KINDS = [
-    { key: 'baseball', label: '야구', ico: '⚾' },
-    { key: 'reading', label: '독서', ico: '📚' },
   ];
 
   function event7Default() {
@@ -4926,7 +4910,7 @@
     renderEventBadge();
   }
 
-  /* ---- ⑦ 뽑기 ---- */
+  /* ---- ⑥ 뽑기 ---- */
   const gachaStep = () => clamp(Math.round(+((EV().gacha || {}).step || 50)), 10, 500);
   function gachaTickets() {
     const draws = ((EV().gacha || {}).draws || []).length;
@@ -4946,10 +4930,7 @@
     return (s.date === todayStr() && String(s.title || '').trim()) ? s : null;
   }
 
-  /* ---- ⑤ 도장판 ---- */
-  const stampInfo = (kind) => EV().stamps[kind] || { n: 0, done: 0 };
-
-  /* ---- ⑥ 월말 MVP 집계 ---- */
+  /* ---- ⑤ 월말 MVP 집계 ---- */
   function mvpStats(y, m) {
     const pre = `${y}-${pad(m + 1)}`;
     const logs = (S.logs || []).filter((l) => l && isDateStr(l.date) && l.date.slice(0, 7) === pre && (!l.member || l.member === KID_ID));
@@ -5084,32 +5065,6 @@
       if (got) toast(`🎁 비밀 미션 성공! +${got}P`, 'mint', 3000);
       return;
     }
-    if (act === 'ev-stamp') {
-      const kind = id;
-      const b = stampInfo(kind);
-      const meta = STAMP_KINDS.find((k) => k.key === kind) || STAMP_KINDS[0];
-      b.n = clamp(b.n + 1, 0, 10);
-      if (b.n >= 10) {
-        b.n = 0; b.done = (b.done || 0) + 1;
-        const got = awardBonus(5, `${meta.ico} ${meta.label} 10칸 달성!`, `stamp_${kind}_${todayStr()}_${b.done}`);
-        confetti(140); beep('up');
-        save(); renderEventCenter(); renderMissions();
-        toast(`${meta.ico} ${meta.label} 도장판 완성! ${got ? `+${got}P` : ''}`, 'mint', 3200);
-        return;
-      }
-      save(); renderEventCenter(); renderMissions();
-      toast(`${meta.ico} ${meta.label} ${b.n}/10`, 'mint', 1400);
-      return;
-    }
-    if (act === 'ev-stamp-reset') {
-      await asParent('도장판은 보호자만 새로 시작할 수 있어요.', () => {
-        const b = stampInfo(id);
-        b.n = 0;
-        save(); renderEventCenter(); renderMissions();
-        toast('도장판을 새로 시작해요', '', 2000);
-      });
-      return;
-    }
     if (act === 'ev-gacha') {
       const tickets = gachaTickets();
       if (tickets <= 0) { toast(`${gachaStep()}P마다 뽑을 수 있어요`, '', 2400); return; }
@@ -5155,21 +5110,6 @@
   }
 
   /* ---- 🎪 이벤트 센터 화면 ---- */
-  function stampBoardHtml(kind) {
-    const meta = STAMP_KINDS.find((k) => k.key === kind) || STAMP_KINDS[0];
-    const b = stampInfo(kind);
-    let cells = '';
-    for (let i = 0; i < 10; i++) cells += `<i class="stamp-cell${i < b.n ? ' on' : ''}">${i < b.n ? '★' : i + 1}</i>`;
-    return `<div class="stamp-board" data-kind="${kind}">
-      <div class="sb-head"><span class="sb-ico">${meta.ico}</span><b>${meta.label} 10회</b><span class="sb-done">🏅 ${b.done || 0}판</span></div>
-      <div class="stamp-cells">${cells}</div>
-      <div class="sb-actions">
-        <button type="button" class="btn sm primary" data-act="ev-stamp" data-id="${kind}">＋ 한 칸</button>
-        <button type="button" class="btn sm ghost parent-only" data-act="ev-stamp-reset" data-id="${kind}" title="새 도장판">↺</button>
-      </div>
-    </div>`;
-  }
-
   function renderEventCenter() {
     const box = $('#eventBody');
     if (!box) return;
@@ -5212,8 +5152,6 @@
         <span class="ev-chip${dd.on ? ' hot' : ''}">${dd.on ? '🎂' : '🎈'} ${dd.on ? '2배 데이!' : '보통 날'}</span>
         <span class="ev-chip${comboOn && streak ? ' hot' : ''}">🔥 콤보 ${streak ? streak : 0}</span>
         <span class="ev-chip${tickets > 0 ? ' hot' : ''}">🎰 ${tickets}장</span>
-        <span class="ev-chip">⚾ ${stampInfo('baseball').n}/10</span>
-        <span class="ev-chip">📚 ${stampInfo('reading').n}/10</span>
       </div>
 
       <section class="ev-sec parent-only">
@@ -5245,17 +5183,12 @@
       </section>
 
       <section class="ev-sec">
-        <h4>⑤⚾📚 10회 도장판 <span class="ev-note">10칸 채우면 +5P</span></h4>
-        <div class="ev-boards">${stampBoardHtml('baseball')}${stampBoardHtml('reading')}</div>
-      </section>
-
-      <section class="ev-sec">
-        <h4>⑥🏆 이번 달 상장</h4>
+        <h4>⑤🏆 이번 달 상장</h4>
         <div class="ev-row"><button type="button" class="btn sm primary" data-act="ev-mvp">🏆 상장 보기</button></div>
       </section>
 
       <section class="ev-sec">
-        <h4>⑦🎰 가족 쿠폰 뽑기 <span class="ev-note">${gachaStep()}P마다 1장</span></h4>
+        <h4>⑥🎰 가족 쿠폰 뽑기 <span class="ev-note">${gachaStep()}P마다 1장</span></h4>
         <div class="ev-gacha">
           <div class="gacha-wheel" id="gachaWheel" aria-hidden="true"><span>🎁</span></div>
           <div class="gacha-side">
@@ -5682,8 +5615,8 @@
       const act = t.dataset.act;
       const id = t.dataset.id;
       if (act === 'open-event' || act === 'open-log' || act === 'open-use'
-        || ['ev-secret-random', 'ev-secret-custom', 'ev-secret-open', 'ev-secret-done', 'ev-stamp',
-          'ev-stamp-reset', 'ev-gacha', 'ev-gacha-edit', 'ev-dbl-add', 'ev-dbl-del', 'ev-combo-toggle',
+        || ['ev-secret-random', 'ev-secret-custom', 'ev-secret-open', 'ev-secret-done',
+          'ev-gacha', 'ev-gacha-edit', 'ev-dbl-add', 'ev-dbl-del', 'ev-combo-toggle',
           'ev-surprise', 'ev-weekend', 'ev-mvp'].indexOf(act) >= 0) {
         onEventAct(act, id);
         return;
@@ -5898,9 +5831,9 @@
   if ($('#standbyBtn')) $('#standbyBtn').addEventListener('click', enterStandby);
   if ($('#standbyExit')) $('#standbyExit').addEventListener('click', exitStandby);
 
-  // 📅 달력 범위 — 기본 2주, [1달]을 누르면 한 달 전체
+  // 📅 달력 범위 — 기본 1달, [2주]를 누르면 이번 주와 다음 주
   $$('#calMode .cmb').forEach((b) => b.addEventListener('click', () => setCalMode(b.dataset.calmode)));
-  setCalMode('2w');
+  setCalMode('1m');
 
   // 🕒 기록 창 · 🎪 이벤트 창 · 🏆 상장 창
   ['#listClose', '#listCloseBtn'].forEach((sel) => { const el = $(sel); if (el) el.addEventListener('click', closeListModal); });
@@ -6280,7 +6213,7 @@
     blocked: false, busy: false, settling: false, timer: null, snap: null,
     parentPinReady: false,
     readyData: false, received: new Set(), requiredData: new Set(),
-    summary: null, partner: {}, monthLogs: [], pendingLogs: [],
+    summary: null, partner: {}, monthLogs: [], pendingLogs: [], lastStats: null,
     notedDenied: '', pill: null, gate: null, card: null,
     schoolSeeded: false,
     alarmsSeeded: false,
@@ -6323,10 +6256,12 @@
     FB.busy = false; FB.settling = false; FB.snap = null;
     FB.parentPinReady = false;
     FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
-    FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = [];
+    FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
+    stampCompletedSeen = null; stampCompletingUntil = 0;
     FB.deleted.clear();
     window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
     renderParentBtn();
+    renderStampBoards();
     if (FB.gate) fbGate(false);
     return FB.session;
   }
@@ -6402,7 +6337,7 @@
     try {
       const r = await FB.sync.settleUnsettled({ by: FB.uid });
       if (session !== FB.session) return;
-      if (r && r.ok) toast(`✅ ${r.count}건 정산 완료 · +${r.total}P 확정`, 'mint', 3600);
+      if (r && r.ok) toast(`✅ ${r.count}건 정산 완료 · 미션 +${r.total}P${r.bonusPoints ? ` · 도장판 +${r.bonusPoints}P` : ''}`, 'mint', 3600);
       else toast('정산하지 못했어요 — ' + ((r && r.message) || '잠시 뒤 다시 시도해 주세요.'), 'coral', 4600);
     } catch (e) {
       if (session !== FB.session) return;
@@ -6507,6 +6442,46 @@
     if (key === 'members') { if (items.length) S.members = items; return; }
     if (['events', 'wiki', 'links', 'pointUses', 'wishlist', 'shopping', 'letters'].includes(key)) S[key] = items;
   }
+  let stampCompletedSeen = null;
+  let stampCompletingUntil = 0;
+  function renderStampBoards() {
+    const cells = $('#readingCells');
+    if (!cells) return;
+    const stats = FB.on ? FB.lastStats : null;
+    const connected = !!stats;
+    const progress = connected ? clamp(Math.round(+stats.stampProgress || 0), 0, 9) : 0;
+    const completed = connected ? Math.max(0, Math.round(+stats.stampBoardsCompleted || 0)) : 0;
+    const pendingBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPending || 0)) : 0;
+    const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
+    if (connected && stampCompletedSeen == null) stampCompletedSeen = completed;
+    else if (connected && completed > stampCompletedSeen) {
+      const newBoards = completed - stampCompletedSeen;
+      stampCompletedSeen = completed;
+      stampCompletingUntil = Date.now() + 1800;
+      confetti(28);
+      toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600);
+      setTimeout(() => { stampCompletingUntil = 0; renderStampBoards(); }, 1850);
+    }
+    const completing = Date.now() < stampCompletingUntil;
+    const visibleCount = completing ? 10 : progress;
+    Array.from(cells.children).forEach((cell, i) => {
+      cell.classList.toggle('filled', i < visibleCount);
+      cell.title = i < visibleCount ? '미션 성공 도장' : '아직 채우지 않음';
+    });
+    $('#readingProgress').textContent = `${visibleCount}/10`;
+    $('#readingBadges').textContent = `🏅 완주 ${completed}회`;
+    $('#readingReward').textContent = `누적 +${totalBonus}P`;
+    $('#readingPoints').textContent = connected
+      ? `모든 새 미션 성공 ${completed * 10 + progress}회 · 독서 외 미션도 포함`
+      : '가족 동기화에 연결하면 새 미션 성공을 함께 기록해요';
+    $('#readingNote').textContent = completing
+      ? `🎉 10/10 완주 · +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
+      : (connected
+        ? `현재 판 ${completed + 1} · ${progress}/10 · 10칸 완성 시 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
+        : '독서 외 미션도 포함 · 10칸 완성 시 +3P · 가족 동기화 후 진행이 보여요');
+    const board = cells.closest('.stamp-board');
+    if (board) board.classList.toggle('is-completing', completing);
+  }
   function fbRecalc() {
     if (!FB.on || !FB.core) return;
     const logs = fbMergeLogs();
@@ -6518,6 +6493,7 @@
       partner: FB.partner || {},
       stageCount: (S.pokemon && stagesOf().length) || 4,
     });
+    FB.lastStats = stats;
     // 모든 구성원의 오늘 완료 표시는 로그에서 복원합니다. 미션 문서에는 완료 상태를 저장하지 않습니다.
     const t = todayStr();
     FB.core.reconcileMissionCompletions(S.missions || [], logs, t);

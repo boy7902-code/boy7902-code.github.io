@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFamilySync, reconcileMissionCompletions, schoolDocOf, customAlarmDoc, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso } from '../firebase-sync.js';
+import { advanceStampBoard, computeScreenStats, createFamilySync, reconcileMissionCompletions, schoolDocOf, customAlarmDoc, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso, STAMP_START_AT } from '../firebase-sync.js';
 
 function fakeSdk() {
   const listeners = [];
@@ -282,6 +282,7 @@ test('bonus points are written as a parent-created log document that settlement 
   assert.equal(writes[0].path, 'households/main/logs/2026-11-18_combo_m-1_2026-11-18_m3');
   assert.equal(writes[0].data.member, 'm3');
   assert.equal(writes[0].data.earned, 3);
+  assert.equal(writes[0].data.kind, 'bonus');
   assert.equal(writes[0].data.settled, false);
   assert.equal(writes[0].data.due, '');
   assert.equal(res.id, '2026-11-18_combo_m-1_2026-11-18_m3');
@@ -379,6 +380,95 @@ test('school document is written only by a parent session', async () => {
   assert.equal(childFake.writes.length, 0, 'child device never writes the school document');
 });
 
+test('shared mission logs add one stamp each; 9/10 pays nothing and 10/10 awards +3P once', () => {
+  const cutoff = Date.parse(STAMP_START_AT);
+  const makeLog = (i, overrides = {}) => ({
+    id: `stamp-mission-${i + 1}`,
+    mid: `stamp-mission-${i + 1}`,
+    date: '2026-11-19',
+    at: `08:${String(23 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+    member: i % 2 ? 'm1' : 'm3',
+    kind: 'mission',
+    earned: i % 2 ? 3 : 2,
+    settled: false,
+    createdAt: new Date(cutoff + (i + 1) * 1000),
+    ...overrides,
+  });
+  const logs = Array.from({ length: 10 }, (_, i) => makeLog(i));
+
+  const nine = advanceStampBoard({ progress: 0, completed: 0, logs: logs.slice(0, 9) });
+  assert.equal(nine.progress, 9);
+  assert.equal(nine.completed, 0);
+  assert.equal(nine.bonusPoints, 0);
+
+  const ten = advanceStampBoard({ progress: nine.progress, completed: nine.completed, logs: logs.slice(9) });
+  assert.equal(ten.progress, 0);
+  assert.equal(ten.completed, 1);
+  assert.equal(ten.boardsAwarded, 1);
+  assert.equal(ten.bonusPoints, 3);
+  assert.equal(nine.counted + ten.counted, 10);
+  assert.equal(ten.bonusByMonth['2026-11'], 3);
+  assert.equal(ten.bonusByDate['2026-11-19'], 3);
+
+  const replay = advanceStampBoard({ progress: 0, completed: ten.completed, logs: logs.map((log) => ({ ...log, settled: true })) });
+  assert.equal(replay.completed, 1);
+  assert.equal(replay.bonusPoints, 0, 'settled logs cannot award the board bonus again');
+
+  const excluded = advanceStampBoard({ logs: [
+    makeLog(20, { id: 'pre-cutoff', mid: 'mission-pre-cutoff', createdAt: new Date(cutoff - 1) }),
+    makeLog(21, { id: 'no-created-at', mid: 'mission-no-created-at', createdAt: undefined }),
+    makeLog(22, { id: 'legacy-bonus', mid: 'combo-old', kind: 'bonus' }),
+    makeLog(23, { id: 'manual-stamp', mid: 'stamp_reading_legacy' }),
+  ] });
+  assert.equal(excluded.counted, 0, 'old, timestamp-less, and non-mission bonus logs are never retroactively stamped');
+});
+
+test('shared summary and pending logs calculate the same +3P on both devices without double-counting after settlement', () => {
+  const now = new Date('2026-11-19T09:30:00+09:00');
+  const summary = {
+    totalXp: 20,
+    byMember: { m3: 20 },
+    settledCount: 9,
+    stampProgress: 9,
+    stampBoardsCompleted: 0,
+    monthly: { '2026-11': { total: 20, count: 9, byMember: { m3: 20 } } },
+  };
+  const tenthLog = {
+    id: 'shared-household-mission', mid: 'shared-household-mission', date: '2026-11-19', at: '09:00',
+    member: 'm1', kind: 'mission', earned: 2, settled: false,
+    createdAt: new Date(Date.parse(STAMP_START_AT) + 60_000),
+  };
+  const deviceA = computeScreenStats({ summary, logs: [tenthLog], now });
+  const deviceB = computeScreenStats({ summary, logs: [tenthLog], now });
+  assert.deepEqual(deviceB, deviceA, 'every device derives the same board from the shared summary and log');
+  const legacySummaryDevice = computeScreenStats({ summary: { ...summary, byMember: { m1: 0 } }, logs: [tenthLog], now });
+  assert.equal(legacySummaryDevice.totalXp, 23, 'legacy totalXp is preserved even if byMember.m3 is absent');
+  assert.equal(legacySummaryDevice.byMember.m3, 23);
+  assert.equal(deviceA.stampProgress, 0);
+  assert.equal(deviceA.stampBoardsCompleted, 1);
+  assert.equal(deviceA.stampBonusPending, 3);
+  assert.equal(deviceA.stampBonusPoints, 3);
+  assert.equal(deviceA.totalXp, 23, 'the adult mission contributes to the board; only its own 2P goes to the adult');
+  assert.equal(deviceA.byMember.m1, 2);
+  assert.equal(deviceA.byMember.m3, 23);
+  assert.equal(deviceA.monthly['2026-11'].total, 25);
+  assert.equal(deviceA.monthly['2026-11'].count, 10);
+
+  const settledSummary = {
+    ...summary,
+    totalXp: deviceA.totalXp,
+    byMember: deviceA.byMember,
+    stampProgress: deviceA.stampProgress,
+    stampBoardsCompleted: deviceA.stampBoardsCompleted,
+    monthly: deviceA.monthly,
+  };
+  const afterSettlement = computeScreenStats({ summary: settledSummary, logs: [{ ...tenthLog, settled: true }], now });
+  assert.equal(afterSettlement.totalXp, deviceA.totalXp);
+  assert.equal(afterSettlement.monthly['2026-11'].total, deviceA.monthly['2026-11'].total);
+  assert.equal(afterSettlement.stampBonusPending, 0);
+  assert.equal(afterSettlement.stampBonusPoints, 3);
+});
+
 test('google calendar events become read-only all-day or KST timed events', () => {
   const timed = gcalEventToApp({ id: 'a', summary: '가족 야구', start: { dateTime: '2026-11-21T03:00:00Z' }, end: { dateTime: '2026-11-21T05:00:00Z' } }, 'family-calendar@example.com');
   assert.equal(timed.date, '2026-11-21');          // UTC 03:00 = KST 12:00
@@ -419,4 +509,3 @@ test('google calendar list and query window are prepared without hard-coded ids'
   assert.equal(gcalBoundaryIso('2026-11-18'), '2026-11-18T00:00:00+09:00');
   assert.equal(gcalBoundaryIso('2026-11-18', true), '2026-11-18T23:59:59+09:00');
 });
-

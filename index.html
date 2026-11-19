@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 날씨·일정·포켓몬 미션 포인트·목표 시간·포인트 사용·도감·편지함·장보기·위키를 한 화면에." />
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 시간·날씨·가족 일정·포켓몬 미션 포인트·독서 도장판·위시리스트·손글씨 편지." />
 <meta name="theme-color" content="#f4f7ff" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=53" />
+<link rel="stylesheet" href="style.css?v=54-shared-stamps" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 </head>
@@ -28,28 +28,6 @@
         <div class="brand-sub" id="brandSub">오늘도 좋은 하루</div>
       </div>
     </div>
-
-    <div class="clock">
-      <div class="clock-time" id="clockTime">--:--</div>
-      <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
-    </div>
-
-    <div class="weather" id="weather" title="탭하면 날씨를 새로 고칩니다">
-      <div class="weather-now">
-        <div class="weather-icon" id="wIcon">🌤️</div>
-        <div>
-          <div class="weather-temp" id="wTemp">—<small>°</small></div>
-          <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
-        </div>
-      </div>
-      <div class="weather-meta">
-        <div class="weather-chips" id="wChips"></div>
-        <div class="weather-place" id="wPlace">위치 확인 중…</div>
-      </div>
-    </div>
-
-    <!-- 아이 눈높이 한 줄 안내 — 기온·비·미세먼지에 따라 자동으로 바뀝니다 -->
-    <div class="outfit-guide" id="outfitGuide" hidden aria-live="polite"></div>
 
     <div class="top-actions">
       <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
@@ -82,6 +60,37 @@
     <!-- 왼쪽 열 — 가족 일정 · 오늘 학교 · 타이머 -->
     <div class="col col-left">
 
+      <section class="card weather-overview" id="cardOverview" aria-label="오늘의 시간·날씨·옷차림">
+        <div class="overview-head">
+          <div class="overview-time">
+            <div class="overview-eyebrow">오늘의 시간</div>
+            <div class="clock">
+              <div class="clock-time" id="clockTime">--:--</div>
+              <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
+            </div>
+            <div class="overview-helper">가족의 하루와 외출 준비를 한눈에</div>
+          </div>
+          <div class="weather" id="weather" title="탭하면 날씨를 새로 고칩니다">
+            <div class="weather-now">
+              <div class="weather-icon" id="wIcon">🌤️</div>
+              <div>
+                <div class="weather-temp" id="wTemp">—<small>°</small></div>
+                <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
+              </div>
+            </div>
+            <div class="weather-meta">
+              <div class="weather-chips" id="wChips"></div>
+              <div class="weather-place" id="wPlace">위치 확인 중…</div>
+            </div>
+          </div>
+        </div>
+        <div class="outfit-suggestions" id="outfitSuggestions" aria-label="오늘 옷차림과 외출 준비" aria-live="polite">
+          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🧥</span><span><b>옷차림</b><small>날씨를 불러오는 중이에요</small></span></div>
+          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">☂️</span><span><b>우산</b><small>강수 정보를 확인하고 있어요</small></span></div>
+          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🌿</span><span><b>공기질</b><small>정보를 확인하고 있어요</small></span></div>
+        </div>
+      </section>
+
       <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
         <div class="card-head">
           <div class="card-ico sky" aria-hidden="true">📅</div>
@@ -112,8 +121,8 @@
             <button class="btn icon sm ghost cal-nav" id="calNext" title="다음" aria-label="다음 범위">›</button>
             <!-- 2주(기본) ↔ 1달 전환 — 2주는 이번 주 일~토 + 다음 주 일~토 -->
             <div class="cal-mode" id="calMode" role="group" aria-label="달력 범위">
-              <button type="button" class="cmb on" data-calmode="2w" aria-pressed="true" title="2주 보기">2주</button>
-              <button type="button" class="cmb" data-calmode="1m" aria-pressed="false" title="한 달 보기">1달</button>
+              <button type="button" class="cmb" data-calmode="2w" aria-pressed="false" title="2주 보기">2주</button>
+              <button type="button" class="cmb on" data-calmode="1m" aria-pressed="true" title="한 달 보기">1달</button>
             </div>
             <button class="btn sm ghost cal-today-btn" id="calToday" title="오늘로 돌아가기">오늘</button>
           </div>
@@ -302,9 +311,9 @@
 
       <section class="card wish" id="cardWish" aria-labelledby="tWish">
         <div class="card-head">
-          <div class="card-ico pink" aria-hidden="true">🎁</div>
+          <div class="card-ico mint" aria-hidden="true">📚</div>
           <div>
-            <div class="card-title" id="tWish">사고 싶은 것 <span class="ttl-badge" id="wishBadge">🛒 3</span></div>
+            <div class="card-title" id="tWish">도장판 · 사고 싶은 것</div>
             <div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
           </div>
           <div class="card-tools">
@@ -312,16 +321,32 @@
             <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
           </div>
         </div>
-        <div class="merge-tabs wish-tabs" role="tablist" aria-label="사고 싶은 것 · 장보기 · 냉장고">
-          <button type="button" role="tab" data-shoptab="wish" class="on" aria-selected="true" title="사고 싶은 것" aria-label="사고 싶은 것"><span class="tab-ico" aria-hidden="true">🎁</span></button>
-          <button type="button" role="tab" data-shoptab="buy" aria-selected="false" title="장보기" aria-label="장보기"><span class="tab-ico" aria-hidden="true">🛒</span></button>
-          <button type="button" role="tab" data-shoptab="fridge" aria-selected="false" title="냉장고" aria-label="냉장고"><span class="tab-ico" aria-hidden="true">🧊</span></button>
-        </div>
         <div class="voice-note" id="wishVoiceNote" hidden></div>
-        <div class="card-body wish-body merge-pane" id="wishPane">
-          <div class="wish-balance" id="wishBalance"></div>
-          <div class="wish-list" id="wishList"></div>
+        <div class="stamp-wish-grid">
+          <section class="reading-stamp-board stamp-board" aria-labelledby="readingBoardTitle">
+            <div class="stamp-board-title">
+              <h3 id="readingBoardTitle">📚 독서 도장판</h3>
+              <b id="readingProgress">0/10</b>
+            </div>
+            <ol class="stamp-cells" id="readingCells" aria-label="미션 성공 도장 10칸">
+              <li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li><li>9</li><li>10</li>
+            </ol>
+            <div class="stamp-board-meta">
+              <span id="readingBadges">🏅 완주 0회</span>
+              <span id="readingReward">누적 +0P</span>
+            </div>
+            <p class="stamp-board-note" id="readingPoints">가족 동기화 연결 후 새 미션 성공이 모든 기기에서 반영돼요</p>
+            <p class="stamp-board-note" id="readingNote">독서 외 미션도 포함 · 10칸 완성 시 +3P</p>
+          </section>
+          <section class="wish-panel" aria-labelledby="wishPanelTitle">
+            <h3 id="wishPanelTitle">🎁 사고 싶은 것</h3>
+            <div class="card-body wish-body merge-pane" id="wishPane">
+              <div class="wish-balance" id="wishBalance"></div>
+              <div class="wish-list" id="wishList"></div>
+            </div>
+          </section>
         </div>
+        <!-- 장보기·냉장고 화면은 숨기되 기존 공유 기록은 그대로 보존합니다. -->
         <div class="card-body shop-body merge-pane" id="shopPane" hidden>
           <div class="row parent-only">
             <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
@@ -815,18 +840,17 @@
       </p>
     </div>
     <div class="settings-section">
-      <h4>9. 🎪 가족 이벤트 · 📅 2주 달력</h4>
+      <h4>9. 🎪 가족 이벤트 · 📅 월간 달력</h4>
       <p class="settings-note">
-        미션 카드 아래 <b>🎪 이벤트</b>를 누르면 일곱 가지 이벤트가 한 곳에 모여 있어요.<br />
+        미션 카드 아래 <b>🎪 이벤트</b>를 누르면 여섯 가지 이벤트가 한 곳에 모여 있어요.<br />
         <b>①🔥 3일 연속 콤보</b> 같은 미션을 사흘 내리 끝내면 보너스 포인트가 따라붙고,
         <b>②⚡ 깜짝 칭찬</b>은 버튼 한 번으로 바로 +P를 선물합니다(로그에 남아 정산에 함께 들어가요).<br />
         <b>③🎂 2배 데이</b>는 생신·명절을 지정하면 그 날 미션 포인트가 2배로 더해지고(위키 생신일은 자동),
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br />
-        <b>⑤⚾📚 도장판</b>은 야구·독서 각 10칸을 채우면 +5P와 뱃지,
-        <b>⑥🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담은 상장,
-        <b>⑦🎰 뽑기</b>는 50P마다 한 장씩 돌려 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
-        <b>📅 달력</b>은 기본이 <b>2주</b>라 오늘 학교 카드가 넓게 보입니다. 헤더의 <b>1달</b>을 누르면 한 달 전체가 펼쳐집니다.
-        보너스 포인트도 모두 <b>🕒 오늘</b> 기록에 남습니다.
+        <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
+        <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
+        대시보드의 <b>📚 독서 도장판</b>은 승인 후 새로 완료한 가족 공유 미션을 모읍니다(독서 외 미션도 포함). 10칸 완성 때 기존 미션 점수와 중복 없이 <b>+3P</b>가 한 번 반영되고, 부모 정산 때 확정됩니다.<br />
+        <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
     </div>
     <div class="settings-section">
@@ -871,15 +895,15 @@
   </div>
 </div>
 
-<!-- ======================= 모달: 🎪 가족 이벤트 센터 (7종) ======================= -->
+<!-- ======================= 모달: 🎪 가족 이벤트 센터 (6종) ======================= -->
 <div class="modal" id="eventModal" hidden>
   <div class="modal-card wide ev-modal" role="dialog" aria-modal="true" aria-labelledby="evTitle">
     <div class="ev-modal-head">
       <div>
-        <h3 id="evTitle">🎪 가족 이벤트</h3>
-        <p class="hint">콤보 · 깜짝 보너스 · 2배 데이 · 비밀 상자 · 도장판 · 상장 · 뽑기</p>
-      </div>
-      <button class="btn icon sm ghost" type="button" id="evClose" aria-label="닫기">✕</button>
+          <h3 id="evTitle">🎪 가족 이벤트</h3>
+          <p class="hint">콤보 · 깜짝 보너스 · 2배 데이 · 비밀 상자 · 상장 · 뽑기</p>
+        </div>
+        <button class="btn icon sm ghost" type="button" id="evClose" aria-label="닫기">✕</button>
     </div>
     <div class="ev-body" id="eventBody"></div>
     <div class="modal-actions">
@@ -925,8 +949,8 @@
 <script src="standby-guard.js?v=2"></script>
 <script src="alarm-core.js?v=1"></script>
 <script src="fullscreen-guard.js?v=1"></script>
-<script src="app.js?v=v11-alarm"></script>
+<script src="app.js?v=v12-shared-stamps"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=7"></script>
+<script type="module" src="firebase-boot.js?v=8"></script>
 </body>
 </html>
