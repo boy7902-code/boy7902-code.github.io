@@ -259,18 +259,10 @@ def main() -> None:
             page.wait_for_function("document.querySelectorAll('#choreList > .chore').length === 8", timeout=15000)
             page.wait_for_timeout(300)
 
-            summary_buttons = page.locator("#schoolBody .sch-more")
-            assert_condition(summary_buttons.count() == 2,
-                             f"school: expected 2 '+N' summary buttons, got {summary_buttons.count()}", failures)
-            if summary_buttons.count() == 2:
-                summary_buttons.first.click()
-                page.wait_for_function("document.querySelectorAll('#schoolBody .sch-extra:not([hidden])').length === 7")
-                assert_condition(page.locator("#schoolBody .sch-chips.is-expanded").count() == 1,
-                                 "school: '+N' did not expand the hidden chip details", failures)
-                summary_buttons.first.click()
-                page.wait_for_function("document.querySelectorAll('#schoolBody .sch-extra[hidden]').length === 14")
-                assert_condition(page.locator("#schoolBody .sch-chips.is-expanded").count() == 0,
-                                 "school: expanded chip details did not collapse", failures)
+            assert_condition(page.locator("#schoolBody .sch-more").count() == 0,
+                             "school: obsolete disclosure button remains", failures)
+            assert_condition(page.locator("#schoolBody .sch-chip[hidden]").count() == 0,
+                             "school: entries are still hidden", failures)
 
             for width, height in VIEWPORTS:
                 page.set_viewport_size({"width": width, "height": height})
@@ -295,12 +287,12 @@ def main() -> None:
                                  f"{label}: expected 16 synthetic school chips, got {result['school']['chipCount']}", failures)
                 assert_condition(result["school"]["lastChipFullyReachable"],
                                  f"{label}: last school chip is clipped after scrolling the school body", failures)
-                assert_condition(result["school"]["summaryCount"] == 2,
-                                 f"{label}: school rows do not expose one-line '+N' summaries", failures)
+                assert_condition(result["school"]["summaryCount"] == 0,
+                                 f"{label}: school rows do not expose all chips without disclosure", failures)
                 if (width, height) == (1024, 600):
                     assert_condition(result["school"]["bodyStyle"]["overflowY"] in ("auto", "scroll")
-                                     and result["school"]["summaryCount"] == 2,
-                                     "1024x600: school rows do not remain readable with internal scroll/summary", failures)
+                                     and result["school"]["summaryCount"] == 0,
+                                     "1024x600: school rows do not remain readable with internal scroll", failures)
                 assert_condition(result["wish"]["balanceInHeader"],
                                  f"{label}: wish balance is missing from the card header", failures)
                 assert_condition(result["wish"]["subtitleSingleLine"],

@@ -691,7 +691,6 @@
           toast('저장 공간이 가득 찼어요. 편지 몇 장을 지우거나 백업 후 정리해 주세요.', 'coral', 5200);
         }
       }
-      syncLocalChanged();
       fbLocalChanged();          // 🔥 Firebase 연결 중이면 변경분만 Firestore 로 보냅니다 (연동 초안)
       evtSyncMaybe();            // 🎪 이벤트 설정·상태 → child_state/event_center (부모 기기만)
       schoolSyncMaybe();         // 🏫 급식·시간표 → child_state/today_school (부모 기기만)
@@ -734,350 +733,9 @@
     }
   }
 
-  /* ============================================================ 가족 동기화
-     태블릿·폰이 같은 기록을 보도록 '변경분(patch)'만 주고받습니다.
-     지금 기본 동기화는 Firebase(firebase-sync.js)이고, 이 localStorage 기반
-     경로는 로그인 전·오프라인일 때 화면이 그대로 동작하게 남겨 둔 옛 방식입니다. */
-  const LEGACY_SYNC = window.FamilyLegacySync || { autoStartAllowed: () => false, hasSavedConfig: () => false, disable: () => false };
-  const SYNCKEY = 'family-dashboard:sync';
-  const SYNC_POLL_MS = 30000;          // 화면이 보이는 동안 30초마다 확인
-  const SYNC_ARRAYS = ['members', 'events', 'missions', 'letters', 'shopping', 'wiki', 'links', 'logs', 'pointUses', 'wishlist'];
-  const SYNC_VALUES = ['v', 'theme', 'quiet', 'location', 'pokemon', 'points', 'stickers',
-    'dashboardTitle', 'showAdultMissions', 'parentPin'];   // 제목·미션 보기·부모 PIN도 가족끼리 함께 씁니다
-
-  const SY = {
-    cfg: null,        // { url, pin, device, rev, lastAt, id }
-    status: 'off',    // off | synced | error
-    snapshot: null,   // 마지막으로 서버와 맞춘 상태 지문
-    timer: null,
-    pushTimer: null,
-    busy: false,
-    dirty: false,
-    lastErr: '',
-  };
-
-  function snapOf(state) {
-    const o = {};
-    SYNC_ARRAYS.forEach((k) => {
-      const m = {};
-      (state && Array.isArray(state[k]) ? state[k] : []).forEach((it) => { if (it && it.id) m[it.id] = JSON.stringify(it); });
-      o['a:' + k] = m;
-    });
-    SYNC_VALUES.forEach((k) => { o['v:' + k] = JSON.stringify(state ? (state[k] === undefined ? null : state[k]) : null); });
-    return o;
-  }
-
-  function buildPatch(prev, state) {
-    const next = snapOf(state);
-    const patch = { values: {}, arrays: {} };
-    let n = 0;
-    SYNC_VALUES.forEach((k) => {
-      if (!prev || prev['v:' + k] !== next['v:' + k]) { try { patch.values[k] = JSON.parse(next['v:' + k]); } catch (e) { /* noop */ } n++; }
-    });
-    SYNC_ARRAYS.forEach((k) => {
-      const p = (prev && prev['a:' + k]) || {};
-      const c = next['a:' + k];
-      const ops = [];
-      Object.keys(c).forEach((id) => { if (p[id] !== c[id]) ops.push({ op: 'set', item: JSON.parse(c[id]) }); });
-      Object.keys(p).forEach((id) => { if (!(id in c)) ops.push({ op: 'del', id }); });
-      if (ops.length) { patch.arrays[k] = ops; n += ops.length; }
-    });
-    return { patch, nextSnap: next, empty: n === 0 };
-  }
-
-  function syncDeviceLabel() {
-    const ua = navigator.userAgent || '';
-    if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return '태블릿';
-    if (/Android|iPhone|Mobile/i.test(ua)) return '휴대폰';
-    return 'PC';
-  }
-
-  function loadSync() {
-    // Firebase is the only supported remote sync. Never restore saved Apps Script credentials.
-    if (!LEGACY_SYNC.autoStartAllowed()) return false;
-    try {
-      const raw = localStorage.getItem(SYNCKEY);
-      if (!raw) return false;
-      const c = JSON.parse(raw);
-      if (!c || !c.url || !c.pin) return false;
-      SY.cfg = {
-        url: String(c.url), pin: String(c.pin),
-        device: String(c.device || syncDeviceLabel()),
-        rev: Math.max(0, Math.round(+c.rev || 0)),
-        lastAt: Math.max(0, +c.lastAt || 0),
-        id: String(c.id || uid()),
-      };
-      SY.status = 'synced';
-      return true;
-    } catch (e) { SY.cfg = null; return false; }
-  }
-
-  function saveSync() {
-    try { if (SY.cfg) localStorage.setItem(SYNCKEY, JSON.stringify(SY.cfg)); } catch (e) { /* noop */ }
-  }
-
-  function syncStateWord() {
-    if (!SY.cfg) return '로컬 전용';
-    if (SY.busy) return '동기화 중';
-    if (SY.status === 'error') return '연결 확인';
-    return '동기화됨';
-  }
-  function syncStateIcon() {
-    if (!SY.cfg) return '📴';
-    if (SY.busy) return '🔄';
-    if (SY.status === 'error') return '⚠️';
-    return '☁️';
-  }
-  function syncTimeText() {
-    if (!SY.cfg || !SY.cfg.lastAt) return '';
-    const d = new Date(SY.cfg.lastAt);
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-  function syncNoteText() {
-    if (!SY.cfg) return '아직 연결하지 않았어요. 지금은 이 기기에만 기록됩니다.';
-    if (SY.status === 'error') return `동기화하지 못했어요 — ${SY.lastErr || '연결을 확인해 주세요.'}`;
-    const t = syncTimeText();
-    return `☁️ ${SY.cfg.device}로 연결됨 · 마지막 동기화 ${t || '—'} · 기록 번호 ${SY.cfg.rev || 0}`;
-  }
-
-  function renderSyncBadge() {
-    const el = $('#syncBadge');
-    if (el) {
-      const st = !SY.cfg ? 'off' : (SY.busy ? 'busy' : (SY.status === 'error' ? 'err' : 'ok'));
-      el.dataset.state = st;
-      el.innerHTML = `<span aria-hidden="true">${syncStateIcon()}</span><span class="sync-word">${esc(syncStateWord())}</span>`;
-      el.title = SY.cfg ? `${SY.cfg.device} · ${syncNoteText()}` : '가족 실시간 동기화를 켜려면 눌러 주세요';
-    }
-    const note = $('#syncNote');
-    if (note) note.textContent = syncNoteText();
-    const dot = $('#syncDot');
-    if (dot) dot.dataset.state = !SY.cfg ? 'off' : (SY.status === 'error' ? 'err' : 'ok');
-  }
-
-  function setSyncStatus(st, msg) {
-    SY.status = st;
-    if (msg !== undefined) SY.lastErr = msg;
-    renderSyncBadge();
-  }
-
-  function syncGet(qs, timeoutMs) {
-    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const t = ctl ? setTimeout(() => { try { ctl.abort(); } catch (e) { /* noop */ } }, timeoutMs || 20000) : null;
-    const opts = { cache: 'no-store', redirect: 'follow' };
-    if (ctl) opts.signal = ctl.signal;
-    return fetch(SY.cfg.url + qs, opts).then((r) => r.text().then((txt) => {
-      if (t) clearTimeout(t);
-      let data = null;
-      try { data = JSON.parse(txt); } catch (e) { data = null; }
-      if (!data) throw new Error('서버 응답을 읽지 못했어요');
-      return data;
-    })).catch((e) => { if (t) clearTimeout(t); throw e; });
-  }
-
-  // 쓰기는 '단순 요청'(text/plain, no-cors)으로 보내고, 결과는 이어지는 조회로 확인합니다.
-  function syncPost(payload) {
-    return fetch(SY.cfg.url, {
-      method: 'POST',
-      mode: 'no-cors',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
-    }).catch(() => null);
-  }
-
-  function applyRemote(remote, quiet) {
-    if (!remote || typeof remote !== 'object') return;
-    const merged = mergeState(remote);
-    const same = JSON.stringify(snapOf(merged)) === JSON.stringify(snapOf(S));
-    S = merged;
-    SY.snapshot = snapOf(S);
-    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
-    if (!same) {
-      applyTheme();
-      syncDex();
-      renderAll();
-      renderSettings();
-      if (!quiet) toast('다른 기기에서 바뀐 내용을 가져왔어요 ☁️', 'mint', 1900);
-    }
-    renderSyncBadge();
-  }
-
-  async function syncPushNow() {
-    if (!SY.cfg || SY.busy) return false;
-    const { patch, nextSnap, empty } = buildPatch(SY.snapshot || {}, S);
-    if (empty) { SY.dirty = false; renderSyncBadge(); return true; }
-    SY.busy = true; renderSyncBadge();
-    const baseRev = Math.round(+SY.cfg.rev || 0);
-    try {
-      await syncPost({ pin: SY.cfg.pin, baseRev, patch, device: SY.cfg.device });
-      const res = await syncGet('?pin=' + encodeURIComponent(SY.cfg.pin) + '&rev=' + baseRev);
-      if (!res || !res.ok) throw new Error(res && res.error === 'pin' ? '가족 PIN이 맞지 않아요' : '서버가 요청을 받지 못했어요');
-      if (res.unchanged) throw new Error('서버에 반영되지 않았어요. 잠시 뒤 다시 시도합니다');
-      SY.cfg.rev = Math.max(0, Math.round(+res.rev || 0));
-      SY.cfg.lastAt = Date.now();
-      saveSync();
-      if (res.state) applyRemote(res.state, true);
-      else SY.snapshot = nextSnap;
-      SY.dirty = false;
-      setSyncStatus('synced', '');
-      return true;
-    } catch (e) {
-      SY.dirty = true;
-      setSyncStatus('error', (e && e.message) || '연결 오류');
-      return false;
-    } finally {
-      SY.busy = false; renderSyncBadge();
-    }
-  }
-
-  async function syncPullNow() {
-    if (!SY.cfg || SY.busy) return false;
-    if (SY.dirty) return syncPushNow();
-    SY.busy = true; renderSyncBadge();
-    const rev = Math.round(+SY.cfg.rev || 0);
-    try {
-      const res = await syncGet('?pin=' + encodeURIComponent(SY.cfg.pin) + '&rev=' + rev);
-      if (!res || !res.ok) throw new Error(res && res.error === 'pin' ? '가족 PIN이 맞지 않아요' : '서버가 응답하지 않아요');
-      SY.cfg.lastAt = Date.now();
-      if (!res.unchanged) {
-        SY.cfg.rev = Math.max(0, Math.round(+res.rev || 0));
-        if (res.state) applyRemote(res.state); else SY.snapshot = snapOf(S);
-      }
-      saveSync();
-      setSyncStatus('synced', '');
-      return true;
-    } catch (e) {
-      setSyncStatus('error', (e && e.message) || '연결 오류');
-      return false;
-    } finally {
-      SY.busy = false; renderSyncBadge();
-    }
-  }
-
-  function syncTick() {
-    if (!SY.cfg) return;
-    if (SY.dirty) syncPushNow(); else syncPullNow();
-  }
-
-  function syncLocalChanged() {
-    if (!SY.cfg) return;
-    SY.dirty = true;
-    clearTimeout(SY.pushTimer);
-    SY.pushTimer = setTimeout(() => { syncPushNow(); }, 1500);
-  }
-
-  function startSyncLoop() {
-    clearInterval(SY.timer);
-    if (!SY.cfg) return;
-    SY.timer = setInterval(() => { if (!document.hidden) syncTick(); }, SYNC_POLL_MS);
-  }
-
-  // 창을 닫거나 앱을 바꾸는 순간에도 마지막 변경분을 보내 두기 (응답은 다음에 조회로 확인)
-  function syncFlushBeacon() {
-    if (!SY.cfg || !SY.dirty) return;
-    const { patch, empty } = buildPatch(SY.snapshot || {}, S);
-    if (empty) return;
-    const body = JSON.stringify({ pin: SY.cfg.pin, baseRev: SY.cfg.rev || 0, patch, device: SY.cfg.device });
-    try {
-      const blob = new Blob([body], { type: 'text/plain;charset=utf-8' });
-      if (navigator.sendBeacon && navigator.sendBeacon(SY.cfg.url, blob)) { SY.dirty = false; return; }
-    } catch (e) { /* noop */ }
-    try {
-      fetch(SY.cfg.url, {
-        method: 'POST', mode: 'no-cors', keepalive: true,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body,
-      });
-    } catch (e) { /* noop */ }
-  }
-
-  function syncServerUrl(raw) {
-    const s = String(raw || '').trim().replace(/[?#].*$/, '');
-    if (/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/i.test(s)) return s;
-    return '';
-  }
-
-  async function syncConnect(urlRaw, pinRaw) {
-    const url = syncServerUrl(urlRaw);
-    const pin = String(pinRaw || '').trim();
-    if (!url) return { ok: false, msg: '동기화 주소가 올바르지 않아요. https://script.google.com/macros/s/…/exec 형식이어야 합니다.' };
-    if (!/^\d{4,12}$/.test(pin)) return { ok: false, msg: '가족 PIN은 숫자 4~12자리로 입력해 주세요.' };
-    const keep = SY.cfg;
-    SY.cfg = { url, pin, device: syncDeviceLabel(), rev: 0, lastAt: 0, id: uid() };
-    SY.status = 'synced';
-    renderSyncBadge();
-    let res = null;
-    try { res = await syncGet('?pin=' + encodeURIComponent(pin)); } catch (e) {
-      SY.cfg = keep; renderSyncBadge();
-      return { ok: false, msg: '서버에 연결하지 못했어요. 주소와 인터넷 연결을 확인해 주세요.' };
-    }
-    if (!res || !res.ok) {
-      SY.cfg = keep; renderSyncBadge();
-      return { ok: false, msg: res && res.error === 'pin' ? '가족 PIN이 맞지 않아요. 설정에 적힌 값을 확인해 주세요.' : '서버가 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.' };
-    }
-    SY.cfg.rev = Math.max(0, Math.round(+res.rev || 0));
-    if (res.empty || !res.state) {
-      // 서버가 비어 있으면 이 기기 기록을 첫 기록으로 올립니다
-      await syncPost({ pin, mode: 'replace', state: S, device: SY.cfg.device });
-      const chk = await syncGet('?pin=' + encodeURIComponent(pin)).catch(() => null);
-      if (chk && chk.ok) { SY.cfg.rev = Math.max(0, Math.round(+chk.rev || 0)); if (chk.state) applyRemote(chk.state, true); }
-      SY.cfg.lastAt = Date.now(); saveSync(); startSyncLoop(); renderSyncBadge();
-      return { ok: true, seeded: true };
-    }
-    return { ok: true, hasRemote: true, rev: SY.cfg.rev, state: res.state };
-  }
-
-  async function syncAdopt() {
-    const res = await syncGet('?pin=' + encodeURIComponent(SY.cfg.pin)).catch(() => null);
-    if (!res || !res.ok) { setSyncStatus('error', '가져오지 못했어요'); return false; }
-    SY.cfg.rev = Math.max(0, Math.round(+res.rev || 0));
-    SY.cfg.lastAt = Date.now();
-    SY.dirty = false;
-    saveSync();
-    if (res.state) applyRemote(res.state, true);
-    startSyncLoop();
-    setSyncStatus('synced', '');
-    return true;
-  }
-
-  async function syncReplaceAll() {
-    const res0 = await syncGet('?pin=' + encodeURIComponent(SY.cfg.pin)).catch(() => null);
-    SY.cfg.rev = Math.max(0, Math.round(+(res0 && res0.rev) || 0));
-    await syncPost({ pin: SY.cfg.pin, mode: 'replace', state: S, baseRev: SY.cfg.rev, device: SY.cfg.device });
-    const chk = await syncGet('?pin=' + encodeURIComponent(SY.cfg.pin)).catch(() => null);
-    if (chk && chk.ok) {
-      SY.cfg.rev = Math.max(0, Math.round(+chk.rev || 0));
-      if (chk.state) applyRemote(chk.state, true); else SY.snapshot = snapOf(S);
-    }
-    SY.cfg.lastAt = Date.now(); SY.dirty = false;
-    saveSync(); startSyncLoop(); setSyncStatus('synced', '');
-    return true;
-  }
-
-  function syncDisconnect() {
-    clearTimeout(SY.pushTimer);
-    clearInterval(SY.timer);
-    SY.cfg = null;
-    SY.dirty = false;
-    SY.snapshot = null;
-    SY.busy = false;
-    LEGACY_SYNC.disable(localStorage);
-    setSyncStatus('off', '');
-  }
-
-  // 설정 링크(#sync=...)로 한 번에 연결하기
-  function syncReadLinkHash() {
-    const m = /(?:^|[#&])sync=([A-Za-z0-9_\-+/=]+)/.exec(location.hash || '');
-    if (!m) return null;
-    try {
-      let b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
-      while (b64.length % 4) b64 += '=';
-      const txt = decodeURIComponent(escape(atob(b64)));
-      const o = JSON.parse(txt);
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ }
-      if (!o || !o.url || !o.pin) return null;
-      return { url: String(o.url), pin: String(o.pin) };
-    } catch (e) { return null; }
-  }
+  /* Firebase is the only supported remote sync. Saved legacy credentials stay
+     untouched until the user explicitly clears them in settings. */
+  const LEGACY_SYNC = window.FamilyLegacySync || { hasSavedConfig: () => false, disable: () => false };
 
   /* -------------------------------------------------------------------- beep */
   let audioCtx = null;
@@ -2748,9 +2406,11 @@
 
     // 구성원별 오늘 완료·오늘 포인트·누적 포인트 (성인 미션 숨김 모드에서는 아이·공용만)
     const stats = memberStats().filter((s) => S.showAdultMissions || s.m.id === KID_ID || s.m.id === '');
+    const streak = streakView();
     $('#memberStats').innerHTML = stats.map((s) => `<div class="mstat" style="--c:${esc(s.m.color)}">
         <span class="mdot" style="background:${esc(s.m.color)}"></span>
         <span class="mstat-name">${esc(s.m.name)}${s.m.id === KID_ID ? ' 🧒' : ''}</span>
+        ${s.m.id === KID_ID ? `<button type="button" class="mstat-streak" data-act="streak-info" title="${esc(streak.title)}">🔥 ${esc(streak.text)}</button>` : ''}
         <span class="mstat-today">오늘 ${s.today}개</span>
         <span class="mstat-pts">${s.ptsToday ? '+' + s.ptsToday + 'P' : '0P'}</span>
         <span class="mstat-total">누적 ${s.total}P</span>
@@ -4093,13 +3753,7 @@
     }
     const chips = (arr, empty, extra, label) => {
       if (!arr.length) return `<span class="sch-none">${empty}</span>`;
-      const hidden = arr.slice(1);
-      const first = `<span class="sch-chip ${extra || ''}" title="${esc(arr[0])}">${esc(arr[0])}</span>`;
-      const rest = hidden.map((x) => `<span class="sch-chip sch-extra ${extra || ''}" hidden>${esc(x)}</span>`).join('');
-      const more = hidden.length
-        ? `<button type="button" class="sch-chip sch-more${extra ? ` ${extra}` : ''}" data-act="school-chips-toggle" data-count="${hidden.length}" data-kind="${esc(label)}" aria-expanded="false" aria-label="추가 ${esc(label)} 항목 ${hidden.length}개 펼치기">+${hidden.length}개</button>`
-        : '';
-      return first + rest + more;
+      return arr.map((x) => `<span class="sch-chip ${extra || ''}" title="${esc(x)}">${esc(x)}</span>`).join('');
     };
     box.innerHTML = `<div class="sch-row">
         <span class="sch-tag meal">🍚 급식</span>
@@ -4587,14 +4241,12 @@
       const bytes = new Blob([JSON.stringify(S)]).size;
       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
     } catch (e) { $('#storageNote').textContent = ''; }
-    renderSyncBadge();
     renderAlarmSettings();      // ⏰ 맞춤 알람·소리 상태·다음 알람
   }
 
   // 설정은 보호자만 — 부모 모드가 잠겨 있으면 PIN을 먼저 받습니다
   function openSettings() {
     renderSettings();
-    fillSyncInputs();
     fbSyncInfo();
     $('#settingsModal').hidden = false;
   }
@@ -5771,20 +5423,8 @@
         S.links = S.links.filter((x) => x.id !== id); save(); renderLinks();
       } else if (act === 'member-edit') {
         editMember(id);
-      } else if (act === 'school-chips-toggle') {
-        const row = t.closest('.sch-row');
-        const chipList = row && row.querySelector('.sch-chips');
-        const expanded = t.getAttribute('aria-expanded') === 'true';
-        if (chipList) {
-          chipList.classList.toggle('is-expanded', !expanded);
-          chipList.querySelectorAll('.sch-extra').forEach((item) => { item.hidden = expanded; });
-          t.setAttribute('aria-expanded', String(!expanded));
-          const count = Number(t.dataset.count) || 0;
-          t.textContent = expanded ? `+${count}개` : '접기';
-          t.setAttribute('aria-label', expanded
-            ? `추가 ${t.dataset.kind} 항목 ${count}개 펼치기`
-            : `추가 ${t.dataset.kind} 항목 접기`);
-        }
+      } else if (act === 'streak-info') {
+        askModal({ title: '연속 달성 기록', hint: streakView().title, fields: [], okText: '확인' });
       } else if (act === 'wish-buy') {
         asParent('선물 사주기는 보호자만 할 수 있어요.', () => buyWish(id));
       } else if (act === 'wish-edit') {
@@ -6174,79 +5814,12 @@
     if (button) button.hidden = !hasSaved;
   }
 
-  function fillSyncInputs() {
-    if ($('#syncUrlInput')) $('#syncUrlInput').value = SY.cfg ? SY.cfg.url : '';
-    if ($('#syncPinInput')) $('#syncPinInput').value = SY.cfg ? SY.cfg.pin : '';
-    renderSyncBadge();
-  }
-
-  async function syncConnectFlow(auto) {
-    const btn = $('#syncConnectBtn');
-    if (btn) btn.disabled = true;
-    try {
-      const out = await syncConnect($('#syncUrlInput').value, $('#syncPinInput').value);
-      if (!out.ok) { $('#syncNote').textContent = out.msg; toast(out.msg, 'coral', 4600); return; }
-      if (out.seeded) { toast('이 기기 기록을 서버에 올렸어요 ☁️', 'mint', 3200); fillSyncInputs(); return; }
-      if (auto) {
-        await syncAdopt();
-        fillSyncInputs();
-        toast('가족 기록을 가져왔어요 ☁️', 'mint', 3200);
-        return;
-      }
-      // 서버에 이미 기록이 있으면 어떻게 맞출지 물어봅니다
-      const r = await askModal({
-        title: '☁️ 가족 실시간 동기화',
-        hint: '서버에 이미 가족 기록이 있어요. 이 기기 기록과 어떻게 맞출까요?',
-        fields: [{
-          name: 'mode', label: '맞추는 방법', type: 'select', value: 'pull',
-          options: [
-            { value: 'pull', label: '저장된 가족 기록 가져오기 (추천)' },
-            { value: 'push', label: '이 기기 기록을 서버에 올리기 (서버 기록 덮어씀)' },
-          ],
-        }],
-        okText: '연결',
-      });
-      if (!r) { syncDisconnect(); fillSyncInputs(); toast('연결을 취소했어요'); return; }
-      if (r.mode === 'push') await syncReplaceAll(); else await syncAdopt();
-      fillSyncInputs();
-      toast('동기화를 시작했어요 ☁️', 'mint', 3000);
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  }
-
-  if ($('#syncBadge')) {
-    $('#syncBadge').addEventListener('click', () => asParent('동기화 설정은 보호자만 바꿀 수 있어요.', () => {
-      openSettings();
-      const sec = $('#syncSection');
-      if (sec && sec.scrollIntoView) setTimeout(() => sec.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
-    }));
-  }
-  if ($('#syncConnectBtn')) $('#syncConnectBtn').addEventListener('click', syncConnectFlow);
-  if ($('#syncNowBtn')) $('#syncNowBtn').addEventListener('click', async () => {
-    if (!SY.cfg) { toast('먼저 동기화 주소와 가족 PIN을 넣어 주세요'); return; }
-    const ok = SY.dirty ? await syncPushNow() : await syncPullNow();
-    renderSyncBadge();
-    toast(ok ? '지금 동기화했어요 ☁️' : ('동기화하지 못했어요 — ' + (SY.lastErr || '연결 확인')), ok ? 'mint' : 'coral', 3200);
-  });
+  if ($('#syncBadge')) $('#syncBadge').addEventListener('click', () =>
+    asParent('동기화 설정은 보호자만 바꿀 수 있어요.', openSettings));
   if ($('#legacySyncOffBtn')) $('#legacySyncOffBtn').addEventListener('click', () => {
-    clearTimeout(SY.pushTimer); clearInterval(SY.timer);
-    SY.cfg = null; SY.dirty = false; SY.snapshot = null; SY.busy = false;
     const cleared = LEGACY_SYNC.disable(localStorage);
     renderLegacySyncInfo();
     toast(cleared ? '예전 Apps Script 연결 정보를 이 기기에서 지웠어요' : '연결 정보를 지우지 못했어요', cleared ? 'mint' : 'coral', 3200);
-  });
-  if ($('#syncOffBtn')) $('#syncOffBtn').addEventListener('click', async () => {
-    if (!SY.cfg) { toast('지금은 로컬 전용이에요'); return; }
-    const r = await askModal({
-      title: '동기화 연결 해제',
-      hint: '이 기기의 기록은 그대로 두고, 더 이상 서버와 주고받지 않습니다. 나중에 다시 연결할 수 있어요.',
-      okText: '연결 해제',
-    });
-    if (!r) return;
-    syncDisconnect();
-    fillSyncInputs();
-    toast('이 기기만 쓰도록 바꿨어요');
   });
 
   document.addEventListener('keydown', (e) => {
@@ -6338,6 +5911,7 @@
     if (FB.sync && FB.sync.stopAll) FB.sync.stopAll();
     FB.on = false; FB.role = ''; FB.uid = ''; FB.blocked = false;
     FB.busy = false; FB.settling = false; FB.snap = null;
+    FB.streak = null; FB.streakSig = ''; FB.streakBusy = false;
     FB.parentPinReady = false;
     FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
     FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
@@ -6566,6 +6140,33 @@
     const board = cells.closest('.stamp-board');
     if (board) board.classList.toggle('is-completing', completing);
   }
+  function streakView() {
+    if (!FB.on || !FB.readyData || !window.FamilyStreak) return { text: '연속 연결 전', title: '보호자 기기가 연결되면 오늘부터 날짜별 대상 미션을 기록합니다. 과거 기록은 추정하지 않아요.' };
+    const date = todayStr();
+    const raw = window.FamilyStreak.normalize(FB.streak || {});
+    const view = raw.days[date] ? window.FamilyStreak.observe(raw, { date, monthStart: date, logs: fbMergeLogs() }) : raw;
+    const st = window.FamilyStreak.status(view, date);
+    return {
+      text: st.known ? `연속 ${st.count}${st.capped ? '+' : ''}일 · ${st.started.slice(5).replace('-', '/')}~` : '연속 기록 준비 중',
+      title: st.started
+        ? `${st.started}부터 확인된 기록만 계산 · 매일 처음 기록한 아이 미션 전부 완료=1일 · 일요일/미션 없는 날 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
+        : '보호자 기기가 연결되면 오늘부터 기록합니다. 과거 연속 일수는 추정하지 않아요. 점수 추가 없음',
+    };
+  }
+  function streakObserveMaybe() {
+    if (!FB.on || !FB.readyData || FB.role !== 'parent' || !FB.sync || !FB.sync.observeStreak || !window.FamilyStreak || FB.streakBusy) return;
+    const date = todayStr(), dow = new Date(date + 'T12:00:00').getDay();
+    const required = (S.missions || []).filter((m) => (m.member === KID_ID || !m.member) && missionOnDay(m, dow)).map((m) => m.id);
+    const input = { date, required, skip: dow === 0 || !required.length, logs: fbMergeLogs().filter((l) => l.member === KID_ID && l.kind !== 'bonus').map((l) => ({ date: l.date, mid: l.mid, member: l.member, kind: l.kind || '' })) };
+    const sig = JSON.stringify(input);
+    if (sig === FB.streakSig) return;
+    const session = FB.session;
+    FB.streakBusy = true;
+    FB.sync.observeStreak(input).then((out) => {
+      if (session !== FB.session) return;
+      if (out.ok) { FB.streakSig = sig; FB.streak = out.data; renderMissions(); }
+    }).finally(() => { if (session === FB.session) FB.streakBusy = false; });
+  }
   function fbRecalc() {
     if (!FB.on || !FB.core) return;
     const logs = fbMergeLogs();
@@ -6578,6 +6179,7 @@
       stageCount: (S.pokemon && stagesOf().length) || 4,
     });
     FB.lastStats = stats;
+    streakObserveMaybe();
     // 모든 구성원의 오늘 완료 표시는 로그에서 복원합니다. 미션 문서에는 완료 상태를 저장하지 않습니다.
     const t = todayStr();
     FB.core.reconcileMissionCompletions(S.missions || [], logs, t);
@@ -6613,6 +6215,7 @@
         renderParentBtn();
       }
     }
+    else if (key === 'streak') { FB.streak = docs[0] || null; }
     else if (key === 'pendingLogs') FB.pendingLogs = docs;
     else if (key === 'logs') FB.monthLogs = docs;
     else if (key === 'eventCenter') applyEventCenterDoc(docs[0] || null);
@@ -6725,7 +6328,7 @@
     if (r.state === 'ready') {
       FB.on = true; FB.role = r.role; FB.uid = r.uid; FB.blocked = false;
       FB.requiredData = new Set([
-        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school', 'alarms',
+        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school', 'alarms', 'streak',
         ...(r.role === 'parent' ? ['parentConfig'] : []),
       ]);
       fbGate(false);
@@ -6917,10 +6520,9 @@
   setTimeout(() => { bootstrapLocation(); }, 1400);
   setInterval(() => { if (!weatherBusy) refreshWeather(); }, 15 * 60 * 1000);
   // 목표 시간까지 남은 시간 표시를 20초마다 갱신
-  setInterval(() => { if (!document.hidden) updateDueChips(); }, 20000);
+  setInterval(() => { if (!document.hidden) { updateDueChips(); streakObserveMaybe(); } }, 20000);
 
   // 레거시 PIN 동기화는 자동 시작하지 않습니다. Firebase 시작은 위 fbBootWait()가 담당합니다.
-  renderSyncBadge();
   renderLegacySyncInfo();
   startAlarmClock();          // ⏰ 알람 감시 시작 (미션 마감·일정·맞춤)
   resetStandbyIdleTimer();
@@ -6930,22 +6532,17 @@
       clearTimeout(standbyIdleTimer);
       standbyIdleTimer = null;
       releaseScreenWakeLock();
-      if (SY.cfg) syncFlushBeacon();
       return;
     }
     resetStandbyIdleTimer();
     requestScreenWakeLock();
     checkAlarms();              // 화면으로 돌아오면 지난 1~2분 안의 알람을 한 번 확인합니다
-    if (SY.cfg) setTimeout(() => { syncTick(); }, 400);
   });
   window.addEventListener('pagehide', () => {
     clearTimeout(standbyIdleTimer);
     standbyIdleTimer = null;
     releaseScreenWakeLock();
-    if (SY.cfg) syncFlushBeacon();
   });
-  window.addEventListener('focus', () => { if (SY.cfg) syncTick(); });
-  window.addEventListener('online', () => { if (SY.cfg) syncTick(); });
 
   window.FamilyDashboard = {
     get state() { return S; },

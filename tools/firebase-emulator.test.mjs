@@ -8,8 +8,8 @@ import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { computeScreenStats, createFamilySync, FAMILY_ROOT } from '../firebase-sync.js';
 
 const PROJECT_ID = 'demo-family-dashboard';
-const AUTH_EMULATOR = '127.0.0.1:9099';
-const FIRESTORE_EMULATOR = '127.0.0.1:8080';
+const AUTH_EMULATOR = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
+const FIRESTORE_EMULATOR = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
 const password = 'Emulator-only-Password-123!';
 
 for (const key of ['FIREBASE_AUTH_EMULATOR_HOST', 'FIRESTORE_EMULATOR_HOST']) {
@@ -28,7 +28,7 @@ const clientApp = initializeClientApp({
 const auth = authSdk.getAuth(clientApp);
 authSdk.connectAuthEmulator(auth, `http://${AUTH_EMULATOR}`, { disableWarnings: true });
 const db = firestoreSdk.getFirestore(clientApp);
-firestoreSdk.connectFirestoreEmulator(db, '127.0.0.1', 8080);
+firestoreSdk.connectFirestoreEmulator(db, FIRESTORE_EMULATOR.split(':')[0], Number(FIRESTORE_EMULATOR.split(':')[1]));
 const adminApp = initializeAdminApp({ projectId: PROJECT_ID }, 'family-dashboard-emulator-admin');
 const adminAuth = getAdminAuth(adminApp);
 const sdk = { ...authSdk, ...firestoreSdk };
@@ -247,6 +247,12 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(atTen.data().byMember.m1, 7);
     assert.equal(atTen.data().monthly[logResult.payload.date.slice(0, 7)].total, 12 + sevenMissionPoints + stampMissions[7].points + 3);
 
+    const streakResult = await sync.observeStreak({ date: logResult.payload.date, required: [mission.id], logs: [] });
+    assert.equal(streakResult.ok, true, JSON.stringify(streakResult.error));
+    assert.deepEqual(streakResult.data.days[logResult.payload.date].done, [mission.id]);
+    const streakSecond = await sync.observeStreak({ date: logResult.payload.date, required: ['edited-target'] });
+    assert.deepEqual(streakSecond.data.days[logResult.payload.date].required, [mission.id]);
+
     const adultLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${adultLogId}`);
     const beforeRetry = atTen.data();
     const secondSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
@@ -269,6 +275,11 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(childStats.stampBoardsCompleted, 1);
     assert.equal(childStats.stampBonusPoints, 3);
     assert.equal(childStats.totalXp, beforeRetry.totalXp);
+    const streakOnChild = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/child_state/mission_streak`));
+    assert.deepEqual(streakOnChild.data().days[logResult.payload.date].required, [mission.id]);
+    const childStreak = await sync.observeStreak({ date: logResult.payload.date, required: ['forged'] });
+    assert.equal(childStreak.ok, false);
+    await assert.rejects(() => firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/child_state/mission_streak`), { forged: true }));
     const childDelete = await sync.deleteLog({ ...logResult.payload, settled: true });
     assert.equal(childDelete.ok, false);
     assert.equal(childDelete.error.kind, 'settled');

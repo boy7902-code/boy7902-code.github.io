@@ -18,6 +18,7 @@
    ========================================================================== */
 
 import './mission-rewards.js?v=early-bonus-1';
+import './streak-core.js?v=journal-1';
 
 /* ────────────────────────────── 상수 ────────────────────────────── */
 export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
@@ -786,6 +787,7 @@ export function createFamilySync(deps = {}) {
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/today_school')), push('school'), fail('school')));
     // ⏰ 맞춤 알람 — 부모가 만들고 고치며, 아이 기기·태블릿은 읽어서 그대로 울립니다
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/custom_alarms')), push('alarms'), fail('alarms')));
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/mission_streak')), push('streak'), fail('streak')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
       unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
@@ -876,6 +878,45 @@ export function createFamilySync(deps = {}) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e) };
     }
+  }
+
+  // The existing child_state rule is family-read / parent-write. Capture the
+  // first target snapshot atomically across parent devices, never overwrite it.
+  async function observeStreak(input) {
+    const session = activeSession({ r: 'parent' });
+    if (!session || role !== 'parent') return { ok: false, cancelled: true };
+    const date = kstTodayStr(nowFn());
+    if (!input || input.date !== date) return { ok: false, cancelled: true };
+    try {
+      const ref = docRef(pathOf('child_state/mission_streak'));
+      const data = await sdk.runTransaction(db, async (tx) => {
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return null;
+        const snap = await tx.get(ref);
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return null;
+        const before = snapExists(snap) ? snap.data() : {};
+        const journal = globalThis.FamilyStreak;
+        const seed = journal.observe(before, { ...input, logs: [], monthStart: date });
+        const openDays = Object.keys(seed.days).filter((day) => day <= date && !seed.days[day].finalized).sort();
+        const confirmedLogs = [];
+        // Never trust stale client log arrays for shared history. Read the
+        // captured target records inside the same transaction, then finalize
+        // closed days. Current-day undo remains reflected until midnight.
+        for (const day of openDays) {
+          const row = seed.days[day];
+          if (row.skip) continue;
+          const records = await Promise.all(row.required.map((mid) => tx.get(docRef(pathOf(`logs/${day}_${mid}_${kidId}`)))));
+          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return null;
+          records.forEach((record) => { if (snapExists(record)) confirmedLogs.push(record.data()); });
+        }
+        const next = journal.observe(seed, { ...input, logs: confirmedLogs, monthStart: openDays[0] || date });
+        openDays.forEach((day) => { if (day < date) next.days[day].finalized = true; });
+        if (JSON.stringify(globalThis.FamilyStreak.normalize(before)) !== JSON.stringify(next)) {
+          tx.set(ref, { ...next, updatedAt: sdk.serverTimestamp() });
+        }
+        return next;
+      });
+      return sessionIsCurrent(session.generation, 'parent', session.uid) && data ? { ok: true, data } : { ok: false, cancelled: true };
+    } catch (e) { return { ok: false, error: classifyFirestoreError(e) }; }
   }
 
   /* ---- 🏫 오늘 학교 저장 (부모 기기) ----
@@ -1362,7 +1403,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
-    pushEventCenter, pushSchool, pushAlarms, writeBonusLog,
+    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, observeStreak,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
@@ -1415,4 +1456,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-}
+                                }
