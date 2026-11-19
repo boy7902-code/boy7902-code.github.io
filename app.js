@@ -3060,6 +3060,21 @@
     toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due} 마감 · 5~9분 전 +1P / 10분 이상 전 +2P(총)` : `미션을 추가했어요 · ${dl}`), 'mint');
   }
 
+  async function confirmStreakDeletion(mission) {
+    const journal = window.FamilyStreak;
+    if (!FB.on || !FB.readyData || !journal || !mission) return true;
+    const date = journal.kstDate();
+    const impact = journal.deletionImpact(FB.streak, date, mission.id);
+    // A completed target whose log is retained is not affected by this delete.
+    if (!impact || (impact.done && mission.doneOn !== todayStr())) return true;
+    const answer = await askModal({
+      title: '오늘 연속 달성 대상 미션이에요',
+      hint: '이 미션은 오늘의 연속 달성 대상에 이미 기록됐어요. 삭제해도 오늘 대상에서 빠지지 않아 오늘을 모두 완료한 날로 만들 수 없어요. 이미 완료했다면 오늘 완료 기록도 취소돼요. 오늘 연속 기록을 지키려면 취소해 주세요.',
+      fields: [], okText: '영향을 확인하고 삭제',
+    });
+    return !!answer;
+  }
+
   async function editMission(id) {
     const c = S.missions.find((x) => x.id === id);
     if (!c) return;
@@ -3077,6 +3092,7 @@
       extraAction: { label: '삭제', act: 'del' },
     });
     if (r === 'del') {
+      if (!await confirmStreakDeletion(c)) return;
       if (c.doneOn === todayStr()) {
         addPoints(c.member || '', -earnOf(c));
         if ((c.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(c), 0, FINAL_P);
@@ -3726,7 +3742,7 @@
   }
   function listOf(v) {
     // 줄바꿈·쉼표로만 나눕니다 — '자율·자치활동'이나 '수육/쌈장' 같은 이름이 쪼개지지 않게
-    return String(v || '').split(/[,\n]/).map((x) => x.trim()).filter(Boolean).slice(0, 8);
+    return String(v || '').split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
   }
   function renderSchool() {
     const box = $('#schoolBody');
@@ -5381,8 +5397,9 @@
       } else if (act === 'chore-edit') {
         asParent('미션 수정은 보호자만 할 수 있어요.', () => editMission(id));
       } else if (act === 'chore-del') {
-        asParent('미션 삭제는 보호자만 할 수 있어요.', () => {
+        asParent('미션 삭제는 보호자만 할 수 있어요.', async () => {
           const m = S.missions.find((x) => x.id === id);
+          if (!await confirmStreakDeletion(m)) return;
           if (m && m.doneOn === todayStr()) {
             addPoints(m.member || '', -earnOf(m));
             if ((m.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(m), 0, FINAL_P);
@@ -6142,20 +6159,20 @@
   }
   function streakView() {
     if (!FB.on || !FB.readyData || !window.FamilyStreak) return { text: '연속 연결 전', title: '보호자 기기가 연결되면 오늘부터 날짜별 대상 미션을 기록합니다. 과거 기록은 추정하지 않아요.' };
-    const date = todayStr();
+    const date = window.FamilyStreak.kstDate();
     const raw = window.FamilyStreak.normalize(FB.streak || {});
     const view = raw.days[date] ? window.FamilyStreak.observe(raw, { date, monthStart: date, logs: fbMergeLogs() }) : raw;
     const st = window.FamilyStreak.status(view, date);
     return {
       text: st.known ? `연속 ${st.count}${st.capped ? '+' : ''}일 · ${st.started.slice(5).replace('-', '/')}~` : '연속 기록 준비 중',
       title: st.started
-        ? `${st.started}부터 확인된 기록만 계산 · 매일 처음 기록한 아이 미션 전부 완료=1일 · 일요일/미션 없는 날 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
+        ? `${st.started}부터 확인된 기록만 계산 · 한국 시간 기준 · 매일 처음 기록한 아이·공용 미션 전부 완료=1일 · 일요일/미션 없는 날 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
         : '보호자 기기가 연결되면 오늘부터 기록합니다. 과거 연속 일수는 추정하지 않아요. 점수 추가 없음',
     };
   }
   function streakObserveMaybe() {
     if (!FB.on || !FB.readyData || FB.role !== 'parent' || !FB.sync || !FB.sync.observeStreak || !window.FamilyStreak || FB.streakBusy) return;
-    const date = todayStr(), dow = new Date(date + 'T12:00:00').getDay();
+    const date = window.FamilyStreak.kstDate(), dow = new Date(date + 'T12:00:00Z').getUTCDay();
     const required = (S.missions || []).filter((m) => (m.member === KID_ID || !m.member) && missionOnDay(m, dow)).map((m) => m.id);
     const input = { date, required, skip: dow === 0 || !required.length, logs: fbMergeLogs().filter((l) => l.member === KID_ID && l.kind !== 'bonus').map((l) => ({ date: l.date, mid: l.mid, member: l.member, kind: l.kind || '' })) };
     const sig = JSON.stringify(input);

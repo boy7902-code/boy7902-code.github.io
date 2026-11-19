@@ -56,3 +56,45 @@ test('stamp-board status and reward policy are separate, without repeated accrua
   assert.match(app, /기본 미션 포인트와 별도 · 도장판 10\/10 때만 \+3P/);
   assert.match(app, /stampBonusPending/);
 });
+
+test('school parser retains more than eight items and preserves compound names', () => {
+  const source = app.match(/function listOf\(v\) \{[\s\S]*?\n  \}/)[0];
+  const listOf = new Function(`${source}; return listOf;`)();
+  const items = Array.from({ length: 20 }, (_, i) => `항목${i + 1}`);
+  assert.deepEqual(listOf(items.join('\n')), items);
+  assert.deepEqual(listOf('국어, 자율·자치활동\n수육/쌈장,, '), ['국어', '자율·자치활동', '수육/쌈장']);
+});
+
+test('both mission deletion paths await the consequence warning before writes', () => {
+  assert.match(app, /if \(r === 'del'\) \{\s*if \(!await confirmStreakDeletion\(c\)\) return;/);
+  assert.match(app, /act === 'chore-del'[\s\S]*?if \(!await confirmStreakDeletion\(m\)\) return;[\s\S]*?dropLog/);
+  assert.match(app, /const date = window\.FamilyStreak\.kstDate\(\)/);
+  assert.match(app, /getUTCDay\(\)/);
+});
+
+test('captured-target delete warning honors cancellation, approval and unaffected cases', async () => {
+  await import('../streak-core.js');
+  const journal = globalThis.FamilyStreak;
+  const date = journal.kstDate();
+  const source = app.slice(app.indexOf('  async function confirmStreakDeletion('), app.indexOf('  async function editMission('));
+  const FB = { on: true, readyData: true, streak: journal.observe({}, { date, required: ['a'] }) };
+  let answer = null, asked = 0;
+  const confirmDelete = new Function('window', 'FB', 'todayStr', 'askModal', `${source}; return confirmStreakDeletion;`)(
+    { FamilyStreak: journal }, FB, () => date, async () => { asked++; return answer; });
+  const before = JSON.stringify(FB);
+  assert.equal(await confirmDelete({ id: 'a' }), false);
+  assert.equal(JSON.stringify(FB), before);
+  answer = {};
+  assert.equal(await confirmDelete({ id: 'a' }), true);
+  assert.equal(await confirmDelete({ id: 'other' }), true);
+  assert.equal(asked, 2);
+  FB.streak.days[date].skip = true;
+  assert.equal(await confirmDelete({ id: 'a' }), true);
+  FB.streak.days[date].skip = false;
+  FB.streak.days[date].done = ['a'];
+  assert.equal(await confirmDelete({ id: 'a', doneOn: 'older' }), true);
+  assert.equal(asked, 2);
+  answer = null;
+  assert.equal(await confirmDelete({ id: 'a', doneOn: date }), false);
+  assert.equal(asked, 3);
+});

@@ -68,3 +68,38 @@ test('invalid input is safe, ledger bounded to 120 days without modifying source
   assert.equal(Object.keys(j.days).length,120);
   assert.equal(j.started,'2026-01-01');
 });
+
+test('exactly 120 observed days has no plus, older truncated history has plus', () => {
+  let j = {};
+  for (let i = 0; i < 120; i++) {
+    const date = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
+    j = observe(j, { date, required: ['a'], logs: logs(date, 'a'), monthStart: date });
+  }
+  assert.equal(status(j, '2026-04-30').count, 120);
+  assert.equal(status(j, '2026-04-30').capped, false);
+  j = observe(j, { date: '2026-05-01', required: ['a'], logs: logs('2026-05-01', 'a'), monthStart: '2026-05-01' });
+  assert.equal(status(j, '2026-05-01').count, 120);
+  assert.equal(status(j, '2026-05-01').capped, true);
+});
+
+test('KST journal date is independent of input timezone and crosses midnight correctly', () => {
+  const { kstDate } = globalThis.FamilyStreak;
+  assert.equal(kstDate(new Date('2026-11-19T14:59:59Z')), '2026-11-19');
+  assert.equal(kstDate(new Date('2026-11-19T15:00:00Z')), '2026-11-20');
+  assert.equal(kstDate(new Date('2026-11-19T07:00:00-08:00')), '2026-11-20');
+  assert.equal(kstDate(new Date('bad')), '');
+});
+
+test('deletion impact only applies to captured targets on an open non-skip day', () => {
+  const { deletionImpact } = globalThis.FamilyStreak;
+  let j = add({}, '2026-11-20', ['a']);
+  assert.deepEqual(deletionImpact(j, '2026-11-20', 'a'), { done: true });
+  assert.deepEqual(deletionImpact(j, '2026-11-20', 'b'), { done: false });
+  assert.equal(deletionImpact(j, '2026-11-20', 'not-target'), null);
+  assert.equal(deletionImpact(j, '2026-11-21', 'a'), null);
+  j.days['2026-11-20'].skip = true;
+  assert.equal(deletionImpact(j, '2026-11-20', 'a'), null);
+  j.days['2026-11-20'].skip = false;
+  j.days['2026-11-20'].finalized = true;
+  assert.equal(deletionImpact(j, '2026-11-20', 'a'), null);
+});

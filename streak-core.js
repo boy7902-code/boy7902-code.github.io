@@ -45,6 +45,15 @@
     });
     return normalize(out);
   }
+  function kstDate(now = new Date()) {
+    const d = new Date(+now + 9 * 60 * 60 * 1000);
+    return Number.isFinite(+d) ? d.toISOString().slice(0, 10) : '';
+  }
+  function deletionImpact(raw, date, mid) {
+    const row = normalize(raw).days[date];
+    if (!row || row.skip || row.finalized || !row.required.includes(mid)) return null;
+    return { done: row.done.includes(mid) };
+  }
   function status(raw, today) {
     const journal = normalize(raw);
     if (!validDate(today) || !journal.started) return { count: 0, started: '', known: false };
@@ -57,7 +66,7 @@
       if (row.required.every((id) => row.done.includes(id))) count += 1;
       else if (day !== today) { exhausted = false; break; } // Today stays open until midnight.
     }
-    return { count, started: journal.started, known: !!journal.days[today], gap, capped: exhausted };
+    return { count, started: journal.started, known: !!journal.days[today], gap, capped: exhausted && day >= journal.started };
   }
-  root.FamilyStreak = Object.freeze({ normalize, observe, status, validDate });
+  root.FamilyStreak = Object.freeze({ normalize, observe, status, validDate, kstDate, deletionImpact });
 })(globalThis);

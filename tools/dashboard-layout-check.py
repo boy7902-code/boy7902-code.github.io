@@ -109,8 +109,8 @@ def synthetic_state_script(fixed_now: str = "2026-11-19T12:00:00") -> str:
       const d = new Date();
       const today = `${{d.getFullYear()}}-${{String(d.getMonth() + 1).padStart(2, '0')}}-${{String(d.getDate()).padStart(2, '0')}}`;
       state.school.byDate[today] = {{
-        meal: '합성급식01, 합성급식02, 합성급식03, 합성급식04, 합성급식05, 합성급식06, 합성급식07, 합성급식08',
-        timetable: '합성준비물항목01-추가안내, 합성준비물항목02-추가안내, 합성준비물항목03-추가안내, 합성준비물항목04-추가안내, 합성준비물항목05-추가안내, 합성준비물항목06-추가안내, 합성준비물항목07-추가안내, 합성준비물항목08-추가안내'
+        meal: {json.dumps(", ".join(f"합성급식{i:02d}" for i in range(1, 21)), ensure_ascii=False)},
+        timetable: {json.dumps(", ".join(f"합성준비물항목{i:02d}-추가안내" for i in range(1, 21)), ensure_ascii=False)}
       }};
       localStorage.setItem('family-dashboard:v1', JSON.stringify(state));
       localStorage.removeItem('family-dashboard:weather');
@@ -283,8 +283,8 @@ def main() -> None:
                                  f"{label}: expected 8 synthetic mission rows, got {result['missions']['count']}", failures)
                 assert_condition(result["missions"]["lastRowFullyReachable"],
                                  f"{label}: last mission row is clipped after scrolling the mission list", failures)
-                assert_condition(result["school"]["chipCount"] == 16,
-                                 f"{label}: expected 16 synthetic school chips, got {result['school']['chipCount']}", failures)
+                assert_condition(result["school"]["chipCount"] == 40,
+                                 f"{label}: expected 40 synthetic school chips, got {result['school']['chipCount']}", failures)
                 assert_condition(result["school"]["lastChipFullyReachable"],
                                  f"{label}: last school chip is clipped after scrolling the school body", failures)
                 assert_condition(result["school"]["summaryCount"] == 0,
