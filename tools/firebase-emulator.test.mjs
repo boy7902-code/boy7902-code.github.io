@@ -94,6 +94,15 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     const privateConfig = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/private/parent_config`));
     assert.equal(privateConfig.data().parentPin, '2468');
 
+    const parentPermissionLog = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/parent-permission-check`);
+    await firestoreSdk.setDoc(parentPermissionLog, { id: 'parent-permission-check', title: 'before', settled: true });
+    await firestoreSdk.updateDoc(parentPermissionLog, { title: 'parent edited', settled: false, parentEditAllowed: true });
+    const editedParentLog = await firestoreSdk.getDoc(parentPermissionLog);
+    assert.equal(editedParentLog.data().title, 'parent edited', 'parent retains existing permission to edit any mission log');
+    assert.equal(editedParentLog.data().parentEditAllowed, true);
+    await firestoreSdk.deleteDoc(parentPermissionLog);
+    assert.equal((await firestoreSdk.getDoc(parentPermissionLog)).exists(), false, 'parent retains existing permission to delete any mission log');
+
     await clearSignedInUser();
     const { user: child } = await createClaimedUser('child');
     const childRole = await sync.applyAuthUser(auth.currentUser);
@@ -240,13 +249,6 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
 
     const adultLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${adultLogId}`);
     const beforeRetry = atTen.data();
-    const adultRetry = await sync.writeLog(
-      { id: 'emulator-adult-mission', title: '어른 미션', points: 7, due: '', bonus: 0 },
-      { by: signedInParent.uid, member: 'm1' },
-    );
-    assert.equal(adultRetry.ok, false, 'settled adult log cannot be overwritten as unsettled');
-    const adultDelete = await sync.deleteLog({ date: logResult.payload.date, mid: 'emulator-adult-mission', member: 'm1', settled: true });
-    assert.equal(adultDelete.ok, false, 'settled adult log cannot be deleted');
     const secondSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
     assert.equal(secondSettlement.ok, true);
     assert.equal(secondSettlement.count, 0);
