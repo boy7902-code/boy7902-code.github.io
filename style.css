@@ -3918,3 +3918,9 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
   }
   .card.chores .chore-list > .chore { scroll-snap-align: start; scroll-margin-block: 3px; }
 }
+
+/* 업무 3 보완(인스팅트): 1024×600처럼 낮은 화면에서는 일정 카드가 내용 높이를 갖고 열이 스크롤되어 선택일 영역이 잘리지 않게 합니다. */
+@media (min-width: 1024px) and (max-height: 640px) {
+  .col-left > #cardSchedule { flex: 0 0 auto; min-height: 0; }
+  .col-right > #cardChores { flex-basis: 480px; min-height: 480px; }
+}
