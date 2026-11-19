@@ -3887,3 +3887,10 @@ html[data-theme="dark"] .stamp-cells li.filled { background: rgba(245, 190, 66, 
 .card.school .sch-row { align-items: flex-start; }
 
 .mstat-streak { color: var(--amber); font: inherit; font-weight: 800; white-space: nowrap; border: 0; background: none; padding: 0; cursor: pointer; }
+
+/* Long streak labels and point totals must remain inside narrow member rows. */
+@media (max-width: 1023px) {
+  .member-stats .mstat { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+  .member-stats .mstat-streak { white-space: normal; overflow-wrap: anywhere; }
+  .member-stats .mstat-total { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+   }
