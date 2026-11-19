@@ -1964,6 +1964,7 @@
     const grid = $('#calGrid');
     if (grid) {
       grid.classList.toggle('two', two);
+      grid.style.setProperty('--calendar-weeks', String(Math.ceil(days.length / 7)));
       const cells = [];
       for (const d of days) {
         const ds = fmtDate(d);
