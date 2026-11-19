@@ -325,6 +325,26 @@ def main() -> None:
                     f"badgeOverlap={result['pill']['overlapsPrimaryCards']}"
                 )
 
+            # Stress the connected label width without any remote account or writes.
+            page.evaluate("""() => {
+              const row = document.querySelector('#memberStats .mstat');
+              row.querySelector('.mstat-name').textContent = '김아이수호 🧒';
+              row.querySelector('.mstat-streak').textContent = '🔥 연속 119+일 · 01/01~';
+              row.querySelector('.mstat-total').textContent = '누적 99999P';
+            }""")
+            for width, height in ((360, 800), (390, 844), (768, 1024), (820, 1180)):
+                page.set_viewport_size({"width": width, "height": height})
+                page.wait_for_timeout(80)
+                inside = page.evaluate("""() => {
+                  const row = document.querySelector('#memberStats .mstat'), box = row.getBoundingClientRect();
+                  return row.scrollWidth <= row.clientWidth + 1 && [...row.children].every(e => {
+                    const r = e.getBoundingClientRect();
+                    return r.right <= box.right + 1 && r.bottom <= box.bottom + 1;
+                  });
+                }""")
+                assert_condition(inside, f"{width}x{height}: long streak/point label clipped", failures)
+                print(f"{width}x{height}: long connected streak and points inside member row={inside}")
+
             sunday_page = browser.new_page(viewport={"width": 1280, "height": 800})
             sunday_page.route("**/*", allow_local_only)
             sunday_page.add_init_script(synthetic_state_script("2026-08-30T12:00:00"))
