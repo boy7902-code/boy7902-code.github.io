@@ -37,6 +37,18 @@ with m.sync_playwright() as p:
    page.locator('#parentBtn').click();page.locator('#modalFields input[type=password]').fill('0000');page.locator('[data-modal-ok]').click();page.wait_for_function("document.body.dataset.parent==='on'")
    page.locator('#wishDetailsBtn').click();page.locator('#screenDetail [data-act=wish-edit]').first.click();assert not page.locator('#screenDetail').evaluate('(e)=>e.open');assert page.locator('#modal').is_visible();page.keyboard.press('Escape')
    page.locator('#settingsBtn').click();page.locator('#familyPhotoInput').set_input_files('/downloads/single-1280x800.png');page.wait_for_function("document.querySelector('#photoSettingsStatus').textContent.includes('저장 완료')")
+   # Bad formats and database aborts leave the saved album intact.
+   page.locator('#familyPhotoInput').set_input_files({'name':'bad.txt','mimeType':'text/plain','buffer':b'not an image'})
+   page.wait_for_function("document.querySelector('#photoSettingsStatus').textContent.includes('JPG')")
+   assert page.locator('#familyPhotoCount').text_content()=='1 / 1'
+   page.evaluate('''() => {const original=IDBObjectStore.prototype.put;window.restorePhotoPut=()=>{IDBObjectStore.prototype.put=original;};IDBObjectStore.prototype.put=function(){throw new DOMException('Synthetic quota failure','QuotaExceededError');};}''')
+   page.locator('#familyPhotoInput').set_input_files('/downloads/single-1280x800.png')
+   page.wait_for_function("document.querySelector('#photoSettingsStatus').textContent.includes('Synthetic quota failure')")
+   assert page.locator('#familyPhotoCount').text_content()=='1 / 1'
+   page.evaluate('restorePhotoPut()')
+   page.evaluate('''async () => {await FamilyScreen.selectPhotos([new File(['invalid'],'test.png',{type:'image/png'})],()=>false);}''')
+   assert '잠금 해제' in page.locator('#photoSettingsStatus').text_content()
+   assert page.locator('#familyPhotoCount').text_content()=='1 / 1'
    page.keyboard.press('Escape');page.locator('#standbyBtn').click();assert page.locator('#familyPhoto').is_visible()
    page.wait_for_timeout(700);page.screenshot(path='/downloads/single-idle.png',full_page=True)
    for _ in range(3):page.locator('#familyPhotoNext').click()
