@@ -110,3 +110,14 @@ test('partial subscription input cannot recalculate or persist empty derived val
   assert.throws(recalc, /full-data-path/);
   assert.equal(merged, 1, 'normal recalculation resumes once the complete snapshot set is present');
 });
+
+
+test('stamp board follows missions in the shared scroll area with optional detail', () => {
+  const fit = readFileSync(new URL('../mission-fit.js', import.meta.url), 'utf8');
+  assert.match(html, /id="missionScroll"[\s\S]*id="choreList"[\s\S]*class="reading-stamp-board/);
+  assert.match(html, /<details class="stamp-help"><summary>도장 안내<\/summary>/);
+  assert.match(html, /id="stampBoardOpenBtn"/);
+  assert.match(fit, /getElementById\('missionScroll'\)/);
+  assert.match(fit, /board\.scrollIntoView/);
+  assert.match(css, /#cardSchedule \.cal-up\s*\{ margin-top: 0; \}/);
+});
