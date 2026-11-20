@@ -81,10 +81,10 @@
     let refreshQueued=false;
     new MutationObserver(()=>{if(refreshQueued)return;refreshQueued=true;requestAnimationFrame(()=>{refreshQueued=false;renderInsights();});}).observe($('#wishList'),{childList:true});
     renderInsights();
-    const allowed=()=>window.FamilyDashboard.parent().unlocked;
-    $('#familyPhotoSelect').addEventListener('click',()=>{if(allowed())$('#familyPhotoInput').click();else photoLocked();});
-    $('#familyPhotoInput').addEventListener('change',e=>selectPhotos(e.target.files,allowed));
-    $('#familyPhotoClear').addEventListener('click',()=>clearPhotos(allowed));
+    
+    $('#familyPhotoSelect').addEventListener('click',()=>{if(photoAllowed())$('#familyPhotoInput').click();else photoLocked();});
+    $('#familyPhotoInput').addEventListener('change',e=>selectPhotos(e.target.files));
+    $('#familyPhotoClear').addEventListener('click',()=>clearPhotos());
     ['pointerdown','touchstart'].forEach(type=>window.addEventListener(type,e=>{if(e.target.closest('.photo-controls'))e.stopPropagation();},true));
     initPhotos();
   }
@@ -117,22 +117,23 @@
     const c=document.createElement('canvas');c.width=Math.max(1,Math.round(image.width*scale));c.height=Math.max(1,Math.round(image.height*scale));c.getContext('2d').drawImage(image,0,0,c.width,c.height);image.close();
     return new Promise((resolve,reject)=>c.toBlob(blob=>blob?resolve(blob):reject(Error('사진 변환에 실패했어요.')),'image/jpeg',.85));
   }
+  function photoAllowed() { return !!(window.FamilyDashboard && window.FamilyDashboard.parent().unlocked); }
   function photoLocked() { $('#photoSettingsStatus').textContent='보호자 잠금 해제 후 사용해 주세요.'; }
-  async function selectPhotos(files,allowed) {
-    if(!allowed()) { photoLocked(); return; }
+  async function selectPhotos(files) {
+    if(!photoAllowed()) { photoLocked(); return; }
     const note=$('#photoSettingsStatus');
     try {
       const list=Array.from(files||[]);if(!list.length)return;
       if(list.length>12)throw Error('사진은 한 번에 최대 12장까지 선택해 주세요.');
       note.textContent='사진을 이 기기에 저장하는 중…';
       const blobs=[];for(const f of list)blobs.push(await resize(f));
-      if(!allowed())throw Error('부모 잠금이 켜져 저장하지 않았어요. 다시 열어 주세요.');
+      if(!photoAllowed())throw Error('부모 잠금이 켜져 저장하지 않았어요. 다시 열어 주세요.');
       await store('put',blobs);setPhotos(blobs);note.textContent=`${blobs.length}장 저장 완료 · 이 브라우저에만 보관됩니다.`;
     }catch(e){note.textContent=e.message||'사진을 저장하지 못했어요. 기존 사진은 유지됩니다.';}
     finally{$('#familyPhotoInput').value='';}
   }
-  async function clearPhotos(allowed) {
-    if(!allowed()) { photoLocked(); return; }
+  async function clearPhotos() {
+    if(!photoAllowed()) { photoLocked(); return; }
     try{await store('put',[]);setPhotos([]);$('#photoSettingsStatus').textContent='이 기기의 액자 사진을 지웠어요.';}
     catch(e){$('#photoSettingsStatus').textContent='사진을 지우지 못했어요. 다시 시도해 주세요.';}
   }
@@ -145,6 +146,6 @@
     new MutationObserver(resetPhotoTimer).observe($('#standby'),{attributes:true,attributeFilter:['hidden']});
     document.addEventListener('visibilitychange',resetPhotoTimer);
   }
-  window.FamilyScreen=Object.freeze({openDetails,selectPhotos,clearPhotos});
+  window.FamilyScreen=Object.freeze({openDetails});
   install();
 })();
