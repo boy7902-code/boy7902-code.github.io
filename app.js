@@ -3605,7 +3605,7 @@
   }
 
   /* ---- 상단 3탭: 🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방 ---- */
-  const APP_TABS = ['dash', 'letters', 'play'];
+  const APP_TABS = ['dash', 'letters', 'play', 'game'];
   let appTab = 'dash';
   const LETTERS_SEEN_KEY = 'family-dashboard:letters-seen';
   let lettersSeen = null;
@@ -3664,7 +3664,7 @@
       b.setAttribute('aria-selected', String(on));
       b.tabIndex = on ? 0 : -1;
     });
-    const views = { dash: $('#mainGrid'), letters: $('#tabLetters'), play: $('#tabPlay') };
+    const views = { dash: $('#mainGrid'), letters: $('#tabLetters'), play: $('#tabPlay'), game: $('#tabGame') };
     Object.keys(views).forEach((k) => { if (views[k]) views[k].hidden = k !== appTab; });
     if (appTab === 'letters') { renderLetters(); markLettersAllSeen(); }
     else if (appTab === 'play') renderPlayground();

@@ -16,6 +16,7 @@
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
 <link rel="stylesheet" href="single-screen.css?v=1" />
+<link rel="stylesheet" href="quiz-battle.css?v=2" />
 </head>
 <body data-parent="off">
 <div class="app">
@@ -64,6 +65,9 @@
     </button>
     <button type="button" role="tab" class="at" data-apptab="play" aria-selected="false" aria-controls="tabPlay" tabindex="-1">
       <span class="at-ico" aria-hidden="true">🐾</span><span class="at-txt">포켓몬 놀이방</span>
+    </button>
+    <button type="button" role="tab" class="at" data-apptab="game" aria-selected="false" aria-controls="tabGame" tabindex="-1">
+      <span class="at-ico" aria-hidden="true">🎮</span><span class="at-txt">퀴즈 배틀</span>
     </button>
   </nav>
 
@@ -433,6 +437,23 @@
           </div>
           <div class="dp-yard" id="tabPlayYard" role="group" aria-label="놀이방 풀밭"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 탭 화면 : 퀴즈 배틀 (시험 모듈) ======================= -->
+  <!-- 🎮 퀴즈 배틀 B·D 시험 모듈 — 플레이스홀더 몬스터, 저장은 localStorage quizBattle.* 뿐, 미션 포인트·진화 경험치와 무관 -->
+  <section class="tabview" id="tabGame" role="tabpanel" aria-label="퀴즈 배틀" hidden>
+    <div class="card" id="cardQuizBattle" aria-labelledby="tQuizBattle">
+      <div class="card-head">
+        <div class="card-ico mint" aria-hidden="true">🎮</div>
+        <div>
+          <div class="card-title" id="tQuizBattle">퀴즈 배틀 (시험판)</div>
+          <div class="card-sub">수학·영어 퀴즈로 놀아요 · 미션 포인트와는 별개</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="quizBattleMount"></div>
       </div>
     </div>
   </section>
@@ -974,5 +995,27 @@
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=12"></script>
 <script src="single-screen.js?v=1"></script>
+<script src="quiz-battle.js?v=5"></script>
+<script>
+  // 퀴즈 배틀 모듈 초기화 — 퀴즈 배틀 탭의 마운트에 한 번만
+  document.addEventListener('DOMContentLoaded', function () {
+    var mount = document.getElementById('quizBattleMount');
+    if (mount && window.QuizBattle && typeof window.QuizBattle.init === 'function') window.QuizBattle.init(mount);
+  });
+  // 퀴즈 배틀 탭 추가로 탭 바가 넘칠 때: 선택된 탭이 온전히 보이게 최소 스크롤 정렬 + 넘침 표시 클래스
+  (function () {
+    var bar = document.querySelector('.apptabs');
+    if (!bar) return;
+    var update = function () { bar.classList.toggle('qb-tabs-overflow', bar.scrollWidth > bar.clientWidth + 1); };
+    var align = function () {
+      var on = bar.querySelector('.at.on');
+      if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+    new MutationObserver(align).observe(bar, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
 </body>
 </html>
+
