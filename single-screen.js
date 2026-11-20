@@ -52,7 +52,7 @@
       if(!wish||wish.boughtAt||!(+wish.need>0)||el.querySelector('.gift-estimate'))return;
       const left=Math.max(0,+wish.need-dashboard.pokemon().balance),days=core.estimate(left,week.average);
       const note=document.createElement('p');note.className='gift-estimate';
-      note.textContent=!left?'목표 포인트를 모았어요!':days==null?'예상 기간은 획득 기록이 쌓이면 표시돼요':`최근28일 중 모은 날 평균 ${Math.round(week.average)}P · 약 ${days}회 더 모으면 목표 예상`;
+      note.textContent=!left?'목표 포인트를 모았어요!':days==null?'예상 기간은 획득 기록이 쌓이면 표시돼요':`최근 28일 중 모은 날 평균 ${Math.round(week.average)}P · 약 ${days}회 더 모으면 목표 예상`;
       el.querySelector('.wish-main').append(note);
     });
   }
