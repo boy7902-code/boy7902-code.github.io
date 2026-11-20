@@ -12,6 +12,9 @@ with m.sync_playwright() as p:
   geom=page.evaluate('''() => {const rows=[...document.querySelectorAll('#choreList>.chore:not(.ss-page-hidden)')];const box=document.querySelector('#missionScroll').getBoundingClientRect();return {pageHeight:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth,visible:rows.length,complete:rows.every(x=>x.getBoundingClientRect().bottom<=box.bottom+1),stampBottom:document.querySelector('.mission-stamp-board').getBoundingClientRect().bottom,schoolButton:document.querySelector('#schoolDetailsBtn').getBoundingClientRect().bottom};}''')
   assert geom['width']<=w,(w,geom)
   if w>=1024:assert geom['complete'] and geom['stampBottom']<=h and geom['schoolButton']<=h,(w,h,geom)
+  if w>=1024:
+   meter=page.evaluate('''() => {const p=document.querySelector('.char-panel').getBoundingClientRect();return ['todayGot','todayGoal','todayPct'].every(id=>{let r=document.getElementById(id).getBoundingClientRect();return r.height>0&&r.top>=p.top&&r.bottom<=p.bottom&&r.right<=p.right;});}''')
+   assert meter,(w,h,'today numbers clipped')
   page.screenshot(path=f'/downloads/single-{w}x{h}.png',full_page=True)
   initial_state=page.evaluate('JSON.stringify(FamilyDashboard.state)')
   ids=[]
