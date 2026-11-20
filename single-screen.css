@@ -149,3 +149,24 @@
  #cardSchool .card-sub,#cardWish .card-sub {font-size:9px;}
  #schoolDetailsBtn,#wishDetailsBtn {min-height:26px;}
 }
+/* Keep the complete daily numbers inside the fixed character summary. */
+@media(min-width:1024px) {
+ #cardChores .char-info {grid-template-rows:20px 42px 20px;align-content:start;min-height:0;}
+ #cardChores .stat-cards {gap:2px;}
+ #cardChores .stat-card {min-height:20px;height:20px;padding:2px 3px;}
+ #cardChores .today-meter {display:flex!important;flex-direction:row!important;flex-wrap:nowrap;min-height:20px;height:20px;align-items:center;gap:8px;}
+ #cardChores .today-meter-head,#cardChores .today-meter-num {display:flex!important;flex-direction:row!important;flex-wrap:nowrap;align-items:center;gap:4px;margin:0;min-height:0;line-height:18px;}
+ #cardChores .today-meter-num {font-size:10px;}
+ #cardChores .today-meter-head {font-size:10px;}
+ #cardChores .today-meter-num b {font-size:10px;}
+ #cardChores .char-next {margin:0;}
+}
+@media(min-width:1024px) and (max-height:700px) {
+ #cardChores .char-info {grid-template-rows:16px 32px 16px;gap:2px 8px;}
+ #cardChores .char-nameline {min-height:0;height:16px;}
+ #cardChores .stat-cards {gap:1px;}
+ #cardChores .stat-card {height:15px;min-height:15px;padding:0 2px;}
+ #cardChores .evo-meter-head {line-height:15px;}
+ #cardChores .today-meter {height:16px;min-height:16px;}
+ #cardChores .today-meter-head,#cardChores .today-meter-num {line-height:16px;}
+}
