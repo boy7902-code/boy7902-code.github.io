@@ -6,10 +6,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "check": "node --check mission-rewards.js && node --check streak-core.js && node --check app.js && node --check alarm-core.js && node --check firebase-sync.js && node --check firebase-boot.js && node --check firebase-runtime.js && node --check legacy-sync-guard.js && node --check parent-session-guard.js && node --check standby-guard.js && node --check fullscreen-guard.js",
-    "test:unit": "node --test tools/mission-rewards.test.mjs tools/mission-ui.test.mjs tools/firebase-runtime.test.mjs tools/firebase-sync.test.mjs tools/legacy-sync.test.mjs tools/parent-session.test.mjs tools/standby-guard.test.mjs tools/fullscreen-guard.test.mjs tools/mission-fold.test.mjs tools/parent-only.test.mjs tools/alarm-core.test.mjs tools/dashboard-layout-contract.test.mjs tools/streak-core.test.mjs",
+    "check": "node --check mission-rewards.js && node --check streak-core.js && node --check app.js && node --check alarm-core.js && node --check firebase-sync.js && node --check firebase-boot.js && node --check firebase-runtime.js && node --check legacy-sync-guard.js && node --check parent-session-guard.js && node --check standby-guard.js && node --check fullscreen-guard.js && node --check dashboard-insights.js && node --check single-screen.js",
+    "test:unit": "node --test tools/mission-rewards.test.mjs tools/mission-ui.test.mjs tools/firebase-runtime.test.mjs tools/firebase-sync.test.mjs tools/legacy-sync.test.mjs tools/parent-session.test.mjs tools/standby-guard.test.mjs tools/fullscreen-guard.test.mjs tools/mission-fold.test.mjs tools/parent-only.test.mjs tools/alarm-core.test.mjs tools/dashboard-layout-contract.test.mjs tools/streak-core.test.mjs tools/dashboard-insights.test.mjs",
     "test:layout": "python3 tools/dashboard-layout-check.py",
-    "test:emulator": "firebase emulators:exec --project demo-family-dashboard --only auth,firestore \"node --test tools/firebase-emulator.test.mjs\""
+    "test:emulator": "firebase emulators:exec --project demo-family-dashboard --only auth,firestore \"node --test tools/firebase-emulator.test.mjs\"",
+    "test:single-screen": "python3 tools/single-screen-check.py"
   },
   "devDependencies": {
     "firebase": "11.0.2",

@@ -1,0 +1,172 @@
+/* Approved single-screen dashboard. Existing dialogs and controls retain IDs. */
+#cardTimer { display:none!important; }
+#screenDetail { width:min(900px,94vw); max-height:88dvh; padding:20px; border:1px solid var(--border); border-radius:20px; background:var(--surface-solid);color:var(--text);box-shadow:var(--shadow-lg); }
+#screenDetail::backdrop { background:rgba(15,20,40,.55); }
+.detail-head { display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--surface-solid);z-index:1; }
+.detail-head h2 {font-size:19px;flex:1;}
+#screenDetailBody {padding:8px 0;min-width:0;}
+#screenDetailBody #schoolBody,#screenDetailBody #wishPane,#screenDetailBody #choreList,#screenDetailBody #calDay {height:auto!important;max-height:none!important;overflow:visible!important;display:flex;flex-direction:column;gap:10px;}
+#screenDetailBody .chore {min-height:64px;}
+#screenDetailBody .chore-title {white-space:normal!important;overflow:visible!important;display:block!important;}
+#screenDetailBody .ss-page-hidden {display:flex!important;}
+#screenDetailBody .mission-stamp-board {display:block;}
+#screenDetailBody .stamp-cells {display:flex;gap:8px;list-style:none;padding:0;}
+#screenDetailBody .stamp-cells li {flex:1;min-height:32px;text-align:center;}
+.ss-page-hidden {display:none!important;}
+.mission-pager,.weekly-head {display:flex;align-items:center;gap:6px;min-width:0;}
+.mission-pager {font-size:11px;flex:0 0 auto;}
+#missionPageLabel {flex:1;}
+.mission-pager .btn {min-height:30px;}
+.weekly-report {border-top:1px dashed var(--border-strong);padding:7px 0 0;flex:0 0 auto;}
+.weekly-head {justify-content:space-between;font-size:12px;}
+.weekly-head .btn {min-height:24px;font-size:10px;padding:2px 6px;}
+.weekly-bars {display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:70px;align-items:end;}
+.weekly-day {display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:flex-end;min-width:0;}
+.weekly-day b,.weekly-day span {font-size:10px;line-height:1.2;}
+.weekly-day i {display:block;background:var(--lilac);width:26px;max-width:100%;border-radius:5px 5px 0 0;}
+#weeklySummary {font-size:11px;text-align:center;color:var(--text-2);margin:5px 0;}
+.weekly-footnote {font-size:10px;color:var(--text-3);margin:3px 0;text-align:center;}
+.gift-estimate {font-size:11px;line-height:1.45;margin:5px 0 0;color:var(--text-2);}
+.family-photo-frame {width:100%;border:8px solid white;border-radius:18px;background:rgba(255,255,255,.17);color:white;overflow:hidden;}
+#familyPhoto {display:block;width:100%;height:210px;object-fit:contain;background:rgba(0,0,0,.15);}
+#familyPhoto[hidden] {display:none;}
+#familyPhotoEmpty {min-height:150px;padding:28px 12px;text-align:center;font-size:15px;line-height:2;}
+.photo-controls {display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:7px;font-size:11px;}
+.photo-controls .btn {font-size:11px;min-height:28px;padding:3px 6px;}
+#familyPhotoInput[hidden] {display:none;}
+#cardSchool #schoolBody,#cardWish #wishPane {overflow:hidden!important;}
+#schoolDetailsBtn,#wishDetailsBtn {font-size:11px;min-height:28px;padding:3px 6px;flex:0 0 auto;}
+#wishDetailsBtn {order:4;}
+#cardSchool .card-body {min-height:45px;}
+#cardWish .wish-list > .wish-item:not(:first-child) {display:none;}
+#screenDetailBody .wish-list > .wish-item {display:flex!important;}
+#calDayDetailsBtn {font-size:10px;min-height:22px;padding:2px 5px;align-self:flex-end;}
+@media(min-width:1024px) {
+  .app {height:100dvh;max-height:100dvh;gap:8px;padding:10px 14px;}
+  .topbar {height:48px;min-height:48px;max-height:48px;}
+  .grid {flex:1;min-height:0;gap:12px;}
+  .col {overflow:hidden!important;gap:8px;}
+  .col-right > #cardChores {flex:1 1 auto;min-height:0;}
+  .col-left > #cardOverview {flex:0 0 58px;min-height:58px;max-height:58px;}
+  #cardOverview {padding:6px 10px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);grid-template-rows:1fr;gap:10px;}
+  #cardOverview .card-head {display:none;}
+  #cardOverview .weather-meta {align-items:center;}
+  #cardOverview .weather-current-reading .weather-icon {font-size:24px;}
+  #cardOverview .weather-current-reading .weather-temp {font-size:22px;}
+  #cardOverview .weather-desc {font-size:10px;}
+  #cardOverview .outfit-suggestions {display:none;}
+  #cardOverview .weather-week {grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;align-self:center;}
+  #cardOverview .weather-week .ww-day {font-size:9px;}
+  .col-left > #cardSchedule {flex:0 0 auto;min-height:0;padding:8px 10px;}
+  #cardSchedule .card-head {margin-bottom:4px;}
+  #cardSchedule .sched-tabs {position:absolute;right:12px;top:8px;}
+  #cardSchedule .card-tools {margin-right:75px;}
+  #cardSchedule .cal-top {min-height:24px;margin-top:0;}
+  #cardSchedule .cal-day {max-height:48px;overflow:hidden;}
+  #cardSchedule .cal-up {max-height:34px;overflow:hidden;}
+  .support-grid {flex:1 1 auto;min-height:124px;grid-template-rows:minmax(0,1fr);}
+  .support-grid > #cardSchool,.support-grid > #cardWish {height:auto;min-height:0;max-height:none;padding:8px 10px;}
+  #cardWish .wish-list {min-height:0;overflow:hidden;}
+  #cardSchool .card-body {flex:1;}
+  #cardSchool .sch-row {font-size:12px;}
+  #cardChores {padding:10px 12px;}
+  #cardChores .card-head {margin-bottom:5px;}
+  #cardChores .chore-wrap {display:flex;flex-direction:column;gap:5px;}
+  #cardChores .char-panel {flex:0 0 102px;max-height:102px;padding:5px 8px;display:grid;grid-template-columns:78px minmax(0,1fr) 115px;gap:8px;}
+  #cardChores .char-stage {width:78px;height:78px;min-height:78px;}
+  #cardChores .char-stage img {max-height:78px;}
+  #cardChores .char-info {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:3px 10px;}
+  #cardChores .char-nameline {grid-column:1/-1;}
+  #cardChores .evo-meter {margin:0;}
+  #cardChores .evo-meter-head,#cardChores .evo-next {font-size:10px;}
+  #cardChores .stat-cards {display:flex;flex-direction:column;gap:3px;}
+  #cardChores .stat-card {padding:3px;min-height:22px;font-size:10px;}
+  #cardChores .stat-value {font-size:11px;}
+  #cardChores .today-meter {grid-column:1/-1;display:flex;gap:8px;align-items:center;padding:0;}
+  #cardChores .today-meter-head,#cardChores .today-meter-num {font-size:10px;white-space:nowrap;}
+  #cardChores .today-bar,#cardChores .today-hint,#cardChores .char-foot {display:none;}
+  #cardChores .char-aside {display:flex;flex-direction:column;justify-content:center;gap:5px;}
+  #cardChores .char-evo {margin:0;}
+  #cardChores .mission-area {flex:1;display:flex;flex-direction:column;gap:5px;min-height:0;}
+  #cardChores .mission-scroll {flex:1 1 auto!important;height:auto!important;max-height:none!important;min-height:0;overflow:hidden!important;}
+  #cardChores .chore-list {gap:6px;overflow:hidden!important;}
+  #cardChores .chore {min-height:51px;padding:5px 8px;}
+  #cardChores .chore-title {font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  #cardChores .chore-off {display:none;}
+  #cardChores .member-stats {flex:0 0 auto;}
+  #cardChores .weekly-report {order:3;}
+  #cardChores .mission-badges {order:4;min-height:28px;flex:0 0 auto;}
+  #cardChores .mission-stamp-board {order:5;margin:0;min-height:42px;grid-template-areas:'title cells';grid-template-columns:130px 1fr;}
+  #cardChores .mission-stamp-board .stamp-board-meta,#cardChores .mission-stamp-board .stamp-help {display:none;}
+  #cardChores .mission-stamp-board .stamp-cells li {min-height:24px;}
+  #cardChores #stickerRow {display:none;}
+  .sb-right {gap:8px;justify-content:center;}
+  .sb-stage {height:150px;min-height:150px;}
+  .sb-poke-img {max-height:150px;}
+  .sb-name {font-size:24px;}
+}
+/* Small viewports keep readable text and the same detail/paging controls. */
+@media(max-width:1023px) {
+  .family-photo-frame {max-width:440px;}
+  #cardChores .mission-stamp-board {margin-top:8px;}
+  #cardSchool #schoolBody {max-height:100px;}
+  #cardWish #wishPane {max-height:170px;}
+}
+@media(prefers-reduced-motion:reduce) { .weekly-day i {transition:none;} }
+
+@media(min-width:1024px) {
+ #cardChores .weekly-bars {height:54px;}
+ #cardChores .weekly-footnote {display:none;}
+ #cardChores .weekly-head {height:24px;}
+ #cardChores .mission-stamp-board .stamp-cells {height:26px;}
+ #cardChores .mission-stamp-board .stamp-cells li {height:26px;width:26px;min-height:26px;aspect-ratio:auto;justify-self:center;}
+}
+
+#weatherDetailsBtn {font-size:10px;min-height:24px;padding:2px 5px;}
+@media(min-width:1024px) {
+ #cardOverview {grid-template-columns:minmax(0,.8fr) 75px minmax(0,1.3fr);}
+ #weatherDetailsBtn {align-self:center;}
+}
+@media(min-width:1024px) and (max-height:700px) {
+ #cardSchedule .cal-day {display:none;}
+ #cardSchedule .cal-up {display:none;}
+ .support-grid {min-height:90px;}
+ #cardChores .char-panel {flex-basis:80px;max-height:80px;grid-template-columns:58px minmax(0,1fr) 84px;}
+ #cardChores .char-stage {width:58px;height:58px;min-height:58px;}
+ #cardChores .char-stage img {max-height:58px;}
+ #cardChores .char-evo {display:none;}
+ #cardChores .weekly-report {padding-top:3px;}
+ #cardChores .weekly-bars {height:48px;}
+ .weekly-day b,.weekly-day span {font-size:9px;}
+}
+#screenDetailBody #calDay {display:flex!important;}
+#screenDetailBody #outfitSuggestions {display:grid!important;grid-template-columns:1fr;}
+
+@media(min-width:1024px) and (max-height:700px) {
+ #cardSchool .card-body {min-height:0!important;flex:1 1 auto;}
+ #cardWish .wish-body {min-height:0!important;}
+ #cardSchool .card-head,#cardWish .card-head {flex:0 0 auto;}
+ #cardSchool .card-sub,#cardWish .card-sub {font-size:9px;}
+ #schoolDetailsBtn,#wishDetailsBtn {min-height:26px;}
+}
+/* Keep the complete daily numbers inside the fixed character summary. */
+@media(min-width:1024px) {
+ #cardChores .char-info {grid-template-rows:20px 42px 20px;align-content:start;min-height:0;}
+ #cardChores .stat-cards {gap:2px;}
+ #cardChores .stat-card {min-height:20px;height:20px;padding:2px 3px;}
+ #cardChores .today-meter {display:flex!important;flex-direction:row!important;flex-wrap:nowrap;min-height:20px;height:20px;align-items:center;gap:8px;}
+ #cardChores .today-meter-head,#cardChores .today-meter-num {display:flex!important;flex-direction:row!important;flex-wrap:nowrap;align-items:center;gap:4px;margin:0;min-height:0;line-height:18px;}
+ #cardChores .today-meter-num {font-size:10px;}
+ #cardChores .today-meter-head {font-size:10px;}
+ #cardChores .today-meter-num b {font-size:10px;}
+ #cardChores .char-next {margin:0;}
+}
+@media(min-width:1024px) and (max-height:700px) {
+ #cardChores .char-info {grid-template-rows:16px 32px 16px;gap:2px 8px;}
+ #cardChores .char-nameline {min-height:0;height:16px;}
+ #cardChores .stat-cards {gap:1px;}
+ #cardChores .stat-card {height:15px;min-height:15px;padding:0 2px;}
+ #cardChores .evo-meter-head {line-height:15px;}
+ #cardChores .today-meter {height:16px;min-height:16px;}
+ #cardChores .today-meter-head,#cardChores .today-meter-num {line-height:16px;}
+}
