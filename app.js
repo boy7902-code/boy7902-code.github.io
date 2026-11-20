@@ -3605,7 +3605,7 @@
   }
 
   /* ---- 상단 3탭: 🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방 ---- */
-  const APP_TABS = ['dash', 'letters', 'play'];
+  const APP_TABS = ['dash', 'letters', 'play', 'game'];
   let appTab = 'dash';
   const LETTERS_SEEN_KEY = 'family-dashboard:letters-seen';
   let lettersSeen = null;
