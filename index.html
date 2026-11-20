@@ -12,9 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=58-mission-space" />
+<link rel="stylesheet" href="style.css?v=59-single-screen" />
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
+<link rel="stylesheet" href="single-screen.css?v=1" />
 </head>
 <body data-parent="off">
 <div class="app">
@@ -95,7 +96,7 @@
           <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">☂️</span><span><b>우산</b><small>강수 정보를 확인하고 있어요</small></span></div>
           <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🌿</span><span><b>공기질</b><small>정보를 확인하고 있어요</small></span></div>
         </div>
-        <div class="weather-week" id="weatherWeek" aria-label="주간 날씨 예보" aria-live="polite"><span class="weather-week-empty">주간 예보를 불러오는 중이에요</span></div>
+        <button class="btn sm ghost" id="weatherDetailsBtn">옷차림 상세</button><div class="weather-week" id="weatherWeek" aria-label="주간 날씨 예보" aria-live="polite"><span class="weather-week-empty">주간 예보를 불러오는 중이에요</span></div>
       </section>
 
       <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
@@ -137,7 +138,7 @@
             <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
           </div>
           <div class="cal-grid" id="calGrid" role="grid" aria-label="한 달 일정 달력"></div>
-          <div class="cal-day" id="calDay"></div>
+          <div class="cal-day" id="calDay"></div><button class="btn sm ghost" id="calDayDetailsBtn">선택일 상세</button>
           <div class="cal-up" id="upcomingEvents"></div>
         </div>
         <!-- 우리 집 위키 — 달력 카드 안의 두 번째 탭 (생신·기념일은 달력에도 표시됩니다) -->
@@ -160,7 +161,7 @@
             <button class="btn icon sm parent-only" id="schoolEditBtn" title="오늘 시간표·준비물과 급식 적기" aria-label="오늘 시간표·준비물과 급식 적기">✎</button>
           </div>
         </div>
-        <div class="card-body" id="schoolBody"></div>
+        <div class="card-body" id="schoolBody"></div><button class="btn sm ghost" id="schoolDetailsBtn">학교 상세 보기</button>
       </section>
 
       <section class="card wish" id="cardWish" aria-labelledby="tWish">
@@ -175,7 +176,7 @@
             <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
           </div>
         </div>
-        <div class="voice-note" id="wishVoiceNote" hidden></div>
+        <button class="btn sm ghost" id="wishDetailsBtn">선물 전체 보기</button><div class="voice-note" id="wishVoiceNote" hidden></div>
         <div class="card-body wish-body merge-pane" id="wishPane">
           <div class="wish-list" id="wishList"></div>
         </div>
@@ -289,7 +290,7 @@
               </div>
             </div>
             <div class="mission-area">
-              <div class="member-stats" id="memberStats"></div>
+              <div class="member-stats" id="memberStats"></div><div class="mission-pager"><button class="btn sm" id="missionPrev" aria-label="이전 미션">‹</button><span id="missionPageLabel"></span><button class="btn sm" id="missionNext" aria-label="다음 미션">›</button><button class="btn sm ghost" id="allMissionsBtn">미션 전체</button></div>
               <div class="mission-scroll" id="missionScroll" tabindex="0" aria-label="미션 목록과 아래 도장판">
               <div class="chore-list" id="choreList"></div>
           <div class="row" style="margin-top:2px">
@@ -314,6 +315,7 @@
             </details>
           </section>
               </div>
+              <section class="weekly-report" aria-labelledby="weeklyReportTitle"><div class="weekly-head"><b id="weeklyReportTitle">📈 이번 주 성장 리포트</b><button class="btn sm ghost" id="weeklyDetailsBtn">리포트 상세</button></div><div id="weeklyReportContent"><div id="weeklyBars" class="weekly-bars"></div><p id="weeklySummary"></p><p class="weekly-footnote">저장된 아이·공용 기록 기준 · 누락된 날은 추정하지 않아요</p></div></section>
               <!-- 기록 보기 — 긴 글 대신 아이콘 배지 한 줄 (누르면 기록 창이 열립니다) -->
               <div class="mission-badges" id="missionBadges" role="group" aria-label="기록 보기">
                 <button class="mbtn stamp-jump" id="stampBoardOpenBtn" type="button" aria-controls="readingBoardTitle" title="미션 목록 아래 도장판 보기"><span aria-hidden="true">🏅</span><span class="mb-txt">도장판 ↓</span></button>
@@ -465,7 +467,7 @@
       <div class="sb-weather" id="sbWeather"></div>
       <div class="sb-mission" id="sbMission"></div>
     </div>
-    <div class="sb-right">
+    <div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden alt="가족 사진" /><div id="familyPhotoEmpty">🖼️<br>보호자 설정에서 가족 사진을 선택해 주세요</div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section>
       <div class="sb-poke" id="sbPoke">
         <div class="sb-stage" id="sbStage"></div>
         <div class="sb-say" id="sbSay" aria-live="polite"></div>
@@ -477,6 +479,7 @@
   </div>
 </section>
 
+<dialog id="screenDetail" aria-labelledby="screenDetailTitle"><div class="detail-head"><h2 id="screenDetailTitle"></h2><button class="btn" id="screenDetailClose">닫기</button></div><div id="screenDetailBody"></div></dialog>
 <!-- ======================= 모달: 공통 입력 ======================= -->
 <div class="modal" id="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -510,7 +513,8 @@
     <h3 id="settingsTitle">⚙️ 설정</h3>
     <p class="hint">날씨·화면 설정은 이 기기에 저장되고, 가족 기록은 Google 로그인 시 Firestore와 동기화됩니다.</p>
 
-    <div class="settings-section">
+    <div class="settings-section parent-only"><h4>🖼️ 가족 사진 액자</h4><p class="hint">선택한 사진은 이 브라우저에만 저장돼요. 가족 동기화나 외부 업로드는 하지 않습니다. 대기화면에서 누구나 볼 수 있으니 민감한 사진은 고르지 마세요. 최대12장, JPG·PNG·WebP, 10초마다 바뀝니다. 로그아웃해도 이 기기에 남으며, 브라우저 데이터를 지우면 사라져요.</p><button type="button" class="btn" id="familyPhotoSelect">사진 선택 · 기존 사진 대체</button><input type="file" id="familyPhotoInput" accept="image/jpeg,image/png,image/webp" multiple hidden /><button type="button" class="btn" id="familyPhotoClear">액자 사진 모두 지우기</button><p id="photoSettingsStatus" role="status"></p></div>
+      <div class="settings-section">
       <h4>📍 날씨 위치</h4>
       <div class="row">
         <button class="btn sm primary" id="geoBtn">현재 위치 사용</button>
@@ -964,9 +968,11 @@
 <script src="fullscreen-guard.js?v=1"></script>
 <script src="mission-rewards.js?v=early-bonus-1"></script>
 <script src="streak-core.js?v=journal-3"></script>
+<script src="dashboard-insights.js?v=1"></script>
 <script src="app.js?v=v17-sunday-mobile"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=12"></script>
+<script src="single-screen.js?v=1"></script>
 </body>
-</html>
+  </html>
