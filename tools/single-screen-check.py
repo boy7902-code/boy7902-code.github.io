@@ -46,10 +46,13 @@ with m.sync_playwright() as p:
    page.wait_for_function("document.querySelector('#photoSettingsStatus').textContent.includes('Synthetic quota failure')")
    assert page.locator('#familyPhotoCount').text_content()=='1 / 1'
    page.evaluate('restorePhotoPut()')
-   page.evaluate('''async () => {await FamilyScreen.selectPhotos([new File(['invalid'],'test.png',{type:'image/png'})],()=>false);}''')
+   page.evaluate('''() => {document.querySelector('#parentBtn').click();}''')
+   page.locator('#familyPhotoInput').set_input_files('/downloads/single-1280x800.png')
    assert '잠금 해제' in page.locator('#photoSettingsStatus').text_content()
    assert page.locator('#familyPhotoCount').text_content()=='1 / 1'
-   page.keyboard.press('Escape');page.locator('#standbyBtn').click();assert page.locator('#familyPhoto').is_visible()
+   assert page.evaluate('FamilyScreen.selectPhotos===undefined && FamilyScreen.clearPhotos===undefined')
+   page.keyboard.press('Escape');page.locator('#parentBtn').click();page.locator('#modalFields input[type=password]').fill('0000');page.locator('[data-modal-ok]').click()
+   page.locator('#standbyBtn').click();assert page.locator('#familyPhoto').is_visible()
    page.wait_for_timeout(700);page.screenshot(path='/downloads/single-idle.png',full_page=True)
    for _ in range(3):page.locator('#familyPhotoNext').click()
    assert page.evaluate('FamilyDashboard.standby().on')
