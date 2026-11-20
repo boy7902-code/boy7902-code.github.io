@@ -3664,7 +3664,7 @@
       b.setAttribute('aria-selected', String(on));
       b.tabIndex = on ? 0 : -1;
     });
-    const views = { dash: $('#mainGrid'), letters: $('#tabLetters'), play: $('#tabPlay') };
+    const views = { dash: $('#mainGrid'), letters: $('#tabLetters'), play: $('#tabPlay'), game: $('#tabGame') };
     Object.keys(views).forEach((k) => { if (views[k]) views[k].hidden = k !== appTab; });
     if (appTab === 'letters') { renderLetters(); markLettersAllSeen(); }
     else if (appTab === 'play') renderPlayground();
