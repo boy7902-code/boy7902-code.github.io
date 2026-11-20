@@ -1,0 +1,89 @@
+/* qb- : 퀴즈 배틀 B·D (포켓몬 놀이방 모듈) */
+#quizBattle { display: flex; flex-direction: column; gap: 10px; }
+.qb-topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qb-sub { font-size: 14px; font-weight: 700; color: var(--ink-2, #374151); }
+.qb-msg { background: #2f3542; color: #fff; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
+.qb-foot { font-size: 11px; color: var(--ink-3, #6b7280); }
+.qb-rowbtns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qb-xp { font-size: 12px; font-weight: 700; color: #5a3fd4; background: #efeaff; padding: 4px 10px; border-radius: 999px; }
+.qb-btn { border: 1.5px solid #d1d5db; background: #fff; border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 700; color: #374151; cursor: pointer; }
+.qb-btn.qb-go { background: #5a3fd4; border-color: #5a3fd4; color: #fff; }
+.qb-btn.qb-small { font-size: 12px; padding: 5px 12px; color: #9ca3af; }
+.qb-btn:hover { filter: brightness(.97); }
+
+.qb-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qb-mode { display: flex; flex-direction: column; gap: 6px; padding: 18px 14px; border-radius: 14px; border: 2px solid #e5e7eb; background: #f9fafb; cursor: pointer; text-align: left; }
+.qb-mode:hover { border-color: #5a3fd4; background: #f5f3ff; }
+.qb-mode-t { font-size: 15px; font-weight: 800; color: #1f2937; }
+.qb-mode-d { font-size: 12px; color: #6b7280; }
+@media (max-width: 640px) { .qb-modes { grid-template-columns: 1fr; } }
+
+.qb-dex, .qb-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.qb-cell, .qb-pickbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 6px; border-radius: 12px; background: #f9fafb; border: 2px solid #e5e7eb; }
+.qb-cellemoji, .qb-pickemoji { font-size: 30px; }
+.qb-cell b, .qb-pickbtn b { font-size: 13px; color: #1f2937; }
+.qb-cell i, .qb-pickbtn i { font-size: 11px; font-style: normal; color: #6b7280; }
+.qb-pickbtn { cursor: pointer; }
+.qb-pickbtn:hover { border-color: #5a3fd4; background: #f5f3ff; }
+
+.qb-arena { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 22px 14px; border-radius: 14px; background: linear-gradient(#bfe3f5 0%, #e8f6ff 55%, #9ed27e 55%, #7cb85c 100%); min-height: 150px; }
+.qb-arena.small { min-height: 120px; justify-content: center; }
+.qb-fighter { display: flex; align-items: center; gap: 10px; }
+.qb-emoji { font-size: 52px; filter: drop-shadow(0 4px 4px rgba(0,0,0,.2)); }
+.qb-hpcard { background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 12px; min-width: 120px; box-shadow: 0 3px 10px rgba(40,60,90,.15); }
+.qb-hpcard b { display: block; margin-bottom: 4px; }
+.qb-hpcard i { font-style: normal; font-size: 10px; color: #6b7280; background: #f3f4f6; border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+.qb-hpcard span { font-size: 10px; color: #6b7280; }
+.qb-hpbar { height: 8px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin: 4px 0 2px; }
+.qb-hpbar i { display: block; height: 100%; background: linear-gradient(90deg, #34d399, #10b981); transition: width .4s; }
+
+.qb-energy { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; font-size: 12px; }
+.qb-pips { display: inline-flex; gap: 4px; }
+.qb-pips i { width: 16px; height: 16px; border-radius: 5px; background: #e5e7eb; border: 1px solid #d1d5db; }
+.qb-pips i.on { background: linear-gradient(180deg, #fbbf24, #f59e0b); border-color: #d97706; }
+
+.qb-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.qb-act { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 12px 8px; border-radius: 12px; border: 2px solid #e5e7eb; background: #fff; cursor: pointer; }
+.qb-act b { font-size: 14px; color: #1f2937; }
+.qb-act span { font-size: 11px; color: #6b7280; }
+.qb-act:hover:not(:disabled) { border-color: #5a3fd4; }
+.qb-act:disabled { opacity: .45; cursor: not-allowed; }
+.qb-act.qb-quizbtn { background: #f5f3ff; border-color: #c4b5fd; }
+
+.qb-quiz { background: #fff; border: 2px solid #c4b5fd; border-radius: 14px; padding: 16px; box-shadow: 0 4px 16px rgba(90,63,212,.12); }
+.qb-quiz-head { font-size: 12px; font-weight: 800; color: #5a3fd4; margin-bottom: 6px; }
+.qb-quiz-q { font-size: 24px; font-weight: 800; color: #2f3542; text-align: center; margin: 8px 0 10px; }
+.qb-quiz-hint { font-size: 12px; color: #4b5563; text-align: center; margin: -4px 0 10px; }
+.qb-quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qb-opt { padding: 12px; border-radius: 10px; border: 1.5px solid #e5e7eb; background: #f9fafb; font-size: 16px; font-weight: 700; color: #374151; cursor: pointer; }
+.qb-opt:hover { border-color: #5a3fd4; }
+.qb-opt.right { background: #dcfce7; border-color: #22c55e; color: #15803d; }
+.qb-opt.wrong { background: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+.qb-quiz-note { font-size: 11px; color: #6b7280; text-align: center; margin-top: 10px; }
+
+.qb-map { display: flex; flex-wrap: wrap; gap: 8px; }
+.qb-node { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 100px; padding: 14px 8px; border-radius: 12px; background: #f3f4f6; border: 2px solid #e5e7eb; cursor: pointer; }
+.qb-node > span:first-child { font-size: 26px; }
+.qb-node b { font-size: 13px; color: #1f2937; }
+.qb-node i { font-size: 11px; font-style: normal; color: #6b7280; }
+.qb-node.done { background: #ecfdf5; border-color: #6ee7b7; }
+.qb-node.boss:not(.lock) { background: #fef3c7; border-color: #f59e0b; }
+.qb-node.lock { opacity: .55; cursor: not-allowed; }
+.qb-node:hover:not(.lock) { border-color: #5a3fd4; }
+
+/* 이모지 글꼴이 없을 때의 중립 대체표시: 이름 첫 글자 원형 배지 */
+.qb-face-alt { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #1e293b; font-weight: 800; }
+.qb-emoji.qb-face-alt { width: 52px; height: 52px; font-size: 24px; }
+.qb-cellemoji.qb-face-alt, .qb-pickemoji.qb-face-alt { width: 30px; height: 30px; font-size: 15px; }
+
+/* 통합: 탭 바가 넘칠 때 우측 페이드로 '탭이 더 있음' 표시 + 좁은 폭에서 탭 패딩을 살짝 줄여 다음 탭이 살짝 보이게 */
+.apptabs.qb-tabs-overflow { -webkit-mask-image: linear-gradient(to right, #000 88%, rgba(0,0,0,.3) 100%); mask-image: linear-gradient(to right, #000 88%, rgba(0,0,0,.3) 100%); }
+@media (max-width: 420px) { .apptabs.qb-tabs-overflow .at { padding: 0 10px; } }
+
+/* 실제 일러스트 표시 (로드 실패 시 이모지/이니셜 배지로 대체됨) */
+.qb-art { object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0,0,0,.18)); }
+.qb-emoji.qb-art { width: 72px; height: 72px; }
+.qb-cellemoji.qb-art, .qb-pickemoji.qb-art { width: 48px; height: 48px; }
+
+/* 출처 표시: 모든 게임 화면 하단에 항상 노출 */
+.qb-credit { font-size: 10px; line-height: 1.5; color: var(--ink-3, #6b7280); border-top: 1px dashed #e5e7eb; padding-top: 6px; }
