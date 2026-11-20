@@ -1,10 +1,16 @@
-/* 미션 목록이 첫 화면에서 행 중간이 잘려 보이지 않도록, 보이는 높이를 "온전한 행" 단위로 맞춥니다.
+/* 미션·도장판 스크롤 영역이 첫 화면에서 행 중간이 잘려 보이지 않도록, 보이는 높이를 "온전한 행" 단위로 맞춥니다.
    모든 행은 스크롤로 계속 닿을 수 있고, 1024px 미만(모바일)에서는 아무것도 하지 않습니다. */
 (function () {
   'use strict';
-  var list = document.getElementById('choreList');
+  var list = document.getElementById('missionScroll');
   if (!list || typeof window.matchMedia !== 'function') return;
   var wide = window.matchMedia('(min-width: 1024px)');
+  var jump = document.getElementById('stampBoardOpenBtn');
+  var board = document.querySelector('.mission-stamp-board');
+  if (jump && board) jump.addEventListener('click', function () {
+    board.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    board.focus({ preventScroll: true });
+  });
   var busy = false;
   function reset() { list.style.flex = ''; list.style.height = ''; list.style.maxHeight = ''; }
   function fit() {
@@ -14,7 +20,7 @@
       reset();
       if (!wide.matches) return;
       var avail = list.clientHeight;
-      var rows = list.querySelectorAll(':scope > .chore');
+      var rows = list.querySelectorAll('#choreList > .chore');
       if (!rows.length || list.scrollHeight <= avail + 1) return;
       var top = list.getBoundingClientRect().top - list.scrollTop;
       var cs = getComputedStyle(list);

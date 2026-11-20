@@ -137,7 +137,7 @@ MEASURE_SCRIPT = r"""() => {
     return { display: s.display, overflowY: s.overflowY, height: s.height, minHeight: s.minHeight, maxHeight: s.maxHeight };
   };
 
-  const missionList = document.querySelector('#choreList');
+  const missionList = document.querySelector('#missionScroll');
   const schoolBody = document.querySelector('#schoolBody');
   const wishList = document.querySelector('#wishList');
   const calendar = document.querySelector('#calGrid');
@@ -145,7 +145,10 @@ MEASURE_SCRIPT = r"""() => {
   const upcoming = document.querySelector('#upcomingEvents');
   const missionBanner = document.querySelector('#freeBannerMission');
   const scheduleBanner = document.querySelector('#freeBannerSchedule');
-  if (missionList) missionList.scrollTop = missionList.scrollHeight;
+  if (missionList) {
+    const last = document.querySelector('#choreList > .chore:last-of-type');
+    if (last) missionList.scrollTop = last.getBoundingClientRect().top - missionList.getBoundingClientRect().top + missionList.scrollTop - 4;
+  }
   if (schoolBody) schoolBody.scrollTop = schoolBody.scrollHeight;
   if (wishList) wishList.scrollTop = wishList.scrollHeight;
 
@@ -195,6 +198,7 @@ MEASURE_SCRIPT = r"""() => {
       scrollHeight: missionList?.scrollHeight || 0,
       clientHeight: missionList?.clientHeight || 0,
       lastRowFullyReachable: inBox(rect(lastMission), missionRect),
+      stampFollowsList: document.querySelector('#choreList').compareDocumentPosition(document.querySelector('.mission-stamp-board')) === Node.DOCUMENT_POSITION_FOLLOWING,
       longTitleWraps: (document.querySelector('#choreList .chore-title')?.scrollHeight || 0)
         <= (document.querySelector('#choreList .chore-title')?.clientHeight || 0) + 1,
     },
@@ -324,6 +328,26 @@ def main() -> None:
                     f"calendar={result['calendar']['weekCount']} weeks, Sunday={result['calendar']['isSunday']}, "
                     f"badgeOverlap={result['pill']['overlapsPrimaryCards']}"
                 )
+
+            # The lower stamp board stays discoverable and reachable by keyboard.
+            page.set_viewport_size({"width": 1280, "height": 800})
+            page.locator("#stampBoardOpenBtn").focus()
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(400)
+            stamp_access = page.evaluate("""() => {
+              const wrap = document.querySelector('#missionScroll'), board = document.querySelector('.mission-stamp-board');
+              const w = wrap.getBoundingClientRect(), b = board.getBoundingClientRect();
+              return document.activeElement === board && b.top >= w.top - 1 && b.bottom <= w.bottom + 1;
+            }""")
+            assert_condition(stamp_access, "stamp board: keyboard shortcut did not reveal and focus the board", failures)
+            page.locator(".stamp-help summary").click()
+            page.locator(".stamp-help").scroll_into_view_if_needed()
+            help_access = page.evaluate("""() => {
+              const wrap = document.querySelector('#missionScroll').getBoundingClientRect();
+              return document.querySelector('.stamp-help').open && document.querySelector('#readingNote').getBoundingClientRect().bottom <= wrap.bottom + 1;
+            }""")
+            assert_condition(help_access, "stamp board: expanded help is clipped", failures)
+            page.locator(".stamp-help").evaluate("el => el.open = false")
 
             # Stress the connected label width without any remote account or writes.
             page.evaluate("""() => {
