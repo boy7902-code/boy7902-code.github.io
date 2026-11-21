@@ -22,7 +22,7 @@ body.dashboard-refresh.selected-dashboard .selected-top #wWeek{width:100%!import
 /* Give school information the same readable weight as the weather. */
 @media(min-width:768px) and (max-width:1366px){
 body.dashboard-refresh.selected-dashboard .selected-top{grid-template-columns:minmax(0,1.25fr) minmax(240px,1fr)!important;gap:16px!important}
-body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool{padding:12px 14px!important;min-height:160px!important;border:1px solid #eadcc8!important;border-radius:18px!important;background:#fffdf8!important;gap:7px!important}
+body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool{padding:12px 14px!important;min-height:160px!important;border:1px solid transparent!important;border-radius:0!important;background:none!important;box-shadow:none!important;gap:7px!important}
 body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool .card-title{font-size:18px!important;line-height:1.35!important}
 body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool .card-sub{font-size:13px!important;line-height:1.4!important}
 body.dashboard-refresh.selected-dashboard .selected-top #schoolBody,body.dashboard-refresh.selected-dashboard .selected-top #schoolBody .small,body.dashboard-refresh.selected-dashboard .selected-top #schoolBody .muted,body.dashboard-refresh.selected-dashboard .selected-top #schoolBody .school-empty,body.dashboard-refresh.selected-dashboard .selected-top #schoolBody .sch-none{font-size:14px!important;line-height:1.5!important}
