@@ -19,8 +19,8 @@
 <link rel="stylesheet" href="quiz-battle.css?v=2" />
 <link rel="stylesheet" href="dashboard-refresh.css?v=family-refresh-20261121-3" />
 <link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1" />
-<link rel="stylesheet" href="pokemon-encyclopedia.css?v=1" />
-<link rel="stylesheet" href="pokemon-expansion.css?v=gen2-info-20261121" />
+<link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121" />
+<link rel="stylesheet" href="pokemon-expansion.css?v=integrated-20261121" />
 <link rel="stylesheet" href="selected-dashboard.css?v=20261121-1">
 </head>
 <body data-parent="off">
@@ -712,7 +712,7 @@
   <div class="modal-card wide dex-modal" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
     <div class="dex-modal-head">
       <div>
-        <h3 id="dexTitle">📖 포켓몬 도감</h3>
+        <h3 id="dexTitle"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="M12 5c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M12 5v15"/></svg>포켓몬 도감</h3>
         <p class="hint" id="dexMeta">1세대 151종</p>
       </div>
       <button class="btn icon sm ghost" type="button" id="dexClose" aria-label="닫기">✕</button>
@@ -720,7 +720,7 @@
     <!-- 🏡 내 포켓몬 놀이방 — 모은 친구들이 풀밭에서 좌우로 걸어 다니고, 콕 누르면 점프하며 하트·말풍선이 떠요 -->
     <div class="dex-play" id="dexPlay" aria-label="내 포켓몬 놀이방">
       <div class="dp-head">
-        <b class="dp-title">🏡 내 포켓몬 놀이방</b>
+        <b class="dp-title"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg>내 포켓몬 놀이방</b>
         <span class="pill dp-count" id="dexPlayCount">0마리</span>
         <span class="dp-hint">친구를 콕 누르면 좋아해요 ❤️</span>
       </div>
@@ -741,7 +741,7 @@
       <div class="dex-row" id="dexRow"></div>
     </div>
     <div class="dex-panes">
-      <div class="dex-grid" id="dexGrid" aria-label="1세대 151종 도감"></div>
+      <div class="dex-grid" id="dexGrid" aria-label="포켓몬 도감, 1세대 수집과 추가 정보"></div>
       <aside class="dex-side" id="dexSide" aria-live="polite"></aside>
     </div>
     <div class="modal-actions">
@@ -996,11 +996,11 @@
 <script src="streak-core.js?v=journal-3"></script>
 <script src="dashboard-insights.js?v=1"></script>
 <script src="pokemon-evolution-effect.js?v=family-refresh-20261121-1"></script>
-<script src="pokemon-encyclopedia-data.js?v=1"></script>
+<script src="pokemon-encyclopedia-data.js?v=integrated-20261121"></script>
 <script src="pokemon-partner-details-data.js?v=family-refresh-20261121-1"></script>
-<script src="pokemon-encyclopedia.js?v=gen2-info-20261121"></script>
+<script src="pokemon-encyclopedia.js?v=integrated-20261121"></script>
 <script src="partner-growth-core.js?v=family-refresh-20261121-1"></script>
-<script src="app.js?v=family-refresh-20261121-1"></script>
+<script src="app-dex-integrated.js?v=family-refresh-20261121-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=family-refresh-20261121-1"></script>
@@ -1027,8 +1027,11 @@
     update();
   })();
 </script>
-<script src="pokemon-expansion-data.js?v=gen2-info-20261121" defer></script>
-<script src="pokemon-expansion.js?v=gen2-info-20261121" defer></script>
+<script src="pokemon-info-1.js?v=integrated-20261121" defer></script>
+<script src="pokemon-info-2.js?v=integrated-20261121" defer></script>
+<script src="pokemon-info-3.js?v=integrated-20261121" defer></script>
+<script src="pokemon-info-4.js?v=integrated-20261121" defer></script>
+<script src="pokemon-expansion.js?v=integrated-20261121" defer></script>
 <script src="mission-card-interaction.js?v=20261121-1" defer></script>
 <script src="selected-dashboard.js?v=20261121-1" defer></script>
 <script src="mission-point-art.js?v=20261121-1" defer></script>
