@@ -350,3 +350,6 @@ body.dashboard-refresh #cardChores .chore.long-title .chore-title{font-size:21px
 body.dashboard-refresh #cardChores #choreList:has(.long-title){height:auto!important;grid-template-rows:repeat(2,minmax(300px,auto))!important;grid-auto-rows:minmax(300px,auto)!important;}
 }
 @media(min-width:1024px) and (orientation:landscape){body.dashboard-refresh #cardChores .mission-scroll{scroll-behavior:auto!important;scroll-snap-type:none!important;}body.dashboard-refresh #cardChores .chore{scroll-snap-align:none!important;}}
+/* Secondary information view must not inherit the compact desktop flex row. */
+body.dashboard-refresh.family-information-open #mainGrid>.col-left{flex-direction:column!important;width:100%;min-width:0;align-items:stretch;}
+body.dashboard-refresh.family-information-open #mainGrid>.col-left>*{width:100%;min-width:0;max-width:100%;box-sizing:border-box;}
