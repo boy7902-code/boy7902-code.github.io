@@ -5,7 +5,7 @@ import * as authSdk from 'firebase/auth';
 import * as firestoreSdk from 'firebase/firestore';
 import { initializeApp as initializeAdminApp, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { computeScreenStats, createFamilySync, FAMILY_ROOT } from '../firebase-sync.js';
+import { computeScreenStats, createFamilySync, migrateFromLegacyJson, FAMILY_ROOT } from '../firebase-sync.js';
 
 const PROJECT_ID = 'demo-family-dashboard';
 const AUTH_EMULATOR = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
@@ -284,6 +284,57 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     assert.equal(childDelete.ok, false);
     assert.equal(childDelete.error.kind, 'settled');
     assert.ok(childAgain.uid);
+    const partnerRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/child_state/partner`);
+    assert.equal((await sync.adoptPartner({ key:'pikachu', sinceXp:0 })).ok,true);
+    assert.equal((await firestoreSdk.getDoc(partnerRef)).data().growth,undefined,'legacy missing state stays legacy');
+    const egg={cycleId:'emulator-cycle-1',hatched:false,celebrated:false};
+    assert.equal((await sync.adoptPartner({key:'pikachu',sinceXp:0,growth:egg})).ok,true);
+    const claims=await Promise.all([sync.claimPartnerHatch({cycleId:egg.cycleId}),sync.claimPartnerHatch({cycleId:egg.cycleId})]);
+    assert.equal(claims.filter(x=>x.ok&&x.claimed).length,1,'one concurrent visual claim');
+    assert.deepEqual((await firestoreSdk.getDoc(partnerRef)).data().growth,{...egg,hatched:true,celebrated:true});
+    await assert.rejects(()=>firestoreSdk.updateDoc(partnerRef,{growth:egg,updatedAt:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','same cycle cannot revert hatch');
+    const next={cycleId:'emulator-cycle-2',hatched:false,celebrated:false};
+    assert.equal((await sync.adoptPartner({key:'pikachu',sinceXp:200,growth:next})).ok,true,'same species new cycle persisted');
+    assert.equal((await sync.claimPartnerHatch({cycleId:egg.cycleId})).claimed,false,'stale device cannot hatch next egg');
+    assert.deepEqual((await firestoreSdk.getDoc(partnerRef)).data().growth,next);
+    const oldChildWrite=await sync.adoptPartner({key:'riolu',sinceXp:200});
+    assert.equal(oldChildWrite.ok,false,'old child client cannot erase explicit cycle');
+    assert.deepEqual((await firestoreSdk.getDoc(partnerRef)).data().growth,next);
+
+    await clearSignedInUser();
+    await createClaimedUser('parent');
+    const beforeOldParent=(await firestoreSdk.getDoc(partnerRef)).data();
+    await assert.rejects(()=>firestoreSdk.setDoc(partnerRef,{restoreIntent:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','empty explicit restore denied');
+    await assert.rejects(()=>firestoreSdk.setDoc(partnerRef,{partnerKey:'pikachu',sinceXp:-1,restoreIntent:firestoreSdk.serverTimestamp(),updatedAt:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','invalid explicit restore denied');
+    const oldParentWrite=await sync.adoptPartner({key:'riolu',sinceXp:200});
+    assert.equal(oldParentWrite.ok,false,'old parent cannot erase explicit growth');
+    assert.deepEqual((await firestoreSdk.getDoc(partnerRef)).data().growth,next,'old parent cycle preserved');
+    await firestoreSdk.setDoc(partnerRef,{...beforeOldParent,updatedAt:firestoreSdk.serverTimestamp()});
+    const backup=await sync.createBackup();
+    assert.equal(backup.skipped,false);
+    const partnerBackup=backup.chunks.flatMap(c=>c.records).find(r=>r.path===`${FAMILY_ROOT}/child_state/partner`);
+    assert.deepEqual(partnerBackup.data.growth,next,'backup includes explicit egg cycle');
+    await firestoreSdk.updateDoc(partnerRef,{growth:{...next,hatched:true,celebrated:true},updatedAt:firestoreSdk.serverTimestamp()});
+    const restored=await sync.restoreBackup(backup);
+    assert.equal(restored.ok,true,JSON.stringify(restored));
+    assert.deepEqual((await firestoreSdk.getDoc(partnerRef)).data().growth,next,'parent restore returns exact saved egg state');
+    await assert.rejects(()=>firestoreSdk.updateDoc(partnerRef,{growth:firestoreSdk.deleteField(),updatedAt:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','stored restore marker cannot authorize later old update');
+    assert.equal((await sync.adoptPartner({key:'pikachu',sinceXp:200,growth:{...next,cycleId:'parent-new-cycle'}})).ok,true,'new parent readoption still works');
+    assert.equal((await sync.restoreBackup(backup)).ok,true,'explicit parent restore after new adoption still works');
+    const migration=migrateFromLegacyJson({points:{byMember:{m3:550}},pokemon:{key:'turtwig',xp:4,growth:next},letters:[],logs:[]},{stamp:firestoreSdk.serverTimestamp()});
+    const migrationResult=await sync.applyMigration(migration);
+    assert.equal(migrationResult.ok,true,JSON.stringify(migrationResult));
+    const importedPartner=(await firestoreSdk.getDoc(partnerRef)).data();
+    const importedSummary=(await firestoreSdk.getDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/stats/summary`))).data();
+    assert.deepEqual(importedPartner.growth,next);
+    assert.equal(computeScreenStats({summary:importedSummary,partner:importedPartner,logs:[]}).partnerXp,4);
+    assert.equal(importedSummary.totalXp,550);
+    const legacyImport=migrateFromLegacyJson({points:{byMember:{m3:550}},pokemon:{key:'turtwig',xp:4},letters:[],logs:[]},{stamp:firestoreSdk.serverTimestamp()});
+    assert.equal((await sync.applyMigration(legacyImport)).ok,true,'explicit legacy import remains available');
+    assert.equal((await firestoreSdk.getDoc(partnerRef)).data().growth,undefined);
+    assert.equal((await sync.restoreBackup(backup)).ok,true);
+
+
 
     await clearSignedInUser();
     const noRole = await adminAuth.createUser({
