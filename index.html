@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="standby-clock.css?v=20261121-1">
 <link rel="stylesheet" href="stamp-gift.css?v=20261121-1">
 <style>.mission-stage-note{font-size:11px;line-height:1.35;color:#626c85;white-space:normal;text-align:center;flex:none;max-width:100%;font-weight:600}.mission-stage-note[hidden]{display:none}</style>
+<style>.safe-refresh{font-size:12px!important;padding:7px 9px!important;min-height:34px}.safe-refresh-note{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:14px 18px;border-radius:14px;background:#3b4260;color:white;z-index:30000;font-size:14px;text-align:center;box-shadow:0 4px 20px #0003}.top-actions{flex-wrap:wrap}</style>
 </head>
 <body data-parent="off">
 <div class="app">
@@ -51,6 +52,7 @@
     </button>
 
     <div class="top-actions">
+      <button type="button" class="btn safe-refresh" id="safeRefreshBtn">새로고침</button>
       <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
       <button class="btn icon fs-btn" id="fullscreenBtn" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><span aria-hidden="true">⛶</span></button>
       <!-- 🔔 알람 소리 — 아이 화면(부모 잠금)에서도 보이고, 첫 터치에서 브라우저 소리를 풀어 줍니다 -->
@@ -986,13 +988,13 @@
 <script src="pokemon-info-3.js?v=integrated-20261121"></script>
 <script src="pokemon-info-4.js?v=integrated-20261121"></script>
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
-<script src="stamp-gift.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=stamp-gift-20261121-1"></script>
+<script src="stamp-gift.js?v=friendly-20261121-2"></script>
+<script src="app-dex-integrated.js?v=safe-refresh-20261121-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=family-refresh-20261121-1"></script>
-<script src="single-screen.js?v=family-fit-20261121-1"></script>
-<script src="dashboard-refresh.js?v=family-refresh-20261121-1"></script>
+<script src="single-screen.js?v=safe-refresh-20261121-1"></script>
+<script src="dashboard-refresh.js?v=safe-refresh-20261121-1"></script>
 <script src="quiz-battle.js?v=5"></script>
 <script>
   // 퀴즈 배틀 모듈 초기화 — 퀴즈 배틀 탭의 마운트에 한 번만
@@ -1019,6 +1021,7 @@
 <script src="mission-card-interaction.js?v=20261121-1" defer></script>
 <script src="selected-dashboard.js?v=family-fit-20261121-1" defer></script>
 <script src="mission-point-art.js?v=20261121-2" defer></script>
+<script src="safe-refresh.js?v=20261121-1" defer></script>
 </body>
 </html>
 

@@ -19,10 +19,10 @@ with m.sync_playwright() as p:
   before=page.evaluate('JSON.stringify(FamilyDashboard.state)');storage=page.evaluate('JSON.stringify(localStorage)')
   page.evaluate('''()=>{const t=__stampTest;t.FB.on=true;t.FB.lastStats={stampProgress:9,stampBoardsCompleted:4,stampBonusPending:0,stampBonusPoints:12};t.renderStampBoards()}''');assert not page.locator('#stampGift').count()
   page.evaluate('''()=>{const t=__stampTest;t.FB.lastStats={stampProgress:0,stampBoardsCompleted:5,stampBonusPending:3,stampBonusPoints:15};t.renderStampBoards()}''');assert page.locator('#stampGift').is_visible();assert page.locator('.stamp-gift-result').is_hidden();page.wait_for_timeout(550);page.screenshot(path=f'/downloads/stamp-gift-box-{w}.png')
-  page.locator('.stamp-gift-box').click();assert page.locator('#stampGiftPoints').inner_text()=='+3P';assert '정산 대기' in page.locator('#stampGiftState').inner_text()
+  page.locator('.stamp-gift-box').click();assert page.locator('#stampGiftPoints').inner_text()=='+3P';assert '기다리는 중' in page.locator('#stampGiftState').inner_text()
   for i in range(5):page.evaluate('__stampTest.renderStampBoards()')
   assert page.locator('#stampGiftPoints').inner_text()=='+3P'
-  page.evaluate('__stampTest.FB.lastStats.stampBonusPending=0;__stampTest.renderStampBoards()');assert '반영' in page.locator('#stampGiftState').inner_text();page.wait_for_timeout(450);page.screenshot(path=f'/downloads/stamp-gift-open-{w}.png')
+  page.evaluate('__stampTest.FB.lastStats.stampBonusPending=0;__stampTest.renderStampBoards()');assert '쏙 들어왔어' in page.locator('#stampGiftState').inner_text();page.wait_for_timeout(450);page.screenshot(path=f'/downloads/stamp-gift-open-{w}.png')
   box=page.locator('#stampGift').bounding_box();assert box['x']>=0 and box['y']>=0 and box['x']+box['width']<=w+1 and box['y']+box['height']<=h+1
   page.locator('.stamp-gift-done').click();page.evaluate('__stampTest.renderStampBoards()');assert not page.locator('#stampGift').is_visible();assert page.evaluate('JSON.stringify(FamilyDashboard.state)')==before;assert page.evaluate('JSON.stringify(localStorage)')==storage
   page.reload();page.wait_for_function('window.__stampTest');page.evaluate('__stampTest.FB.on=true;__stampTest.FB.lastStats={stampBoardsCompleted:5,stampBonusPending:0};__stampTest.renderStampBoards()');assert page.locator('#stampGift').count()==0

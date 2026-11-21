@@ -61,7 +61,23 @@
        + ` loading="${opts.eager ? 'eager' : 'lazy'}" decoding="async" draggable="false">`;
    }
  
-@@ -2485,7 +2502,7 @@
+@@ -685,6 +702,7 @@
+   function save() {
+     clearTimeout(saveTimer);
+     saveTimer = setTimeout(() => {
++      saveTimer = null;
+       try {
+         localStorage.setItem(KEY, JSON.stringify(S));
+       } catch (e) {
+@@ -1127,6 +1145,7 @@
+     alarmSyncedSig = sig;
+     clearTimeout(alarmSyncTimer);
+     alarmSyncTimer = setTimeout(() => {
++      alarmSyncTimer = null;
+       fb.sync.pushAlarms(payload).then((r) => {
+         if (r && !r.ok && !r.cancelled) toast('맞춤 알람을 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
+       }).catch(() => {});
+@@ -2485,7 +2504,7 @@
    function renderDex() {
      renderPlayground();   // 🏡 놀이방 — 포인트·파트너가 바뀌면 친구 구성도 따라 바뀝니다
      const box = $('#dexRow');
@@ -70,7 +86,7 @@
      if (!box) return;
      const dex = S.pokemon.dex || [];
      if ($('#dexTrophyCount')) $('#dexTrophyCount').textContent = dex.length ? `${dex.length}계열 완성` : '아직 없어요';
-@@ -2580,30 +2597,32 @@
+@@ -2580,30 +2599,32 @@
    }
  
    /* ---- 🏆 151 도감 모달: 획득 상태·실루엣·진화 단계 탐색 ---- */
@@ -113,7 +129,7 @@
        return `<button type="button" class="dex-fchip${DEXUI.filter === f.key ? ' on' : ''}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`;
      }).join('');
    }
-@@ -2624,7 +2643,7 @@
+@@ -2624,7 +2645,7 @@
          <span class="dex-no">${pad(id)}</span>
          <img class="dex-mini" src="${POKE_ART(id)}" alt="" loading="lazy" decoding="async" draggable="false"
            data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({ id, name: info.name }, pokeTint(id)))}">
@@ -122,7 +138,7 @@
          ${curId === id ? '<span class="dex-cur" aria-hidden="true">★</span>' : ''}
        </button>`;
      }).join('');
-@@ -2663,7 +2682,7 @@
+@@ -2663,7 +2684,7 @@
      box.innerHTML = `
        <div class="dx-hero${got ? '' : ' miss'}">${pokeImg(stageLike, 'dx-hero-img', tint, { eager: true })}</div>
        <div class="dx-title">
@@ -131,7 +147,7 @@
          <b class="dx-name">${esc(info.name)}</b>
        </div>
        <div class="dx-types">${(info.types.length ? info.types : ['???']).map((t) => `<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t] || '#9aa4bd')}">${esc(t)}</span>`).join('')}</div>
-@@ -2684,11 +2703,12 @@
+@@ -2684,11 +2705,12 @@
      const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
      const firstGen1 = (curLine.members || []).find((n) => POKE_INFO[n] && n <= 151);
      const pick = (+id > 0 && POKE_INFO[+id]) ? +id : (curStageId || firstGen1 || 1);
@@ -147,7 +163,7 @@
      renderDexFilters();
      renderDexGrid();
      renderDexSide();
-@@ -2963,6 +2983,7 @@
+@@ -2963,6 +2985,7 @@
    }
  
    let partnerQuery = '';
@@ -155,7 +171,7 @@
    function renderPartnerGrid() {
      const grid = $('#partnerGrid');
      if (!grid) return;
-@@ -2970,9 +2991,11 @@
+@@ -2970,9 +2993,11 @@
      const hit = (l) => !q
        || l.label.indexOf(q) >= 0
        || l.members.some((id) => pokeName(id).indexOf(q) >= 0)
@@ -170,7 +186,7 @@
      const card = (p) => {
        const on = resolvePartnerKey(S.pokemon.key) === p.key;
        const got = !!dexEntryOf(p.key);
-@@ -2982,11 +3005,13 @@
+@@ -2982,11 +3007,13 @@
          <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
        </button>`;
      };
@@ -186,7 +202,7 @@
      checkPokeImages();
    }
  
-@@ -2998,12 +3023,12 @@
+@@ -2998,12 +3025,12 @@
      if (partnerMode === 'adopt') {
        return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
      }
@@ -201,7 +217,7 @@
      if ($('#partnerSearch')) $('#partnerSearch').value = '';
      $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
      $('#partnerHint').textContent = partnerHintText();
-@@ -3259,7 +3284,8 @@
+@@ -3259,7 +3286,8 @@
      if (!box) return;
      const bal = balancePts();
      // 아직 안 산 것을 위로, 선물 받은 것은 아래로
@@ -211,7 +227,23 @@
      const card = $('#cardWish');
      if (card) card.classList.toggle('is-empty', items.length === 0);
      if ($('#wishSub')) $('#wishSub').textContent = wishHeaderSubtitle();
-@@ -5074,7 +5100,10 @@
+@@ -3853,6 +3881,7 @@
+     schoolSyncedSig = sig;
+     clearTimeout(schoolSyncTimer);
+     schoolSyncTimer = setTimeout(() => {
++      schoolSyncTimer = null;
+       fb.sync.pushSchool(payload).then((r) => {
+         if (r && !r.ok && !r.cancelled) toast('학교 급식·시간표를 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
+       }).catch(() => {});
+@@ -4645,6 +4674,7 @@
+     evtSig = sig;
+     clearTimeout(evtSyncTimer);
+     evtSyncTimer = setTimeout(() => {
++      evtSyncTimer = null;
+       fb.sync.pushEventCenter(payload).catch(() => {});
+     }, 700);
+   }
+@@ -5074,7 +5104,10 @@
    /* ------------------------------------------- 🖼️ 대기화면 (거실 디지털 액자) */
    let standbyOn = false;
    let standbyTimer = null;
@@ -223,7 +255,7 @@
    let standbyIdleTimer = null;
    let screenWakeLock = null;
    let wakeLockRequest = null;
-@@ -5113,32 +5142,8 @@
+@@ -5113,32 +5146,8 @@
    function applyStandbyScene(now = new Date()) {
      const el = $('#standby');
      if (!el) return;
@@ -258,7 +290,7 @@
    }
  
    function renderStandby() {
-@@ -5176,34 +5181,23 @@
+@@ -5176,34 +5185,23 @@
        if (wxSig !== sbWxSig) { sbWxSig = wxSig; $('#sbWeather').innerHTML = wx; }
      }
  
@@ -308,7 +340,7 @@
      }
  
      // 크게 살아 움직이는 파트너
-@@ -5222,12 +5216,7 @@
+@@ -5222,12 +5220,7 @@
        }
      }
      if ($('#sbName')) $('#sbName').textContent = stage.name;
@@ -322,7 +354,7 @@
    }
  
    function enterStandby() {
-@@ -5266,7 +5255,7 @@
+@@ -5266,7 +5259,7 @@
    function resetStandbyIdleTimer() {
      clearTimeout(standbyIdleTimer);
      standbyIdleTimer = null;
@@ -331,7 +363,7 @@
      standbyIdleTimer = setTimeout(() => {
        standbyIdleTimer = null;
        enterStandby();
-@@ -5318,6 +5307,8 @@
+@@ -5318,6 +5311,8 @@
      pokeReact($('#sbStage'), $('#sbSay'), name, { text, wiggle: count % 2 === 0, holdMs: 2400 });
    }
    function handleStandbyActivity(event) {
@@ -340,7 +372,7 @@
      if (standbyOn) {
        // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
        if (event.type === 'keydown' || event.type === 'wheel' || event.type === 'scroll') return;
-@@ -5536,6 +5527,7 @@
+@@ -5536,6 +5531,7 @@
    if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
    $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
    if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {
@@ -348,7 +380,7 @@
      const cell = e.target.closest('[data-dexid]');
      if (cell) selectDex(cell.dataset.dexid);
    });
-@@ -5604,6 +5596,17 @@
+@@ -5604,6 +5600,17 @@
    // 🖼️ 대기화면 ↔ 홈
    if ($('#standbyBtn')) $('#standbyBtn').addEventListener('click', enterStandby);
    if ($('#standbyExit')) $('#standbyExit').addEventListener('click', exitStandby);
@@ -366,7 +398,7 @@
  
    // 📅 달력 범위 — 기본 1달, [2주]를 누르면 이번 주와 다음 주
    $$('#calMode .cmb').forEach((b) => b.addEventListener('click', () => setCalMode(b.dataset.calmode)));
-@@ -5797,10 +5800,11 @@
+@@ -5797,10 +5804,11 @@
    $('#partnerBtn2').addEventListener('click', () => openPartnerPicker('change'));
    $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
    if ($('#partnerSearch')) $('#partnerSearch').addEventListener('input', (e) => {
@@ -379,7 +411,7 @@
    $('#partnerGrid').addEventListener('click', (e) => {
      const b = e.target.closest('[data-partner]');
      if (b) pickPartner(b.dataset.partner);
-@@ -5924,6 +5928,7 @@
+@@ -5924,6 +5932,7 @@
      notedDenied: '', pill: null, gate: null, card: null,
      schoolSeeded: false,
      alarmsSeeded: false,
@@ -387,7 +419,7 @@
      deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
    };
  
-@@ -5967,7 +5972,8 @@
+@@ -5967,7 +5976,8 @@
      FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
      FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
      stampCompletedSeen = null; stampCompletingUntil = 0;
@@ -397,7 +429,7 @@
      window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
      renderParentBtn();
      renderStampBoards();
-@@ -6138,7 +6144,8 @@
+@@ -6138,7 +6148,8 @@
      const seen = new Set();
      const now = Date.now();
      FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
@@ -407,7 +439,7 @@
        .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
        // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
        .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
-@@ -6162,13 +6169,13 @@
+@@ -6162,13 +6173,13 @@
      const completed = connected ? Math.max(0, Math.round(+stats.stampBoardsCompleted || 0)) : 0;
      const pendingBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPending || 0)) : 0;
      const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
@@ -423,7 +455,62 @@
        setTimeout(() => { stampCompletingUntil = 0; renderStampBoards(); }, 1850);
      }
      const completing = Date.now() < stampCompletingUntil;
-@@ -6482,35 +6489,49 @@
+@@ -6334,11 +6345,11 @@
+   function fbLocalChanged() {
+     if (!FB.on || !FB.readyData || !FB.sync) return;
+     clearTimeout(FB.timer);
+-    FB.timer = setTimeout(() => { fbPushNow(); }, 500);
++    FB.timer = setTimeout(() => { FB.timer = null; fbPushNow(); }, 500);
+   }
+   async function fbPushNow() {
+     if (!FB.on || !FB.readyData || !FB.sync) return { ok: true, written: [], denied: [] };
+-    if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
++    if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { FB.timer = null; fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
+     const session = FB.session;
+     const prev = FB.snap || {};
+     const next = fbSnapOf();
+@@ -6416,9 +6427,39 @@
+     fbSyncInfo();
+   }
+ 
++  const refreshWrites = { pending: 0, failed: new Set() };
++  function refreshTrackSync(sync) {
++    const wrapped = { ...sync };
++    ['adoptPartner','claimPartnerHatch','deleteLog','observeStreak','pushPatch','restoreBackup','saveParentPin','settleUnsettled','writeLog','pushAlarms','pushEventCenter','pushSchool','writeBonusLog'].forEach(name => {
++      if (typeof sync[name] !== 'function') return;
++      wrapped[name] = function (...args) {
++        refreshWrites.pending++;
++        let result;
++        try { result = sync[name](...args); }
++        catch (error) { refreshWrites.pending--; refreshWrites.failed.add(name); throw error; }
++        return Promise.resolve(result).then(r => {
++          if (r && r.ok === false && !r.cancelled) refreshWrites.failed.add(name);
++          else refreshWrites.failed.delete(name);
++          return r;
++        }, error => { refreshWrites.failed.add(name); throw error; }).finally(() => { refreshWrites.pending--; });
++      };
++    });
++    return wrapped;
++  }
++  function refreshStatus() {
++    const busy = !!(saveTimer || FB.busy || FB.settling || FB.missionOps.size || FB.timer || schoolSyncTimer || alarmSyncTimer || evtSyncTimer || refreshWrites.pending || window.FamilyPhotoStatus?.().saving || (FB.on && !FB.readyData));
++    return { busy, failed: refreshWrites.failed.size > 0 || saveWarned, drawing: canvasDirty || drawing };
++  }
++  function refreshSaveLocal() {
++    const status = refreshStatus();
++    if (status.busy || status.failed) return { ok: false, ...status };
++    try { localStorage.setItem(KEY, JSON.stringify(S)); return { ok: true }; }
++    catch (e) { return { ok: false, failed: true }; }
++  }
++
+   function fbStart(boot) {
+     if (!boot || !boot.sync || !window.FamilySync) return false;
+-    FB.sync = boot.sync;
++    FB.sync = refreshTrackSync(boot.sync);
+     FB.core = window.FamilySync;
+     // 📅 같은 창 OAuth(Google 인가 화면)로 돌아온 경우: 결과를 바로 안내하고 일정을 읽습니다
+     const calReturn = (boot.calendar && typeof boot.calendar.takeOAuthResult === 'function') ? boot.calendar.takeOAuthResult() : null;
+@@ -6482,35 +6523,49 @@
    toggleMission = function (id) {
      const session = FB.session;
      const c = S.missions.find((x) => x.id === id);
@@ -500,3 +587,11 @@
    };
  
    // 2) 보호자 동작: 아이 계정 기기에서는 서버 권한이 없으므로 미리 막습니다
+@@ -6621,6 +6676,7 @@
+   window.FamilyDashboard = {
+     get state() { return S; },
+     version: APP_VERSION,
++    refreshStatus, refreshSaveLocal,
+     now: () => hhmm(),
+     kid: () => ({ id: KID_ID, name: kidLabel() }),
+     settings: () => ({
