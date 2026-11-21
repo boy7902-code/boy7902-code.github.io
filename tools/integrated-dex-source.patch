@@ -1,0 +1,73 @@
+--- a/app.js
++++ b/app.js
+@@ -2585,11 +2585,18 @@
+     { key: 'all', label: '전체' },
+     { key: 'got', label: '획득' },
+     { key: 'miss', label: '미획득' },
++    { key: 'info', label: '추가 정보' },
+   ];
+ 
+   function dexFilteredIds() {
+     const q = DEXUI.q.trim();
+-    return POKE_NOS.filter((id) => {
++    return POKE_NOS.concat(window.PokemonExpansionData?.ids || []).filter((id) => {
++      if (id>151) {
++        if(DEXUI.filter==='got'||DEXUI.filter==='miss')return false;
++        const e=window.PokemonEncyclopediaData.species[String(id)];
++        return !q||e.name.includes(q)||String(id)===q||('no'+id)===q.toLowerCase();
++      }
++      if(DEXUI.filter==='info')return false;
+       const got = !!caughtOf(id);
+       if (DEXUI.filter === 'got' && !got) return false;
+       if (DEXUI.filter === 'miss' && got) return false;
+@@ -2603,7 +2610,8 @@
+     const box = $('#dexFilter');
+     if (!box) return;
+     box.innerHTML = DEX_FILTERS.map((f) => {
+-      const n = f.key === 'got' ? caughtCount() : f.key === 'miss' ? (POKE_NOS.length - caughtCount()) : POKE_NOS.length;
++      const extra=window.PokemonExpansionData?.ids.length||0;
++      const n=f.key==='info'?extra:f.key==='got'?caughtCount():f.key==='miss'?(POKE_NOS.length-caughtCount()):POKE_NOS.length+extra;
+       return `<button type="button" class="dex-fchip${DEXUI.filter === f.key ? ' on' : ''}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`;
+     }).join('');
+   }
+@@ -2618,6 +2626,10 @@
+     }
+     const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
+     box.innerHTML = ids.map((id) => {
++      if(id>151){
++        const e=window.PokemonEncyclopediaData.species[String(id)];
++        return `<button type="button" class="dex-cell dex-info-cell" data-infoid="${id}" aria-label="${esc(e.name)} No.${id} 정보 보기"><span class="dex-no">${id}</span><img class="dex-mini" src="${esc(e.artworkUrl)}" alt="" loading="lazy" width="72" height="72"><span class="dex-nm">${esc(e.name)}</span></button>`;
++      }
+       const info = pokeInfo(id);
+       const got = !!caughtOf(id);
+       return `<button type="button" class="dex-cell ${got ? 'got' : 'miss'}${DEXUI.sel === id ? ' sel' : ''}${curId === id ? ' cur' : ''}" data-dexid="${id}" aria-pressed="${DEXUI.sel === id}" aria-label="${esc(info.name)} ${got ? '획득' : '미획득'}" title="${esc(info.name)}${got ? ` · ${esc(caughtOf(id))} 만남` : ' · 아직 만나지 못했어요'}">
+@@ -2655,6 +2667,12 @@
+     const box = $('#dexSide');
+     if (!box) return;
+     const id = DEXUI.sel;
++    if (id > 151 && window.PokemonExpansionData?.ids.includes(id)) {
++      const e=window.PokemonEncyclopediaData.species[String(id)];
++      box.innerHTML=`<div class="dx-hero"><img class="dx-hero-img" src="${esc(e.artworkUrl)}" alt="${esc(e.name)}"></div><div class="dx-title"><span class="dx-no">No.${id}</span><b class="dx-name">${esc(e.name)}</b></div><p class="pdx-note">추가 정보</p><p class="pdx-note">정보 전용 · 입양·획득·보상 대상은 기존과 같아요</p><div id="pokemonEncyclopediaInfo"></div>`;
++      box.querySelector('.pdx-note').textContent='추가 정보'+(e.displayForm?' · '+e.displayForm:'');
++      window.PokemonEncyclopedia.render($('#pokemonEncyclopediaInfo'),id,{name:e.name,types:e.types,art:e.artworkUrl});return;
++    }
+     const info = pokeInfo(id);
+     const tint = pokeTint(id);
+     const got = caughtOf(id);
+@@ -2688,7 +2706,7 @@
+     DEXUI.q = '';
+     DEXUI.filter = 'all';
+     if ($('#dexSearch')) $('#dexSearch').value = '';
+-    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · ${caughtCount()}마리 만남`;
++    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 수집 151종 · 추가 정보 ${window.PokemonExpansionData?.ids.length||0}종 · ${caughtCount()}마리 만남`;
+     renderDexFilters();
+     renderDexGrid();
+     renderDexSide();
+@@ -5536,6 +5554,7 @@
+   if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
+   $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
+   if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {
++    const extra=e.target.closest('[data-infoid]');if(extra){selectDex(Number(extra.dataset.infoid));return;}
+     const cell = e.target.closest('[data-dexid]');
+     if (cell) selectDex(cell.dataset.dexid);
+   });
