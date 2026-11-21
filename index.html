@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1" />
 <link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121" />
 <link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1" />
-<link rel="stylesheet" href="selected-dashboard.css?v=tablet-safe-20261121-1">
+<link rel="stylesheet" href="selected-dashboard.css?v=auto-earned-20261122-1">
 <link rel="stylesheet" href="standby-clock.css?v=20261121-1">
 <link rel="stylesheet" href="stamp-gift.css?v=20261121-1">
 <style>.mission-stage-note{font-size:11px;line-height:1.35;color:#626c85;white-space:normal;text-align:center;flex:none;max-width:100%;font-weight:600}.mission-stage-note[hidden]{display:none}</style>
@@ -307,7 +307,7 @@
                 <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
                 <div class="char-actions">
                   <button class="btn sm ghost char-partner-btn parent-only" id="partnerBtn" title="파트너 포켓몬 바꾸기" aria-label="파트너 포켓몬 바꾸기"><span aria-hidden="true">🐾</span><span class="ca-word">파트너</span></button>
-                  <button class="btn sm ghost char-partner-btn parent-only" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다" aria-label="포인트 사용"><span aria-hidden="true">🎁</span><span class="ca-word">포인트</span></button>
+                  <button class="btn sm ghost char-partner-btn parent-only" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다" aria-label="포인트 사용 정산"><span aria-hidden="true">🎁</span><span class="ca-word">사용 정산</span></button>
                 </div>
                 <button class="btn sm char-adopt parent-only" id="adoptBtn" disabled title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
               </div>
@@ -631,7 +631,7 @@
         <button class="btn sm ghost" id="fbSignOutBtn">로그아웃</button>
       </div>
       <div class="row wrap" id="fbSettleRow" style="margin-top:12px" hidden>
-        <button class="btn sm" id="fbSettleBtn">✅ 미정산 기록 정산하기</button>
+        <button class="btn sm" id="fbSettleBtn">포인트 사용 정산</button>
       </div>
       <p class="settings-note" id="fbSettleNote" hidden></p>
       <div class="settings-section" id="gcalSection">
@@ -879,12 +879,12 @@
       <p class="settings-note">
         미션 카드 아래 <b>🎪 이벤트</b>를 누르면 여섯 가지 이벤트가 한 곳에 모여 있어요.<br />
         <b>①🔥 3일 연속 콤보</b> 같은 미션을 사흘 내리 끝내면 보너스 포인트가 따라붙고,
-        <b>②⚡ 깜짝 칭찬</b>은 버튼 한 번으로 바로 +P를 선물합니다(로그에 남아 정산에 함께 들어가요).<br />
+        <b>②⚡ 깜짝 칭찬</b>은 버튼 한 번으로 바로 +P를 선물합니다(로그에 남아 자동 반영돼요).<br />
         <b>③🎂 2배 데이</b>는 생신·명절을 지정하면 그 날 미션 포인트가 2배로 더해지고(위키 생신일은 자동),
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br />
         <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
         <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
-        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 한 번 반영되고 부모 정산 때 확정됩니다.<br />
+        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 정산 없이 자동 적립됩니다.<br />
         <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
     </div>
@@ -998,12 +998,12 @@
 <script src="pokemon-info-3.js?v=integrated-20261121"></script>
 <script src="pokemon-info-4.js?v=integrated-20261121"></script>
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
-<script src="stamp-gift.js?v=friendly-20261121-2"></script>
+<script src="stamp-gift.js?v=auto-earned-20261122-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=points-desc-20261122-1"></script>
+<script src="app-dex-integrated.js?v=auto-earned-20261122-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=review-fixes-20261122-1"></script>
+<script type="module" src="firebase-boot.js?v=auto-earned-20261122-1"></script>
 <script src="single-screen.js?v=safe-refresh-20261121-1"></script>
 <script src="dashboard-refresh.js?v=calendar-only-20261121-1"></script>
 <script src="quiz-battle.js?v=5"></script>
