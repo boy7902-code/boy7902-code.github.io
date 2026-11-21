@@ -24,3 +24,16 @@ test('saved links are absolute http or https without embedded credentials or con
  assert.equal(context.savedLinkSource('http://example.org/'),'http://example.org/');
  for(const value of ['',null,'about:blank','file:///tmp/letter','/relative','https://name:password@example.org/','https://example.org/\n'])assert.equal(context.savedLinkSource(value),'');
 });
+
+test('free-day banner is Saturday only, without changing family state',()=>{
+ const banners=[{hidden:true,title:'',querySelector:()=>({textContent:''})}];
+ const names=[{textContent:''}];const state={missions:[{id:'keep',doneOn:'2026-11-22'}],logs:[{date:'2026-11-21'}],points:17};
+ const c={Date,kidMember:()=>({name:'합성 아이'}),$$:selector=>selector==='.free-day-banner'?banners:names,S:state};vm.createContext(c);
+ vm.runInContext(source.slice(source.indexOf('  function renderFreeDay('),source.indexOf('  /* -------------------------------------------- 대시보드 이름')),c);
+ const before=JSON.stringify(state);
+ for(const [date,free] of [['2026-11-20',false],['2026-11-21',true],['2026-11-22',false],['2026-11-28',true],['2026-11-29',false]]){
+  c.renderFreeDay(new Date(date+'T12:00:00'));assert.equal(banners[0].hidden,!free,date);
+  if(free)assert(banners[0].title.includes('토요일'));
+ }
+ assert.equal(JSON.stringify(state),before);
+});
