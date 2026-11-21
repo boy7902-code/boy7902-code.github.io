@@ -56,7 +56,7 @@
       previous.disabled = page === 0; next.disabled = page >= totalPages-1; counter.textContent = `${page+1} / ${totalPages}`;
     }
     input.addEventListener('input',()=>{query=input.value;page=0;render();});
-    previous.addEventListener('click',()=>{page--;render();}); next.addEventListener('click',()=>{page++;render();});
+    previous.addEventListener('click',()=>{page--;render();if(previous.disabled)next.focus();}); next.addEventListener('click',()=>{page++;render();if(next.disabled)previous.focus();});
     dialog.append(header,body); dialog.addEventListener('keydown',e=>{if(e.key === 'Escape') e.stopPropagation();}); dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
     dialog.addEventListener('click',e=>{if(e.target === dialog)close();});
     document.body.append(dialog); render(); dialog.showModal(); input.focus();
