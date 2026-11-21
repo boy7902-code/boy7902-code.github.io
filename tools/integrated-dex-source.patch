@@ -186,6 +186,15 @@
  
      const adoptBtn = $('#adoptBtn');
      if (adoptBtn) {
+@@ -2435,7 +2472,7 @@
+     if (!list.length) {
+       $('#choreList').innerHTML = `<div class="shop-empty">미션을 추가해 보세요</div>`;
+     } else {
+-      const todayList = list.filter((c) => missionOnDay(c, dow));
++      const todayList = list.filter((c) => missionOnDay(c, dow)).sort((a,b) => Number(a.doneOn===t)-Number(b.doneOn===t) || (a.doneOn!==t ? (Number(b.points)||0)-(Number(a.points)||0) : 0) || S.missions.indexOf(a)-S.missions.indexOf(b));
+       const offList = list.filter((c) => !missionOnDay(c, dow));
+       // 끝낸 미션은 목록에서 내리고 아래 '오늘 끝낸 미션' 접힘 줄로 보냅니다(실수로 체크해도 펼쳐서 되돌릴 수 있게)
+       const doneListToday = todayList.filter((c) => c.doneOn === t);
 @@ -2485,7 +2522,7 @@
    function renderDex() {
      renderPlayground();   // 🏡 놀이방 — 포인트·파트너가 바뀌면 친구 구성도 따라 바뀝니다
@@ -642,9 +651,9 @@
 -      const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
 -      if (sig === sbMissionSig) return sbSyncPartner();
 +    const missions = S.missions.filter(m => m.member === KID_ID && missionOnDay(m, dow));
-+    const remaining = missions.filter(m => m.doneOn !== todayStr());
++    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0));
 +    const limit = innerWidth <= 600 && innerHeight < 720 ? 2 : 3;
-+    const sig = JSON.stringify([missions.length, remaining.map(m=>[m.id,m.title]),limit]);
++    const sig = JSON.stringify([missions.length, remaining.map(m=>[m.id,m.title,m.points]),limit]);
 +    if ($('#sbMission') && sig !== sbMissionSig) {
        sbMissionSig = sig;
 -      // 진화 경험치는 '다음 진화 목표'를 분모로 보여 줍니다 (최종 단계에서만 200P)
