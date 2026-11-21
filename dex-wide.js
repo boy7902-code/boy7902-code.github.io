@@ -1,0 +1,1 @@
+(()=>{const b=document.getElementById('dexExtrasToggle'),m=document.getElementById('dexModal');if(!b||!m)return;b.addEventListener('click',()=>{const on=m.classList.toggle('dex-extras-open');b.setAttribute('aria-expanded',String(on));b.textContent=on?'놀이방·컬렉션 접기':'놀이방·컬렉션 보기';});})();

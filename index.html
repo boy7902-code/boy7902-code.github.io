@@ -20,8 +20,9 @@
 <link rel="stylesheet" href="dashboard-refresh.css?v=family-refresh-20261121-3" />
 <link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1" />
 <link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121" />
-<link rel="stylesheet" href="pokemon-expansion.css?v=integrated-20261121" />
-<link rel="stylesheet" href="selected-dashboard.css?v=20261121-1">
+<link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1" />
+<link rel="stylesheet" href="selected-dashboard.css?v=family-fit-20261121-1">
+<link rel="stylesheet" href="standby-clock.css?v=20261121-1">
 </head>
 <body data-parent="off">
 <div class="app">
@@ -475,34 +476,11 @@
 </div>
 
 <!-- ======================= 대기화면 (거실 디지털 액자) ======================= -->
-<section class="standby" id="standby" hidden aria-label="대기화면">
-  <!-- 날씨·시간대에 따라 배경 그라데이션과 효과층(구름·빗방울·눈송이·별빛)이 바뀝니다 -->
-  <div class="sb-sky" id="sbSky" aria-hidden="true"></div>
-  <div class="sb-sun" id="sbSun" aria-hidden="true"><i></i></div>
-  <div class="sb-glow" aria-hidden="true"></div>
-  <div class="sb-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="sb-flash" id="sbFlash" aria-hidden="true"></div>
-  <div class="sb-top">
-    <div class="sb-brand"><span aria-hidden="true">🏡</span><b id="sbTitle">우리 가족 대시보드</b></div>
-    <button class="btn sb-exit" id="standbyExit" title="대시보드로 돌아가기">🏠 홈으로</button>
-  </div>
-  <div class="sb-grid">
-    <div class="sb-left">
-      <div class="sb-clock"><span id="sbTime">--:--</span><small id="sbSec">00</small></div>
-      <div class="sb-date" id="sbDate">날짜를 불러오는 중…</div>
-      <div class="sb-weather" id="sbWeather"></div>
-      <div class="sb-mission" id="sbMission"></div>
-    </div>
-    <div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden alt="가족 사진" /><div id="familyPhotoEmpty">🖼️<br>보호자 설정에서 가족 사진을 선택해 주세요</div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section>
-      <div class="sb-poke" id="sbPoke">
-        <div class="sb-stage" id="sbStage"></div>
-        <div class="sb-say" id="sbSay" aria-live="polite"></div>
-      </div>
-      <div class="sb-name" id="sbName">피카츄</div>
-      <div class="sb-sub" id="sbSub"></div>
-      <div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
-    </div>
-  </div>
+<section class="standby clock-standby" id="standby" hidden aria-label="가족 시계 대기화면">
+ <div class="sb-top"><div class="sb-brand"><b id="sbTitle">우리 가족 시계</b></div><button class="btn sb-exit" id="standbyExit">🏠 홈으로</button></div>
+ <div class="sb-grid"><div class="sb-left"><div class="sb-clock"><span id="sbTime">--:--</span></div><div class="sb-date" id="sbDate"></div><div class="sb-weather" id="sbWeather"></div><div id="sbPrep" class="sb-prep"></div><section class="sb-mission" id="sbMission" aria-label="오늘 남은 미션, 보기 전용"></section><section class="sb-next" id="sbNext"></section></div>
+ <div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden alt="가족 사진"><div id="familyPhotoEmpty" hidden></div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section><div class="sb-poke" id="sbPoke"><div class="sb-stage" id="sbStage"></div><div class="sb-say" id="sbSay" aria-live="polite"></div></div><div class="sb-name" id="sbName"></div><div class="sb-sub" id="sbSub"></div></div></div>
+ <div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
 </section>
 
 <dialog id="screenDetail" aria-labelledby="screenDetailTitle"><div class="detail-head"><h2 id="screenDetailTitle"></h2><button class="btn" id="screenDetailClose">닫기</button></div><div id="screenDetailBody"></div></dialog>
@@ -539,6 +517,7 @@
     <h3 id="settingsTitle">⚙️ 설정</h3>
     <p class="hint">날씨·화면 설정은 이 기기에 저장되고, 가족 기록은 Google 로그인 시 Firestore와 동기화됩니다.</p>
 
+    <div class="settings-section parent-only"><h4>가족 시계 대기화면</h4><label for="standbyMinutes">자동 전환</label> <select id="standbyMinutes"><option value="0">끔</option><option value="5">5분 뒤</option><option value="10">10분 뒤</option></select><p class="hint">이 기기에만 저장합니다. 폰은 기본 끔, 태블릿은 5분입니다. 밤 9시부터 아침 7시까지 차분하게 표시하고 사진 자동 넘김을 멈춥니다. 홈으로 또는 연속 3번 터치하면 돌아가요.</p></div>
     <div class="settings-section parent-only"><h4>🖼️ 가족 사진 액자</h4><p class="hint">선택한 사진은 이 브라우저에만 저장돼요. 부모 잠금은 이 화면에서의 실수 방지용이며 기기에 접근한 사람에 대한 보안 경계는 아닙니다. 가족 동기화나 외부 업로드는 하지 않습니다. 대기화면에서 누구나 볼 수 있으니 민감한 사진은 고르지 마세요. 최대 12장, JPG·PNG·WebP, 10초마다 바뀝니다. 새로 선택하면 기존 사진 전체를 대체하며 개별 삭제는 지원하지 않습니다. 로그아웃해도 이 기기에 남으며, 브라우저 데이터를 지우면 사라져요.</p><button type="button" class="btn" id="familyPhotoSelect">사진 선택 · 기존 사진 대체</button><input type="file" id="familyPhotoInput" accept="image/jpeg,image/png,image/webp" multiple hidden /><button type="button" class="btn" id="familyPhotoClear">액자 사진 모두 지우기</button><p id="photoSettingsStatus" role="status"></p></div>
       <div class="settings-section">
       <h4>📍 날씨 위치</h4>
@@ -726,7 +705,7 @@
       </div>
       <div class="dp-yard" id="dexPlayYard" role="group" aria-label="놀이방 풀밭"></div>
     </div>
-    <div class="dex-tools">
+    <div class="dex-tools"><button type="button" class="btn sm ghost" id="dexExtrasToggle" aria-expanded="false">놀이방·컬렉션 보기</button>
       <input type="search" id="dexSearch" class="grow" placeholder="이름·번호로 찾기 (예: 피카츄, 25)" autocomplete="off" />
       <div class="dex-filter" id="dexFilter" role="group" aria-label="도감 필터"></div>
     </div>
@@ -1004,12 +983,12 @@
 <script src="pokemon-info-2.js?v=integrated-20261121"></script>
 <script src="pokemon-info-3.js?v=integrated-20261121"></script>
 <script src="pokemon-info-4.js?v=integrated-20261121"></script>
-<script src="pokemon-growth-paths.js?v=full-link-20261121-1"></script>
-<script src="app-dex-integrated.js?v=full-link-20261121-1"></script>
+<script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
+<script src="app-dex-integrated.js?v=family-fit-20261121-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=family-refresh-20261121-1"></script>
-<script src="single-screen.js?v=family-refresh-20261121-1"></script>
+<script src="single-screen.js?v=family-fit-20261121-1"></script>
 <script src="dashboard-refresh.js?v=family-refresh-20261121-1"></script>
 <script src="quiz-battle.js?v=5"></script>
 <script>
@@ -1033,8 +1012,9 @@
   })();
 </script>
 <script src="pokemon-expansion.js?v=integrated-20261121" defer></script>
+<script src="dex-wide.js?v=20261121-1" defer></script>
 <script src="mission-card-interaction.js?v=20261121-1" defer></script>
-<script src="selected-dashboard.js?v=20261121-1" defer></script>
+<script src="selected-dashboard.js?v=family-fit-20261121-1" defer></script>
 <script src="mission-point-art.js?v=20261121-1" defer></script>
 </body>
 </html>
