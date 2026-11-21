@@ -36,7 +36,7 @@ with m.sync_playwright() as p:
  page,e=new(1180,820);page.locator('#standbyMinutes').evaluate('(e)=>{e.value="10";e.dispatchEvent(new Event("change"))}');assert page.evaluate('FamilyDashboard.standby().idleTimeoutMs')==300000
  # Only the isolated artifact exposes parent session and timer controls,never production.
  page.close()
- page,e=new(1180,820);page.route('**/app-dex-integrated.js*',lambda r:r.fulfill(body=(R/'app-dex-integrated.js').read_text().replace('})();',';window.__clockTest={unlock:()=>parentSession.unlockedAt=Date.now(),reset:resetStandbyIdleTimer};})();'),content_type='application/javascript'));page.reload();page.wait_for_function('window.__clockTest');page.evaluate('__clockTest.unlock()');page.clock.install()
+ page,e=new(1180,820);page.route('**/app-dex-integrated.js*',lambda r:r.fulfill(body=(R/'app-dex-integrated.js').read_text().replace('})();',';window.__clockTest={unlock:()=>parentSession.unlockedAt=Date.now(),reset:resetStandbyIdleTimer};})();'),content_type='application/javascript'));page.reload();page.wait_for_function('window.__clockTest');page.clock.install();page.evaluate('__clockTest.unlock()')
  for minutes in [0,10,5]:
   page.locator('#standbyMinutes').evaluate('(e,v)=>{e.value=String(v);e.dispatchEvent(new Event("change"))}',minutes);assert page.evaluate('FamilyDashboard.standby().idleTimeoutMs')==minutes*60000;assert page.evaluate('localStorage.getItem("family-dashboard:standby-minutes")')==str(minutes)
   if minutes:
