@@ -131,3 +131,11 @@ body.dashboard-refresh #cardChores #charToday{font-size:13px!important;line-heig
 
 body.dashboard-refresh #cardChores .chore{position:relative!important;padding-top:42px!important;}
 body.dashboard-refresh #cardChores .chore-top .pts{position:absolute!important;top:10px!important;left:10px!important;right:auto!important;margin:0!important;z-index:1;font-size:16px!important;line-height:1.2!important;}
+/* Prioritize the accumulated number even on a low-height tablet. */
+body.dashboard-refresh #cardChores .char-info .char-nameline{order:-2;}
+body.dashboard-refresh #cardChores .char-info .char-foot{order:-1;}
+@media(min-width:768px) and (max-width:1366px) and (max-height:780px){
+body.dashboard-refresh.selected-dashboard #cardChores .char-panel{gap:8px!important;}
+body.dashboard-refresh.selected-dashboard #cardChores .char-stage{height:110px!important;min-height:110px!important;max-height:110px!important;width:120px!important;}
+body.dashboard-refresh.selected-dashboard #cardChores .char-stage img{height:110px!important;max-height:110px!important;width:110px!important;max-width:110px!important;}
+}
