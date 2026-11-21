@@ -185,7 +185,7 @@ MEASURE_SCRIPT = r"""() => {
     calendar: {
       weekCount: Number(getComputedStyle(calendar).getPropertyValue('--calendar-weeks')) || 0,
       cellCount: calendar?.querySelectorAll('.cal-cell').length || 0,
-      isSunday: new Date().getDay() === 0,
+      isSaturday: new Date().getDay() === 6,
       missionBannerVisible: !!missionBanner && !missionBanner.hidden && rect(missionBanner).height > 0,
       scheduleBannerVisible: !!scheduleBanner && !scheduleBanner.hidden
         && getComputedStyle(scheduleBanner).display !== 'none' && rect(scheduleBanner).height > 0,
@@ -277,7 +277,7 @@ def main() -> None:
                                  f"{label}: horizontal page overflow ({result['pageWidth']}px > {width}px)", failures)
                 assert_condition(result["calendar"]["weekCount"] == 5 and result["calendar"]["cellCount"] == 35,
                                  f"{label}: synthetic November calendar is not a complete 5-week/35-cell month", failures)
-                assert_condition(not result["calendar"]["isSunday"] and not result["calendar"]["missionBannerVisible"],
+                assert_condition(not result["calendar"]["isSaturday"] and not result["calendar"]["missionBannerVisible"],
                                  f"{label}: weekday baseline unexpectedly shows the free-day banner", failures)
                 assert_condition(not result["calendar"]["scheduleBannerVisible"],
                                  f"{label}: schedule free-day banner is visible over the calendar", failures)
@@ -325,7 +325,7 @@ def main() -> None:
                     f"missionList={result['missions']['clientHeight']}px/{result['missions']['count']} rows, "
                     f"schoolChips={result['school']['chipCount']} +{result['school']['summaryCount']} summaries, "
                     f"wishList={result['wish']['clientH']}px (last reachable={result['wish']['lastItemFullyReachable']}), "
-                    f"calendar={result['calendar']['weekCount']} weeks, Sunday={result['calendar']['isSunday']}, "
+                    f"calendar={result['calendar']['weekCount']} weeks, Saturday={result['calendar']['isSaturday']}, "
                     f"badgeOverlap={result['pill']['overlapsPrimaryCards']}"
                 )
 
@@ -369,31 +369,31 @@ def main() -> None:
                 assert_condition(inside, f"{width}x{height}: long streak/point label clipped", failures)
                 print(f"{width}x{height}: long connected streak and points inside member row={inside}")
 
-            sunday_page = browser.new_page(viewport={"width": 1280, "height": 800})
-            sunday_page.route("**/*", allow_local_only)
-            sunday_page.add_init_script(synthetic_state_script("2026-08-30T12:00:00"))
-            sunday_page.goto(base_url + "/index.html", wait_until="domcontentloaded", timeout=30000)
-            sunday_page.wait_for_function("document.querySelectorAll('#choreList > .chore').length === 8", timeout=15000)
-            sunday_page.wait_for_timeout(300)
+            saturday_page = browser.new_page(viewport={"width": 1280, "height": 800})
+            saturday_page.route("**/*", allow_local_only)
+            saturday_page.add_init_script(synthetic_state_script("2026-08-29T12:00:00"))
+            saturday_page.goto(base_url + "/index.html", wait_until="domcontentloaded", timeout=30000)
+            saturday_page.wait_for_function("document.querySelectorAll('#choreList > .chore').length === 8", timeout=15000)
+            saturday_page.wait_for_timeout(300)
             for width, height in ((1280, 800), (1365, 768), (1536, 1024)):
-                sunday_page.set_viewport_size({"width": width, "height": height})
-                sunday_page.wait_for_timeout(80)
-                result = sunday_page.evaluate(MEASURE_SCRIPT)
-                label = f"{width}x{height} Sunday"
+                saturday_page.set_viewport_size({"width": width, "height": height})
+                saturday_page.wait_for_timeout(80)
+                result = saturday_page.evaluate(MEASURE_SCRIPT)
+                label = f"{width}x{height} Saturday"
                 assert_condition(result["calendar"]["weekCount"] == 6 and result["calendar"]["cellCount"] == 42,
                                  f"{label}: August calendar is not a complete 6-week/42-cell month", failures)
-                assert_condition(result["calendar"]["isSunday"] and result["calendar"]["missionBannerVisible"],
-                                 f"{label}: 6-week Sunday free-day condition was not active", failures)
+                assert_condition(result["calendar"]["isSaturday"] and result["calendar"]["missionBannerVisible"],
+                                 f"{label}: 6-week Saturday free-day condition was not active", failures)
                 assert_condition(not result["calendar"]["scheduleBannerVisible"],
                                  f"{label}: schedule free-day banner is visible over the calendar", failures)
                 assert_condition(result["calendar"]["upcomingFullyInsideCard"],
                                  f"{label}: upcoming-event strip is clipped outside the schedule card", failures)
                 print(
                     f"{label}: {result['calendar']['weekCount']} weeks/42 cells, "
-                    f"Sunday mission banner={result['calendar']['missionBannerVisible']}, "
+                    f"Saturday mission banner={result['calendar']['missionBannerVisible']}, "
                     f"upcomingInside={result['calendar']['upcomingFullyInsideCard']}"
                 )
-            sunday_page.close()
+            saturday_page.close()
 
             browser.close()
     finally:
@@ -402,7 +402,7 @@ def main() -> None:
 
     if failures:
         raise SystemExit("\nLAYOUT REGRESSION FAILURES:\n- " + "\n- ".join(failures))
-    print(f"PASS: {len(VIEWPORTS)} viewport layouts and 3 six-week Sunday scenarios passed with synthetic data.")
+    print(f"PASS: {len(VIEWPORTS)} viewport layouts and 3 six-week Saturday scenarios passed with synthetic data.")
 
 
 if __name__ == "__main__":
