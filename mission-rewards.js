@@ -42,3 +42,10 @@
     maximumEarlyBonus,
   });
 })(globalThis);
+
+/* The household board deliberately runs five minutes ahead. Wall-clock
+   decisions share this offset; elapsed durations continue to use Date.now(). */
+(function(root){
+ const OFFSET_MS=5*60*1000;
+ root.FamilyBoardClock=Object.freeze({OFFSET_MS,now:(real=Date.now())=>new Date(Number(real)+OFFSET_MS)});
+})(globalThis);

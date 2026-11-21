@@ -9,6 +9,7 @@
     c.setAttribute('role','button');c.tabIndex=0;c.setAttribute('aria-pressed',String(c.classList.contains('done')));
     c.setAttribute('aria-label',`${c.querySelector('.chore-title')?.textContent||'미션'} ${c.classList.contains('done')?'완료됨, 취소':'완료하기'}`);
     const old=c.querySelector('.chore-check');if(old){old.remove();}
+    if(c.querySelector('.mission-streak-star')){c.querySelector('.mission-card-status')?.remove();return;}
     if(!c.querySelector('.mission-card-status')){const mark=document.createElement('span');mark.className='mission-card-status';mark.setAttribute('aria-hidden','true');mark.textContent=c.classList.contains('done')?'✓ 완료':'톡 눌러 완료';c.append(mark);}
   });
   document.addEventListener('pointerdown',e=>{const c=cardOf(e.target);if(!c||excluded(e.target))return;gesture={id:e.pointerId,card:c,x:e.clientX,y:e.clientY,moved:false,scroll:c.closest('.mission-scroll')?.scrollLeft||0};},true);

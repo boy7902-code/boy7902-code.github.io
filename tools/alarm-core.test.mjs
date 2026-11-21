@@ -119,9 +119,9 @@ test('같은 날·같은 항목·같은 시점은 같은 열쇠 — 하루가 �
 test('알람 문구는 종류·시점에 맞게 나온다', () => {
   const items = collectItems({ missions, events, alarms, date: DATE, dow: DOW });
   const [missionPre] = targetsAt(items, toMin('07:10'));
-  assert.deepEqual(alarmMessage(missionPre), { title: '밥 다 먹기 마감 5분 전이에요!', sub: '07:15까지예요 · 지금 시작하면 딱 맞아요' });
+  assert.deepEqual(alarmMessage(missionPre), { title: '밥 다 먹기 보너스 기준 5분 전이에요!', sub: '07:15 보너스 기준 · 기본 포인트는 이후에도 쌓여요' });
   const [missionNow] = targetsAt(items, toMin('07:15'));
-  assert.equal(alarmMessage(missionNow).title, '밥 다 먹기 마감 시간이에요!');
+  assert.equal(alarmMessage(missionNow).title, '밥 다 먹기 보너스 기준 시각이에요!');
   const [eventPre] = targetsAt(items, toMin('08:20'));
   assert.deepEqual(alarmMessage(eventPre), { title: '등교 10분 전이에요!', sub: '08:30 일정이 곧 시작해요' });
   const [custom] = targetsAt(items, toMin('08:25'));

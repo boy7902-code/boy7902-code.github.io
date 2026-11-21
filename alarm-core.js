@@ -188,8 +188,8 @@
     const time = hit && isHhmm(hit.time) ? String(hit.time) : '';
     if (hit && hit.kind === 'mission') {
       return hit.slot === 'pre'
-        ? { title: `${title} 마감 5분 전이에요!`, sub: `${time}까지예요 · 지금 시작하면 딱 맞아요` }
-        : { title: `${title} 마감 시간이에요!`, sub: `${time} · 서둘러요!` };
+        ? { title: `${title} 보너스 기준 5분 전이에요!`, sub: `${time} 보너스 기준 · 기본 포인트는 이후에도 쌓여요` }
+        : { title: `${title} 보너스 기준 시각이에요!`, sub: `${time} · 이후에도 완료와 기본 적립은 가능해요` };
     }
     if (hit && hit.kind === 'event') {
       return hit.slot === 'pre'

@@ -35,7 +35,7 @@
     const dashboard=window.FamilyDashboard, core=window.FamilyDashboardInsights;
     if(!dashboard || !core)return;
     const state=dashboard.state, kid=dashboard.kid().id;
-    const now=new Date(),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const now=(window.FamilyBoardClock?.now()||new Date()),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const week=core.weekly((state.logs||[]).filter(l=>l&&(!l.member||l.member===kid)),today);
     const max=Math.max(1,...week.days.map(d=>d.points));
     $('#weeklyBars').replaceChildren(...week.days.map((d,i)=>{
@@ -105,7 +105,7 @@
   }
   function resetPhotoTimer() {
     clearInterval(photoTimer);photoTimer=null;
-    if(!paused && !document.hidden && !$('#standby').hidden && new Date().getHours()>=7 && new Date().getHours()<21 && urls.length>1) photoTimer=setInterval(()=>{if(new Date().getHours()>=21||new Date().getHours()<7)return;photoIndex=(photoIndex+1)%urls.length;showPhoto();},10000);
+    if(!paused && !document.hidden && !$('#standby').hidden && (window.FamilyBoardClock?.now()||new Date()).getHours()>=7 && (window.FamilyBoardClock?.now()||new Date()).getHours()<21 && urls.length>1) photoTimer=setInterval(()=>{if((window.FamilyBoardClock?.now()||new Date()).getHours()>=21||(window.FamilyBoardClock?.now()||new Date()).getHours()<7)return;photoIndex=(photoIndex+1)%urls.length;showPhoto();},10000);
   }
   function setPhotos(list) {
     urls.forEach(URL.revokeObjectURL);photos=list||[];urls=photos.map(x=>URL.createObjectURL(x));photoIndex=0;showPhoto();resetPhotoTimer();

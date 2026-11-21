@@ -45,9 +45,9 @@ service cloud.firestore {
       return n < 10 ? '0' + string(n) : string(n);
     }
 
-    // 서버 시각(request.time)을 KST(UTC+9)로 옮긴 값 — 기기 시계는 신뢰하지 않습니다.
+    // 서버 시각(request.time)을 KST(UTC+9) 및 보드 +5분으로 옮긴 값 — 기기 시계는 신뢰하지 않습니다.
     function kstNow() {
-      return request.time + duration.value(9, 'h');
+      return request.time + duration.value(9, 'h') + duration.value(5, 'm');
     }
     function kstDate(ts) {
       return string(ts.year()) + '-' + pad2(ts.month()) + '-' + pad2(ts.day());

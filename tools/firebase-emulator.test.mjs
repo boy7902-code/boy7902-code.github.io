@@ -35,7 +35,7 @@ const sdk = { ...authSdk, ...firestoreSdk };
 const sync = createFamilySync({ sdk, auth, db });
 let serial = 0;
 function kstMinuteNow() {
-  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const now = new Date(Date.now() + (9 * 60 + 5) * 60 * 1000);
   return now.getUTCHours() * 60 + now.getUTCMinutes();
 }
 function hhmmOfMinute(value) {
@@ -153,6 +153,15 @@ test('Auth + Firestore emulator enforces family roles and automatically derives 
     assert.equal(logResult.payload.earlyBonus, 0);
     assert.equal(logResult.payload.earned, 5);
     assert.equal(logResult.payload.settled, false);
+    assert.equal(logResult.payload.at,hhmmOfMinute(kstMinuteNow()),'completion time matches the five-minutes-fast board');
+    if(kstMinuteNow()<1438){
+      const future=sync.buildLogPayload(mission,{at:hhmmOfMinute(kstMinuteNow()+2),by:child.uid,member:'m3'});
+      future.mid='future-time';future.id=future.date+'_future-time_m3';
+      await assert.rejects(()=>firestoreSdk.setDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/logs/${future.id}`),future),e=>e.code==='permission-denied');
+    }
+    assert.equal((await sync.observeMissionStars({date:logResult.payload.date,missions:[mission]})).ok,false,'child cannot change schedules');
+    await assert.rejects(()=>firestoreSdk.setDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/child_state/mission_stars`),{forged:true}),e=>e.code==='permission-denied');
+
     if (earlyMission && forgedMission) {
       const earlyLog = await sync.writeLog(earlyMission, { at: earlyAt, by: child.uid, member: 'm3' });
       assert.equal(earlyLog.ok, true, JSON.stringify(earlyLog.error || {}));
@@ -277,6 +286,9 @@ test('Auth + Firestore emulator enforces family roles and automatically derives 
 
     await clearSignedInUser();
     await createClaimedUser('parent');
+    const starsJournal=await sync.observeMissionStars({date:logResult.payload.date,missions:[mission]});
+    assert.equal(starsJournal.ok,true);
+    assert.equal((await firestoreSdk.getDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/child_state/mission_stars`))).data().started,logResult.payload.date);
     const beforeOldParent=(await firestoreSdk.getDoc(partnerRef)).data();
     await assert.rejects(()=>firestoreSdk.setDoc(partnerRef,{restoreIntent:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','empty explicit restore denied');
     await assert.rejects(()=>firestoreSdk.setDoc(partnerRef,{partnerKey:'pikachu',sinceXp:-1,restoreIntent:firestoreSdk.serverTimestamp(),updatedAt:firestoreSdk.serverTimestamp()}),e=>e.code==='permission-denied','invalid explicit restore denied');

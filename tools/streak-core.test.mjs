@@ -86,8 +86,8 @@ test('exactly 120 observed days has no plus, older truncated history has plus', 
 
 test('KST journal date is independent of input timezone and crosses midnight correctly', () => {
   const { kstDate } = globalThis.FamilyStreak;
-  assert.equal(kstDate(new Date('2026-11-19T14:59:59Z')), '2026-11-19');
-  assert.equal(kstDate(new Date('2026-11-19T15:00:00Z')), '2026-11-20');
+  assert.equal(kstDate(new Date('2026-11-19T14:54:59Z')), '2026-11-19');
+  assert.equal(kstDate(new Date('2026-11-19T14:55:00Z')), '2026-11-20');
   assert.equal(kstDate(new Date('2026-11-19T07:00:00-08:00')), '2026-11-20');
   assert.equal(kstDate(new Date('bad')), '');
 });
