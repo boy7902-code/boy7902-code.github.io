@@ -5,7 +5,7 @@
    • 원격 도메인에서는 firebase-config.js 설정을 사용하고 emulator=true 면 실패 처리.
    • 로그인은 팝업 우선, 팝업이 막힌 경우에만 redirect 로 넘어갑니다.
    ========================================================================== */
-import * as Sync from './firebase-sync.js?v=type-egg-20261121-1';
+import * as Sync from './firebase-sync.js?v=review-fixes-20261122-1';
 import { firebaseConfigForRuntime } from './firebase-runtime.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
 import * as authSdk from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
@@ -94,10 +94,10 @@ function parseOAuthHash() {
   try {
     savedState = sessionStorage.getItem(OAUTH_STATE_KEY) || '';
     sessionStorage.removeItem(OAUTH_STATE_KEY);
-  } catch (e) { /* 저장소를 못 쓰면 state 대조만 건너뜁니다 */ }
+  } catch (e) { /* 저장소가 없으면 아래 검증에서 응답을 거절합니다. */ }
   /* 주소창에서 토큰을 곧바로 지웁니다 — 기록·공유·스크린샷에 남지 않도록 */
   try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) { /* noop */ }
-  if (savedState && state && savedState !== state) {
+  if (!savedState || !state || savedState !== state) {
     return { ok: false, reason: 'error', code: 'oauth/state-mismatch', message: '요청과 돌아온 응답의 state 가 다릅니다' };
   }
   if (error) {
