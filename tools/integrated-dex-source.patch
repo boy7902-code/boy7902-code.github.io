@@ -731,7 +731,7 @@
        okText: '추가',
      });
      if (!r || !r.title.trim()) return;
-+    r.due=r.timeBonus==='on'?(r.due||'08:00'):'';
++    r.due=r.timeBonus==='on'?(r.due||''):'';
      const days = parseDays(r.days);
      S.missions.push({
        id: uid(),
@@ -770,7 +770,7 @@
 -    const oldKey = c.member || '';
 -    const oldEarned = earnOf(c);
 -
-+    r.due=r.timeBonus==='on'?(r.due||'08:00'):'';
++    r.due=r.timeBonus==='on'?(r.due||''):'';
      c.title = r.title.trim();
      c.points = Math.max(0, Math.round(+r.points || 0));
      c.due = r.due || '';
