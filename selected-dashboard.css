@@ -71,3 +71,12 @@ body.dashboard-refresh.selected-dashboard .selected-lower #weeklySummary{margin:
 }
 
 @media(min-width:1024px) and (max-width:1366px) and (orientation:landscape){body.dashboard-refresh.selected-dashboard:not([data-apptab="dash"]) .topbar{display:flex!important;min-height:80px!important}body.dashboard-refresh.selected-dashboard:not([data-apptab="dash"]) .top-actions{flex-direction:row!important;margin-left:auto!important}}
+@media(min-width:1024px) and (max-width:1366px) and (orientation:landscape){
+body.dashboard-refresh.selected-dashboard .selected-lower #wishList .wish-title{display:block!important;max-height:none!important;height:auto!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;-webkit-box-orient:initial!important;overflow:visible!important}
+body.dashboard-refresh.selected-dashboard .selected-lower #wishList>.wish-item,body.dashboard-refresh.selected-dashboard .selected-lower #wishList .wish-main{max-height:none!important;overflow:visible!important}
+body.dashboard-refresh.selected-dashboard .selected-lower>.weekly-report{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:16px 34px auto!important;gap:0!important}
+body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-end!important;height:34px!important;min-height:34px!important;gap:0!important}
+body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day b{font-size:10px!important;line-height:10px!important}
+body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day i{max-height:12px!important;margin:0!important}
+body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day>span{font-size:9px!important;line-height:10px!important}
+}
