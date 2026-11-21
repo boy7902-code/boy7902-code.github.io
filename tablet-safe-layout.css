@@ -1,0 +1,20 @@
+/* Isolate header rows while preserving current tablet sizes at normal text scale. */
+@media(min-width:768px) and (max-width:1366px){
+body.dashboard-refresh.selected-dashboard .topbar{height:auto!important;min-height:150px!important;max-height:none!important;flex:0 0 auto!important;overflow:visible!important;align-items:start!important}
+body.dashboard-refresh.selected-dashboard .selected-top{height:auto!important;min-height:150px!important;overflow:visible!important;align-items:start!important}
+body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:4px!important;align-content:stretch!important}
+body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool>.card-head{height:auto!important;min-height:32px!important;max-height:none!important;margin:0!important;flex:none!important}
+body.dashboard-refresh.selected-dashboard .selected-top #schoolBody{height:auto!important;min-height:0!important;max-height:none!important;overflow:auto!important}
+body.dashboard-refresh.selected-dashboard .selected-top #schoolDetailsBtn{position:static!important;min-height:24px!important;height:auto!important;max-height:none!important;margin:0!important;flex:none!important}
+body.dashboard-refresh.selected-dashboard #cardChores>.card-head{display:grid!important;grid-template-columns:minmax(160px,1fr) minmax(0,1fr) auto!important;align-items:center!important;grid-auto-flow:row!important;min-height:54px!important;height:auto!important;flex:none!important;gap:12px!important;overflow:visible!important}
+body.dashboard-refresh.selected-dashboard #cardChores>.card-head>.width-access-tools{grid-column:2!important;grid-row:1!important;order:initial!important;max-width:100%!important;min-width:0!important;margin:0!important;justify-self:center!important;flex-wrap:wrap!important;justify-content:center!important;height:auto!important;min-height:44px!important;max-height:none!important}
+body.dashboard-refresh.selected-dashboard #cardChores>.card-head>.card-tools{grid-column:3!important;grid-row:1!important;order:initial!important;position:static!important;margin:0!important;width:auto!important;justify-self:end!important;flex-wrap:wrap!important;max-width:100%!important}
+}
+@media(min-width:768px) and (max-width:1366px){
+body.dashboard-refresh.selected-dashboard .topbar>.header-clock{grid-column:1!important;grid-row:1!important}
+body.dashboard-refresh.selected-dashboard .topbar>.selected-top{grid-column:2!important;grid-row:1!important;width:100%!important;min-width:0!important;box-sizing:border-box!important}
+body.dashboard-refresh.selected-dashboard .topbar>.top-actions{grid-column:3!important;grid-row:1!important}
+body.dashboard-refresh.selected-dashboard .selected-top>#cardOverview{grid-column:1!important;grid-row:1!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+body.dashboard-refresh.selected-dashboard .selected-top>#cardSchool{grid-column:2!important;grid-row:1!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+body.dashboard-refresh.selected-dashboard .selected-top #wWeek{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+}
