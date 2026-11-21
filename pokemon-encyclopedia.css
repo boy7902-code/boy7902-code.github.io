@@ -1,0 +1,39 @@
+.pdx-information {margin:18px 0 10px;padding:16px;border:1px solid #e8dec8;border-radius:18px;background:#fffbf0;color:#514736;text-align:left;}
+.pdx-information h4 {font-size:15px;line-height:1.5;margin:0 0 10px;color:#755c29;}
+.pdx-facts {display:grid;grid-template-columns:auto 1fr;gap:9px 14px;margin:0;font-size:14px;line-height:1.6;}
+.pdx-facts dt {color:#7a6a50;}.pdx-facts dd {margin:0;font-weight:750;text-align:right;overflow-wrap:anywhere;}
+.pdx-description,.pdx-natural-evolution {border-top:1px solid #e8dec8;margin-top:16px;padding-top:14px;}
+.pdx-description p {font-size:14px;line-height:1.85;word-break:keep-all;overflow-wrap:anywhere;margin:0;}
+.pdx-note {font-size:12px;line-height:1.7;color:#7a6a50;margin:6px 0;word-break:keep-all;overflow-wrap:anywhere;}
+.pdx-evolution-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;list-style:none;margin:12px 0 0;padding:0;}
+.pdx-evolution-list li {display:flex;flex-direction:column;border:1px solid #ede6d4;border-radius:12px;padding:10px;background:#fff;font-size:13px;line-height:1.5;min-width:0;}
+.pdx-evolution-list span {font-size:12px;color:#7a6a50;}
+.pdx-information details {margin-top:12px;font-size:12px;line-height:1.7;}
+.pdx-information summary {cursor:pointer;min-height:28px;line-height:28px;}
+.pdx-information details ul {padding-left:18px;}.pdx-information a {color:#435c91;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;}
+.pdx-app-growth-label {margin:18px 0 8px;font-size:14px;line-height:1.5;color:#615479;}
+@media(max-width:480px) {.pdx-information {padding:14px;}.pdx-facts {font-size:13px;gap:9px 10px;}}
+.pdx-detail-entry {margin:16px 0;text-align:center;}
+.pdx-open {border:1px solid #c6ab68;background:#fff0bb;color:#584427;border-radius:14px;padding:11px 16px;font:inherit;font-weight:750;font-size:14px;line-height:1.5;min-height:44px;cursor:pointer;}
+.pdx-dialog {width:min(1080px,94vw);max-width:94vw;max-height:92dvh;padding:0;border:0;border-radius:25px;color:#514736;background:#fffdf7;box-shadow:0 20px 70px #27213c55;}
+.pdx-dialog::backdrop {background:#28213fc4;}
+.pdx-detail-header {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 25px;border-bottom:1px solid #eee5d2;}
+.pdx-detail-header h3 {margin:0;font-size:18px;}
+.pdx-exit {background:#fff;border:1px solid #d8cdb7;border-radius:12px;padding:9px 17px;min-height:44px;cursor:pointer;color:#514736;font-weight:750;}
+.pdx-detail-body {display:grid;grid-template-columns:minmax(200px,30%) minmax(0,1fr);gap:24px;padding:24px;align-items:start;}
+.pdx-detail-hero {text-align:center;position:sticky;top:12px;}
+.pdx-detail-number {font-size:14px;color:#887554;margin:5px 0;}
+.pdx-detail-hero h2 {font-size:30px;line-height:1.4;margin:10px 0 16px;}
+.pdx-detail-art {width:100%;max-width:270px;aspect-ratio:1;object-fit:contain;padding:20px;box-sizing:border-box;background:#ffe7a1;border:3px solid #fff2c9;border-radius:24px;}
+.pdx-detail-types {display:inline-block;background:#e5e5c1;padding:7px 17px;border-radius:12px;font-size:14px;font-weight:750;}
+.pdx-detail-body .pdx-information {margin:0;background:#fff7e5;border:0;}
+.pdx-detail-body .pdx-facts {grid-template-columns:auto 1fr auto 1fr;gap:13px 16px;}
+.pdx-detail-body .pdx-evolution-list {grid-template-columns:repeat(3,minmax(0,1fr));}
+.pdx-open:focus-visible,.pdx-exit:focus-visible {outline:3px solid #607bc0;outline-offset:3px;}
+@media(max-width:700px) {.pdx-detail-body {grid-template-columns:1fr;padding:18px;gap:12px;}.pdx-detail-hero {position:static;}.pdx-detail-art {width:170px;padding:10px;}.pdx-detail-hero h2 {font-size:25px;margin:6px 0 10px;}.pdx-detail-body .pdx-facts {grid-template-columns:auto 1fr;}.pdx-detail-body .pdx-evolution-list {grid-template-columns:repeat(2,minmax(0,1fr));}.pdx-detail-header {padding:12px 18px;}.pdx-detail-header h3 {font-size:16px;}}
+
+.pdx-detail-types {display:table;margin:12px auto;}
+.pdx-evolution-list img {width:64px;height:64px;object-fit:contain;align-self:center;margin-bottom:5px;}
+.pdx-detail-header {position:sticky;top:0;background:#fffdf7;z-index:2;}
+
+.pdx-image-fallback {display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 5px;border-radius:50%;background:#f4edda;font-size:24px;font-weight:750;color:#857151;}.pdx-image-large {width:auto;height:170px;border-radius:20px;font-size:14px;}
