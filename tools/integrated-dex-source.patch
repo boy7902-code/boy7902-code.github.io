@@ -63,7 +63,16 @@
      renderDexFilters();
      renderDexGrid();
      renderDexSide();
-@@ -5536,6 +5554,7 @@
+@@ -5318,6 +5336,8 @@
+     pokeReact($('#sbStage'), $('#sbSay'), name, { text, wiggle: count % 2 === 0, holdMs: 2400 });
+   }
+   function handleStandbyActivity(event) {
++    // A physical touch emits pointerdown and touchstart on modern browsers. Count it once.
++    if (event.type === 'touchstart' && 'PointerEvent' in window) return;
+     if (standbyOn) {
+       // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
+       if (event.type === 'keydown' || event.type === 'wheel' || event.type === 'scroll') return;
+@@ -5536,6 +5556,7 @@
    if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
    $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
    if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {

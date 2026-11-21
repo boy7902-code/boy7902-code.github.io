@@ -1103,11 +1103,12 @@ function standbyTapText(msg,tone){const el=$("#sbTap");if(!el)return;el.textCont
 clearTimeout(standbyHintTimer);standbyTapText(`조금 더! (${count}/${needed})`,"more");standbyHintTimer=setTimeout(()=>{standbyHintTimer=null
 ;standbyTapText("화면을 연속 3번 터치하면 대시보드로 돌아가요","")},1500)}function standbyTapReact(count,needed){const{stage:stage}=standbyPartnerStage()
 ;const name=stage&&stage.name?stage.name:"파트너";const text=count>=needed-1?`한 번 더 누르면 열려요! (${count}/${needed})`:`${name}! 콕! (${count}/${needed})`
-;pokeReact($("#sbStage"),$("#sbSay"),name,{text:text,wiggle:count%2===0,holdMs:2400})}function handleStandbyActivity(event){if(standbyOn){
-if(event.type==="keydown"||event.type==="wheel"||event.type==="scroll")return;if(event.type==="pointerdown"||event.type==="touchstart"){const t=event.target
-;if(t&&typeof t.closest==="function"&&t.closest("#standbyExit"))return;if(t&&typeof t.closest==="function"&&t.closest("#alarmPop")){requestScreenWakeLock()
-;return}const r=standbyTapGate.tap();if(r.done){clearTimeout(standbyHintTimer);standbyHintTimer=null;standbyWakeClickGuard.arm();exitStandby()}else{
-showStandbyTapHint(r.count,r.needed);standbyTapReact(r.count,r.needed)}}requestScreenWakeLock();return}resetStandbyIdleTimer();requestScreenWakeLock()}
+;pokeReact($("#sbStage"),$("#sbSay"),name,{text:text,wiggle:count%2===0,holdMs:2400})}function handleStandbyActivity(event){
+if(event.type==="touchstart"&&"PointerEvent"in window)return;if(standbyOn){if(event.type==="keydown"||event.type==="wheel"||event.type==="scroll")return
+;if(event.type==="pointerdown"||event.type==="touchstart"){const t=event.target;if(t&&typeof t.closest==="function"&&t.closest("#standbyExit"))return
+;if(t&&typeof t.closest==="function"&&t.closest("#alarmPop")){requestScreenWakeLock();return}const r=standbyTapGate.tap();if(r.done){
+clearTimeout(standbyHintTimer);standbyHintTimer=null;standbyWakeClickGuard.arm();exitStandby()}else{showStandbyTapHint(r.count,r.needed)
+;standbyTapReact(r.count,r.needed)}}requestScreenWakeLock();return}resetStandbyIdleTimer();requestScreenWakeLock()}
 ["pointerdown","touchstart","keydown","wheel"].forEach(type=>{document.addEventListener(type,handleStandbyActivity,{passive:true,capture:true})})
 ;document.addEventListener("scroll",handleStandbyActivity,{passive:true,capture:true});document.addEventListener("click",event=>{
 standbyWakeClickGuard.handleClick(event)},true);function applyTheme(){document.documentElement.dataset.theme=S.theme==="dark"?"dark":"light"
