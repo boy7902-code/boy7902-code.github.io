@@ -85,3 +85,4 @@ body.dashboard-refresh.selected-dashboard #cardChores #choreList .chore-title{wo
 body.dashboard-refresh.selected-dashboard .selected-lower>.weekly-report{grid-template-rows:16px 36px auto!important;row-gap:2px!important}
 body.dashboard-refresh.selected-dashboard .selected-lower #weeklySummary{height:auto!important;min-height:14px!important;line-height:14px!important;clear:both!important;padding-top:2px!important}
 }
+@media(min-width:1024px) and (max-width:1366px) and (orientation:landscape){body.dashboard-refresh.selected-dashboard #cardChores .chore-tools{position:absolute!important;right:6px!important;bottom:6px!important;margin:0!important}body.dashboard-refresh.selected-dashboard[data-parent="on"] #cardChores .chore-main{margin-bottom:30px!important}}
