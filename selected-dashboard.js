@@ -25,8 +25,9 @@
   }
   top.hidden=$('#mainGrid').hidden;
   const data=window.FamilyDashboard?.state,missions=data?.missions||[],order=new Map(missions.map((m,i)=>[String(m.id),i]));
+  const points=new Map(missions.map(m=>[String(m.id),Number(m.points)||0]));
   const rows=[...$('#choreList').children].filter(n=>n.classList.contains('chore'));
-  const sorted=rows.slice().sort((a,b)=>Number(a.classList.contains('done'))-Number(b.classList.contains('done'))||(order.get(a.dataset.id)||0)-(order.get(b.dataset.id)||0));
+  const sorted=rows.slice().sort((a,b)=>Number(a.classList.contains('done'))-Number(b.classList.contains('done'))||(!a.classList.contains('done')?(points.get(b.dataset.id)||0)-(points.get(a.dataset.id)||0):0)||(order.get(a.dataset.id)||0)-(order.get(b.dataset.id)||0));
   if(rows.some((r,i)=>r!==sorted[i])){sorted.forEach(r=>$('#choreList').append(r));$('#missionScroll').scrollLeft=0;}
   if(mode!=='tablet')return;
   // Weather cache is the same snapshot renderWeather saves before updating #wChips.
@@ -44,7 +45,7 @@
   $('#weatherDetailsBtn').textContent='날씨 상세';
   const count=Number(($('#readingProgress').textContent.match(/\d+/)||[])[0]||0);
   caption.textContent=count<10?`${10-count}개 더 모으면 +3P`:'도장 완성';
-  nodes[5].querySelector('span').textContent='미완료부터 오른쪽으로 · 완료한 카드는 맨 뒤로';
+  nodes[5].querySelector('span').textContent='미완료는 포인트 높은 순 · 완료한 카드는 맨 뒤로';
  }
  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
  const obs=new MutationObserver(queue);['#choreList','#wChips','#outfitSuggestions','#readingProgress','#mainGrid'].forEach(s=>obs.observe($(s),{childList:true,subtree:true,characterData:true,attributes:s==='#mainGrid',attributeFilter:s==='#mainGrid'?['hidden']:undefined}));
