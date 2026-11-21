@@ -215,7 +215,7 @@
             <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
           </div>
           <div class="card-tools">
-            <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1세대 151종 도감과 내 포켓몬 도감을 엽니다"><span class="dex-word">도감</span><b class="dex-open-num">151</b></button>
+            <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1,025종 도감과 내 포켓몬 도감을 엽니다"><span class="dex-word">도감</span><b class="dex-open-num">1025</b></button>
             <button class="btn icon sm parent-only" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
           </div>
         </div>
@@ -430,7 +430,7 @@
         </div>
         <div class="card-tools">
           <span class="pill" id="playTabCount">0마리</span>
-          <button type="button" class="btn sm ghost" id="playDexBtn" title="1세대 151종 도감 열기">📖 151 도감</button>
+          <button type="button" class="btn sm ghost" id="playDexBtn" title="1,025종 도감 열기">📖 1,025 도감</button>
         </div>
       </div>
       <div class="card-body">
@@ -741,7 +741,7 @@
       <div class="dex-row" id="dexRow"></div>
     </div>
     <div class="dex-panes">
-      <div class="dex-grid" id="dexGrid" aria-label="포켓몬 도감, 1세대 수집과 추가 정보"></div>
+      <div class="dex-grid" id="dexGrid" aria-label="포켓몬 도감, 전체 세대 수집과 정보"></div>
       <aside class="dex-side" id="dexSide" aria-live="polite"></aside>
     </div>
     <div class="modal-actions">
@@ -837,7 +837,7 @@
         진화 계열(이상해씨 → 이상해풀 → 이상해꽃, 이브이 → 샤미드 · 쥬피썬더 · 부스터 …)과 진화하지 않는 친구
         (라프라스 · 잠만보 · 프리져 · 썬더 · 파이어 · 뮤츠 · 뮤 …) 모두 들어 있습니다.
         파트너는 미션을 끝낼 때마다 <b>둥실둥실 움직이고</b>, <b>톡톡 누르면 점프하며 하트·반짝이와 함께 대답해요</b>.<br />
-        <b>📖 151 도감</b>을 누르면 151종 전체를 번호순으로 볼 수 있고, 아직 만나지 못한 친구는 <b>실루엣</b>으로 보입니다.
+        <b>📖 1,025 도감</b>을 누르면 151종 전체를 번호순으로 볼 수 있고, 아직 만나지 못한 친구는 <b>실루엣</b>으로 보입니다.
         칸을 누르면 진화 단계와 기준 포인트, 언제 만났는지가 나오고 그 자리에서 그 계열을 기를 수도 있어요.<br />
         <b>🎁 포인트 사용</b>을 누르면 부모가 무엇을 사줬는지와 사용 포인트를 적어 잔액을 줄일 수 있습니다.
         <b>사용해도 경험치와 진화 단계는 절대로 풀리지 않아요.</b> 내역은 <b>포인트 사용 내역</b>에 남습니다.<br />
@@ -858,7 +858,7 @@
       <h4>6-1. 🐾 포켓몬 놀이방 탭</h4>
       <p class="settings-note">
         화면 위 <b>🐾 포켓몬 놀이방</b> 탭을 누르면 모은 친구들이 풀밭에서 좌우로 걸어 다닙니다.
-        친구를 콕 누르면 두 번 점프하며 하트와 말풍선이 떠요. <b>📖 151 도감</b> 버튼으로 도감도 바로 열 수 있습니다.
+        친구를 콕 누르면 두 번 점프하며 하트와 말풍선이 떠요. <b>📖 1,025 도감</b> 버튼으로 도감도 바로 열 수 있습니다.
         도감 안의 놀이방과 같은 친구들이라, 미션을 끝내 새 친구를 만나면 이 탭에도 함께 늘어납니다.
       </p>
     </div>
@@ -1000,7 +1000,12 @@
 <script src="pokemon-partner-details-data.js?v=family-refresh-20261121-1"></script>
 <script src="pokemon-encyclopedia.js?v=integrated-20261121"></script>
 <script src="partner-growth-core.js?v=family-refresh-20261121-1"></script>
-<script src="app-dex-integrated.js?v=mission-recheck-20261121-1"></script>
+<script src="pokemon-info-1.js?v=integrated-20261121"></script>
+<script src="pokemon-info-2.js?v=integrated-20261121"></script>
+<script src="pokemon-info-3.js?v=integrated-20261121"></script>
+<script src="pokemon-info-4.js?v=integrated-20261121"></script>
+<script src="pokemon-growth-paths.js?v=full-link-20261121-1"></script>
+<script src="app-dex-integrated.js?v=full-link-20261121-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=family-refresh-20261121-1"></script>
@@ -1027,10 +1032,6 @@
     update();
   })();
 </script>
-<script src="pokemon-info-1.js?v=integrated-20261121" defer></script>
-<script src="pokemon-info-2.js?v=integrated-20261121" defer></script>
-<script src="pokemon-info-3.js?v=integrated-20261121" defer></script>
-<script src="pokemon-info-4.js?v=integrated-20261121" defer></script>
 <script src="pokemon-expansion.js?v=integrated-20261121" defer></script>
 <script src="mission-card-interaction.js?v=20261121-1" defer></script>
 <script src="selected-dashboard.js?v=20261121-1" defer></script>
