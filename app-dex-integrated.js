@@ -18,10 +18,12 @@ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||""));return m?`${+m[2]}/${+m[
 ;const GEN1_TABLE=`\n1|이상해씨|풀,독\n2|이상해풀|풀,독\n3|이상해꽃|풀,독\n4|파이리|불꽃\n5|리자드|불꽃\n6|리자몽|불꽃,비행\n7|꼬부기|물\n8|어니부기|물\n9|거북왕|물\n10|캐터피|벌레\n11|단데기|벌레\n12|버터플|벌레,비행\n13|뿔충이|벌레,독\n14|딱충이|벌레,독\n15|독침붕|벌레,독\n16|구구|노말,비행\n17|피죤|노말,비행\n18|피죤투|노말,비행\n19|꼬렛|노말\n20|레트라|노말\n21|깨비참|노말,비행\n22|깨비드릴조|노말,비행\n23|아보|독\n24|아보크|독\n25|피카츄|전기\n26|라이츄|전기\n27|모래두지|땅\n28|고지|땅\n29|니드런♀|독\n30|니드리나|독\n31|니드퀸|독,땅\n32|니드런♂|독\n33|니드리노|독\n34|니드킹|독,땅\n35|삐삐|페어리\n36|픽시|페어리\n37|식스테일|불꽃\n38|나인테일|불꽃\n39|푸린|노말,페어리\n40|푸크린|노말,페어리\n41|주뱃|독,비행\n42|골뱃|독,비행\n43|뚜벅쵸|풀,독\n44|냄새꼬|풀,독\n45|라플레시아|풀,독\n46|파라스|벌레,풀\n47|파라섹트|벌레,풀\n48|콘팡|벌레,독\n49|도나리|벌레,독\n50|디그다|땅\n51|닥트리오|땅\n52|나옹|노말\n53|페르시온|노말\n54|고라파덕|물\n55|골덕|물\n56|망키|격투\n57|성원숭|격투\n58|가디|불꽃\n59|윈디|불꽃\n60|발챙이|물\n61|슈륙챙이|물\n62|강챙이|물,격투\n63|캐이시|에스퍼\n64|윤겔라|에스퍼\n65|후딘|에스퍼\n66|알통몬|격투\n67|근육몬|격투\n68|괴력몬|격투\n69|모다피|풀,독\n70|우츠동|풀,독\n71|우츠보트|풀,독\n72|왕눈해|물,독\n73|독파리|물,독\n74|꼬마돌|바위,땅\n75|데구리|바위,땅\n76|딱구리|바위,땅\n77|포니타|불꽃\n78|날쌩마|불꽃\n79|야돈|물,에스퍼\n80|야도란|물,에스퍼\n81|코일|전기,강철\n82|레어코일|전기,강철\n83|파오리|노말,비행\n84|두두|노말,비행\n85|두트리오|노말,비행\n86|쥬쥬|물\n87|쥬레곤|물,얼음\n88|질퍽이|독\n89|질뻐기|독\n90|셀러|물\n91|파르셀|물,얼음\n92|고오스|고스트,독\n93|고우스트|고스트,독\n94|팬텀|고스트,독\n95|롱스톤|바위,땅\n96|슬리프|에스퍼\n97|슬리퍼|에스퍼\n98|크랩|물\n99|킹크랩|물\n100|찌리리공|전기\n101|붐볼|전기\n102|아라리|풀,에스퍼\n103|나시|풀,에스퍼\n104|탕구리|땅\n105|텅구리|땅\n106|시라소몬|격투\n107|홍수몬|격투\n108|내루미|노말\n109|또가스|독\n110|또도가스|독\n111|뿔카노|땅,바위\n112|코뿌리|땅,바위\n113|럭키|노말\n114|덩쿠리|풀\n115|캥카|노말\n116|쏘드라|물\n117|시드라|물\n118|콘치|물\n119|왕콘치|물\n120|별가사리|물\n121|아쿠스타|물,에스퍼\n122|마임맨|에스퍼,페어리\n123|스라크|벌레,비행\n124|루주라|얼음,에스퍼\n125|에레브|전기\n126|마그마|불꽃\n127|쁘사이저|벌레\n128|켄타로스|노말\n129|잉어킹|물\n130|갸라도스|물,비행\n131|라프라스|물,얼음\n132|메타몽|노말\n133|이브이|노말\n134|샤미드|물\n135|쥬피썬더|전기\n136|부스터|불꽃\n137|폴리곤|노말\n138|암나이트|바위,물\n139|암스타|바위,물\n140|투구|바위,물\n141|투구푸스|바위,물\n142|프테라|바위,비행\n143|잠만보|노말\n144|프리져|얼음,비행\n145|썬더|전기,비행\n146|파이어|불꽃,비행\n147|미뇽|드래곤\n148|신뇽|드래곤\n149|망나뇽|드래곤,비행\n150|뮤츠|에스퍼\n151|뮤|에스퍼\n`
 ;const POKE_INFO={};const POKE_NOS=[];GEN1_TABLE.trim().split("\n").forEach(row=>{const parts=row.split("|");const id=+parts[0];if(!(id>0))return
 ;POKE_INFO[id]={id:id,name:String(parts[1]||"").trim(),types:String(parts[2]||"").split(",").map(s=>s.trim()).filter(Boolean)};POKE_NOS.push(id)})
-;POKE_INFO[172]={id:172,name:"피츄",types:["전기"]};const POKE_TYPE_TINT={"풀":"#5fae7f","독":"#a26bd6","불꽃":"#f0803c","비행":"#8f9ee0","물":"#4f9fdf","벌레":"#94b93c",
-"노말":"#b0a999","전기":"#e5b52b","땅":"#c9964f","페어리":"#eb9bc9","격투":"#d4553f","에스퍼":"#ef6f9c","바위":"#b59a55","얼음":"#6fc9d8","고스트":"#8a76cc","드래곤":"#6b7ce8",
-"강철":"#93a1bd","악":"#77675c"};const pokeInfo=id=>POKE_INFO[id]||{id:id,name:`No.${id}`,types:[]};const pokeName=id=>pokeInfo(id).name
-;const pokeTint=id=>POKE_TYPE_TINT[pokeInfo(id).types[0]]||"#9aa4bd";const pokeNoText=id=>id<=151?`No.${pad(id)}`:""
+;POKE_INFO[172]={id:172,name:"피츄",types:["전기"]};Object.values(window.PokemonEncyclopediaData?.species||{}).forEach(e=>{if(e.id>151&&e.id<=1025){
+POKE_INFO[e.id]={id:e.id,name:e.name,types:e.types};if(!POKE_NOS.includes(e.id))POKE_NOS.push(e.id)}});POKE_NOS.sort((a,b)=>a-b);const POKE_TYPE_TINT={
+"풀":"#5fae7f","독":"#a26bd6","불꽃":"#f0803c","비행":"#8f9ee0","물":"#4f9fdf","벌레":"#94b93c","노말":"#b0a999","전기":"#e5b52b","땅":"#c9964f","페어리":"#eb9bc9",
+"격투":"#d4553f","에스퍼":"#ef6f9c","바위":"#b59a55","얼음":"#6fc9d8","고스트":"#8a76cc","드래곤":"#6b7ce8","강철":"#93a1bd","악":"#77675c"};const pokeInfo=id=>POKE_INFO[id]||{
+id:id,name:`No.${id}`,types:[]};const pokeName=id=>pokeInfo(id).name;const pokeTint=id=>POKE_TYPE_TINT[pokeInfo(id).types[0]]||"#9aa4bd"
+;const pokeNoText=id=>`No.${pad(id)}`
 ;const GEN1_LINES=[[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15],[16,17,18],[19,20],[21,22],[23,24],[172,25,26],[27,28],[29,30,31],[32,33,34],[35,36],[37,38],[39,40],[41,42],[43,44,45],[46,47],[48,49],[50,51],[52,53],[54,55],[56,57],[58,59],[60,61,62],[63,64,65],[66,67,68],[69,70,71],[72,73],[74,75,76],[77,78],[79,80],[81,82],[83],[84,85],[86,87],[88,89],[90,91],[92,93,94],[95],[96,97],[98,99],[100,101],[102,103],[104,105],[106],[107],[108],[109,110],[111,112],[113],[114],[115],[116,117],[118,119],[120,121],[122],[123],[124],[125],[126],[127],[128],[129,130],[131],[132],[133,134],[133,135],[133,136],[137],[138,139],[140,141],[142],[143],[144],[145],[146],[147,148,149],[150],[151]]
 ;const STAGE_MINS={1:[0],2:[0,60],3:[0,40,90]};function buildLine(ids){const mins=STAGE_MINS[Math.min(3,ids.length)]||[0,40,90];const stages=ids.map((id,i)=>({
 id:id,name:pokeName(id),min:mins[Math.min(i,mins.length-1)],tint:pokeTint(id)}));const fin=stages[stages.length-1];stages.push({id:fin.id,
@@ -35,21 +37,25 @@ name:"팽태자",min:70,tint:"#4aa3d8"},{id:395,name:"엠페르트",min:FINAL_P,
 members:[390,391,392],stages:[{id:390,name:"불꽃숭이",min:0,tint:"#f4883c"},{id:391,name:"파이숭이",min:70,tint:"#f4883c"},{id:392,name:"초염몽",min:FINAL_P,crown:true,
 tint:"#f4883c"}]},{key:"turtwig",label:"모부기",tint:"#7cbf5a",finalBase:"토대부기",members:[387,388,389],stages:[{id:387,name:"모부기",min:0,tint:"#7cbf5a"},{id:388,
 name:"수풀부기",min:70,tint:"#7cbf5a"},{id:389,name:"토대부기",min:FINAL_P,crown:true,tint:"#7cbf5a"}]}];const LINES=GEN1_LINES.map(buildLine).concat(EXTRA_LINES)
-;const LINE_BY_KEY={};LINES.forEach(l=>{LINE_BY_KEY[l.key]=l});const LEGACY_KEYS={pikachu:"L172-25-26",charmander:"L4-5-6",squirtle:"L7-8-9",bulbasaur:"L1-2-3",
-eevee:"L133-134",dratini:"L147-148-149",gastly:"L92-93-94"};const DEFAULT_PARTNER="L"+GEN1_LINES[0].join("-");const POKE_KEYS=Object.keys(LINE_BY_KEY)
-;function resolvePartnerKey(k){const key=String(k||"");if(LINE_BY_KEY[key])return key;const ci=POKE_KEYS.find(x=>x.toLowerCase()===key.toLowerCase())
-;if(ci)return ci;if(LEGACY_KEYS[key]&&LINE_BY_KEY[LEGACY_KEYS[key]])return LEGACY_KEYS[key];return LINE_BY_KEY[DEFAULT_PARTNER]?DEFAULT_PARTNER:POKE_KEYS[0]}
+;const legacyMembers=new Set(LINES.map(l=>l.members.join("-")));(window.PokemonGrowthPaths||[]).forEach(entry=>{const ids=entry.ids
+;if(legacyMembers.has(ids.join("-")))return;const l=buildLine(ids);if(entry.artIds){l.stages.forEach((st,i)=>{const j=Math.min(i,ids.length-1)
+;st.artId=entry.artIds[j];if(entry.forms[j])st.name+=" ("+entry.forms[j]+")"});l.label=l.stages[0].name+(ids.length>1?" → "+pokeName(ids[ids.length-1]):"")
+}else if(LINES.some(x=>x.members[0]===ids[0]))l.label=pokeName(ids[0])+" → "+pokeName(ids[ids.length-1]);LINES.push(l)});const LINE_BY_KEY={};LINES.forEach(l=>{
+LINE_BY_KEY[l.key]=l});const LEGACY_KEYS={pikachu:"L172-25-26",charmander:"L4-5-6",squirtle:"L7-8-9",bulbasaur:"L1-2-3",eevee:"L133-134",dratini:"L147-148-149",
+gastly:"L92-93-94"};const DEFAULT_PARTNER="L"+GEN1_LINES[0].join("-");const POKE_KEYS=Object.keys(LINE_BY_KEY);function resolvePartnerKey(k){
+const key=String(k||"");if(LINE_BY_KEY[key])return key;const ci=POKE_KEYS.find(x=>x.toLowerCase()===key.toLowerCase());if(ci)return ci
+;if(LEGACY_KEYS[key]&&LINE_BY_KEY[LEGACY_KEYS[key]])return LEGACY_KEYS[key];return LINE_BY_KEY[DEFAULT_PARTNER]?DEFAULT_PARTNER:POKE_KEYS[0]}
 const partnerOf=key=>LINE_BY_KEY[resolvePartnerKey(key)]||LINES[0];const stagesOf=()=>partnerOf(S.pokemon.key).stages
 ;const finalStageOf=p=>p.stages[p.stages.length-1];function stageIndex(n){const st=stagesOf();let idx=0;st.forEach((s,i)=>{if(n>=s.min)idx=i});return idx}
 const linesForSpecies=id=>LINES.filter(l=>l.members.indexOf(+id)>=0);const lineForSpecies=id=>linesForSpecies(id)[0]||null
 ;const SPRITE_ROOT="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon"
-;const POKE_ART=id=>`${SPRITE_ROOT}/other/official-artwork/${id}.png`;const POKE_ART_SHINY=id=>`${SPRITE_ROOT}/other/official-artwork/shiny/${id}.png`
-;function pokeFallback(stage,tint){const color=tint||stage.tint||"#9aa4bd"
+;const POKE_ART=id=>window.PokemonEncyclopediaData?.species?.[String(id)]?.artworkUrl||`${SPRITE_ROOT}/other/official-artwork/${id}.png`
+;const POKE_ART_SHINY=id=>`${SPRITE_ROOT}/other/official-artwork/shiny/${id}.png`;function pokeFallback(stage,tint){const color=tint||stage.tint||"#9aa4bd"
 ;const crown=stage.crown?'<path d="M100 16 l9 15 17 3 -12 12 3 17 -17 -8 -17 8 3 -17 -12 -12 17 -3z" fill="#ffd166" stroke="#e0a92b" stroke-width="3" stroke-linejoin="round"/>':""
 ;const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'+'<circle cx="100" cy="106" r="78" fill="'+color+'" opacity=".16"/>'+crown+'<path d="M54 100 q-12 -36 6 -50 q15 11 14 32z" fill="'+color+'" opacity=".92"/>'+'<path d="M146 100 q12 -36 -6 -50 q-15 11 -14 32z" fill="'+color+'" opacity=".92"/>'+'<ellipse cx="100" cy="142" rx="46" ry="37" fill="'+color+'"/>'+'<ellipse cx="100" cy="150" rx="27" ry="21" fill="#fffdf8" opacity=".6"/>'+'<circle cx="100" cy="94" r="42" fill="'+color+'"/>'+'<circle cx="84" cy="92" r="7" fill="#22304a"/><circle cx="116" cy="92" r="7" fill="#22304a"/>'+'<circle cx="86.4" cy="89" r="2.6" fill="#fff"/><circle cx="118.4" cy="89" r="2.6" fill="#fff"/>'+'<path d="M90 110 q10 9 20 0" fill="none" stroke="#22304a" stroke-width="4" stroke-linecap="round"/>'+'<ellipse cx="68" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'+'<ellipse cx="132" cy="104" rx="7" ry="5" fill="#ff9b9b" opacity=".85"/>'+"</svg>"
 ;return"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)}function pokeImg(stage,cls,tint,opts={}){const color=tint||stage.tint||pokeTint(stage.id)
-;const shiny=!!(opts.shiny||stage.shiny);const src=shiny?POKE_ART_SHINY(stage.id):POKE_ART(stage.id)
-;return`<img class="${cls}" src="${src}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}"`+` data-fallback="${esc(POKE_ART(stage.id))}" data-fallback2="${esc(pokeFallback(stage,color))}"`+` loading="${opts.eager?"eager":"lazy"}" decoding="async" draggable="false">`
+;const shiny=!!(opts.shiny||stage.shiny);const artId=stage.artId||stage.id;const src=shiny?POKE_ART_SHINY(artId):POKE_ART(artId)
+;return`<img class="${cls}" src="${src}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}"`+` data-fallback="${esc(POKE_ART(artId))}" data-fallback2="${esc(pokeFallback(stage,color))}"`+` loading="${opts.eager?"eager":"lazy"}" decoding="async" draggable="false">`
 }function swapPokeFallback(img){if(!img||!img.dataset)return false;const lvl=img.dataset.fb||"0";if(lvl==="0"&&img.dataset.fallback){img.dataset.fb="1"
 ;img.src=img.dataset.fallback;return true}if(lvl!=="2"&&img.dataset.fallback2){img.dataset.fb="2";img.src=img.dataset.fallback2;return true}return false}
 document.addEventListener("error",e=>{const img=e.target;if(img&&img.tagName==="IMG"&&img.dataset&&img.dataset.poke)swapPokeFallback(img)},true)
@@ -508,7 +514,7 @@ $("#choreList").innerHTML=`<div class="shop-empty">미션을 추가해 보세요
 ;if(!stars)row='<span style="font-size:11.5px;font-weight:700;color:var(--text-3)">미션을 끝내면 10P마다 ⭐ 하나씩 쌓여요</span>';$("#stickerRow").innerHTML=row
 ;renderStampBoards();renderDex();renderPointUses();renderWish();renderEventBadge();checkPokeImages();if(standbyOn)renderStandby()
 ;if($("#historyModal")&&!$("#historyModal").hidden)renderHistory()}function renderDex(){renderPlayground();const box=$("#dexRow")
-;if($("#dexCount"))$("#dexCount").textContent=`${caughtCount()}/151`;if(!box)return;const dex=S.pokemon.dex||[]
+;if($("#dexCount"))$("#dexCount").textContent=`${caughtCount()}/${POKE_NOS.length}`;if(!box)return;const dex=S.pokemon.dex||[]
 ;if($("#dexTrophyCount"))$("#dexTrophyCount").textContent=dex.length?`${dex.length}계열 완성`:"아직 없어요";box.innerHTML=dex.length?dex.map(d=>{const p=partnerOf(d.key)
 ;const fin=finalStageOf(p)
 ;return`<button type="button" class="dex-card" data-act="dex-open" data-id="${Math.max(0,d.finalId||fin.id)}" title="${esc(d.label)} 계열 · ${esc(d.at||"")} 완성">\n            <span class="dex-img-frame">${pokeImg(fin,"dex-art",p.tint,{
@@ -529,45 +535,41 @@ const yards=["#dexPlayYard","#tabPlayYard"].map(sel=>$(sel)).filter(Boolean);con
 eager:true})}\n        <span class="dp-name">${esc(m.name)}</span>\n      </button>`}).join("");yards.forEach(yard=>{yard.innerHTML=html});checkPokeImages()}
 function playWithPoke(el){if(!el)return;const b=el.querySelector(".dp-bubble");if(b){playSayIdx=(playSayIdx+1)%PLAY_SAY.length
 ;b.textContent=`${el.dataset.name||"친구"}! ${PLAY_SAY[playSayIdx]}`}el.classList.remove("jump");void el.offsetWidth;el.classList.add("jump")
-;clearTimeout(el._playTimer);el._playTimer=setTimeout(()=>el.classList.remove("jump"),1500)}const DEXUI={q:"",filter:"all",sel:25};const DEX_FILTERS=[{
-key:"all",label:"전체"},{key:"got",label:"획득"},{key:"miss",label:"미획득"},{key:"info",label:"추가 정보"}];function dexFilteredIds(){const q=DEXUI.q.trim()
-;return POKE_NOS.concat(window.PokemonExpansionData?.ids||[]).filter(id=>{if(id>151){if(DEXUI.filter==="got"||DEXUI.filter==="miss")return false
-;const e=window.PokemonEncyclopediaData.species[String(id)];return!q||e.name.includes(q)||String(id)===q||"no"+id===q.toLowerCase()}
-if(DEXUI.filter==="info")return false;const got=!!caughtOf(id);if(DEXUI.filter==="got"&&!got)return false;if(DEXUI.filter==="miss"&&got)return false
-;if(!q)return true;const info=pokeInfo(id);return info.name.indexOf(q)>=0||String(id)===q||pad(id)===q||`no${id}`===q.toLowerCase()})}
-function renderDexFilters(){const box=$("#dexFilter");if(!box)return;box.innerHTML=DEX_FILTERS.map(f=>{const extra=window.PokemonExpansionData?.ids.length||0
-;const n=f.key==="info"?extra:f.key==="got"?caughtCount():f.key==="miss"?POKE_NOS.length-caughtCount():POKE_NOS.length+extra
+;clearTimeout(el._playTimer);el._playTimer=setTimeout(()=>el.classList.remove("jump"),1500)}const DEXUI={q:"",filter:"all",gen:0,sel:25}
+;const pokemonGen=id=>[151,251,386,493,649,721,809,905,1025].findIndex(n=>id<=n)+1;const DEX_FILTERS=[{key:"all",label:"전체"},{key:"got",label:"획득"},{key:"miss",
+label:"미획득"}];function dexFilteredIds(){const q=DEXUI.q.trim().toLowerCase();return POKE_NOS.filter(id=>{const got=!!caughtOf(id)
+;if(DEXUI.gen&&pokemonGen(id)!==DEXUI.gen)return false;if(DEXUI.filter==="got"&&!got)return false;if(DEXUI.filter==="miss"&&got)return false
+;return!q||pokeName(id).toLowerCase().includes(q)||String(id)===q||pad(id)===q||"no"+id===q})}function renderDexFilters(){if(!$("#dexGen")){
+const select=document.createElement("select");select.id="dexGen";select.className="growth-generation";select.setAttribute("aria-label","세대별 보기")
+;select.innerHTML='<option value="0">모든 세대</option>'+Array.from({length:9},(_,i)=>`<option value="${i+1}">${i+1}세대</option>`).join("")
+;$("#dexFilter").after(select);select.addEventListener("change",()=>{DEXUI.gen=Number(select.value);renderDexGrid()})}const box=$("#dexFilter");if(!box)return
+;box.innerHTML=DEX_FILTERS.map(f=>{const n=f.key==="got"?caughtCount():f.key==="miss"?POKE_NOS.length-caughtCount():POKE_NOS.length
 ;return`<button type="button" class="dex-fchip${DEXUI.filter===f.key?" on":""}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`}).join("")}
 function renderDexGrid(){const box=$("#dexGrid");if(!box)return;const ids=dexFilteredIds();if(!ids.length){
 box.innerHTML='<div class="shop-empty" style="padding:16px 6px">찾는 포켓몬이 없어요</div>';return}const curId=(stagesOf()[stageIndex(S.pokemon.xp)]||{}).id
-;box.innerHTML=ids.map(id=>{if(id>151){const e=window.PokemonEncyclopediaData.species[String(id)]
-;return`<button type="button" class="dex-cell dex-info-cell" data-infoid="${id}" aria-label="${esc(e.name)} No.${id} 정보 보기"><span class="dex-no">${id}</span><img class="dex-mini" src="${esc(e.artworkUrl)}" alt="" loading="lazy" width="72" height="72"><span class="dex-nm">${esc(e.name)}</span></button>`
-}const info=pokeInfo(id);const got=!!caughtOf(id)
+;box.innerHTML=ids.map(id=>{const info=pokeInfo(id);const got=!!caughtOf(id)
 ;return`<button type="button" class="dex-cell ${got?"got":"miss"}${DEXUI.sel===id?" sel":""}${curId===id?" cur":""}" data-dexid="${id}" aria-pressed="${DEXUI.sel===id}" aria-label="${esc(info.name)} ${got?"획득":"미획득"}" title="${esc(info.name)}${got?` · ${esc(caughtOf(id))} 만남`:" · 아직 만나지 못했어요"}">\n        <span class="dex-no">${pad(id)}</span>\n        <img class="dex-mini" src="${POKE_ART(id)}" alt="" loading="lazy" decoding="async" draggable="false"\n          data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({
 id:id,name:info.name
-},pokeTint(id)))}">\n        <span class="dex-nm">${got?esc(info.name):"???"}</span>\n        ${curId===id?'<span class="dex-cur" aria-hidden="true">★</span>':""}\n      </button>`
+},pokeTint(id)))}">\n        <span class="dex-nm">${esc(info.name)}</span><span class="dex-acquire-label">${got?"획득":"미획득"}</span>\n        ${curId===id?'<span class="dex-cur" aria-hidden="true">★</span>':""}\n      </button>`
 }).join("");checkPokeImages()}function dexChainHtml(line){const curLine=resolvePartnerKey(S.pokemon.key)===line.key;const stages=line.stages.map(s=>{
 const on=s.id===DEXUI.sel;const has=!!caughtOf(s.id)
 ;return`<span class="dx-stage${on?" on":""}${has?"":" miss"}${curLine?" mine":""}">\n        ${pokeImg(s,"dx-stage-img",s.tint||line.tint,{mini:true,
 shiny:!!s.shiny})}\n        <em>${esc(s.name)}</em>\n        <b>${s.min}P</b>\n      </span>`}).join('<i class="pstage-arrow">›</i>')
 ;return`<div class="dx-chain${curLine?" cur":""}">\n      <div class="dx-chain-row">${stages}</div>\n      <div class="dx-chain-foot">\n        <span class="dx-chain-note">${curLine?"🐾 지금 함께 자라는 계열":""}</span>\n        ${curLine?"":`<button type="button" class="btn sm ghost" data-dexpick="${esc(line.key)}">🐾 이 계열 기르기</button>`}\n      </div>\n    </div>`
-}function renderDexSide(){const box=$("#dexSide");if(!box)return;const id=DEXUI.sel;if(id>151&&window.PokemonExpansionData?.ids.includes(id)){
-const e=window.PokemonEncyclopediaData.species[String(id)]
-;box.innerHTML=`<div class="dx-hero"><img class="dx-hero-img" src="${esc(e.artworkUrl)}" alt="${esc(e.name)}"></div><div class="dx-title"><span class="dx-no">No.${id}</span><b class="dx-name">${esc(e.name)}</b></div><p class="pdx-note">추가 정보</p><p class="pdx-note">정보 전용 · 입양·획득·보상 대상은 기존과 같아요</p><div id="pokemonEncyclopediaInfo"></div>`
-;box.querySelector(".pdx-note").textContent="추가 정보"+(e.displayForm?" · "+e.displayForm:"");window.PokemonEncyclopedia.render($("#pokemonEncyclopediaInfo"),id,{
-name:e.name,types:e.types,art:e.artworkUrl});return}const info=pokeInfo(id);const tint=pokeTint(id);const got=caughtOf(id);const chains=linesForSpecies(id)
-;const stageLike={id:id,name:info.name,tint:tint};box.innerHTML=`\n      <div class="dx-hero${got?"":" miss"}">${pokeImg(stageLike,"dx-hero-img",tint,{
-eager:true
-})}</div>\n      <div class="dx-title">\n        <span class="dx-no">${id<=151?"No."+pad(id):"특별한 친구"}</span>\n        <b class="dx-name">${esc(info.name)}</b>\n      </div>\n      <div class="dx-types">${(info.types.length?info.types:["???"]).map(t=>`<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t]||"#9aa4bd")}">${esc(t)}</span>`).join("")}</div>\n      <div class="dx-state ${got?"got":"miss"}">\n        ${got?`✅ ${esc(got)}에 만났어요`:"❔ 아직 만나지 못했어요"}\n      </div>\n      ${got?"":'<p class="dx-tip">이 계열을 파트너로 기르면 도감에 차곡차곡 남아요. 미션을 끝낼 때마다 경험치가 쌓여요!</p>'}\n      <div id="pokemonEncyclopediaInfo"></div>\n      <h4 class="pdx-app-growth-label">이 앱에서 함께 자라는 방법</h4>\n      <div class="dx-chains">${chains.length?chains.map(dexChainHtml).join(""):'<p class="dx-tip">이 친구는 진화하지 않아요. 파트너로 기르면 200P에 이로치로 반짝여요!</p>'}</div>\n    `
+}function renderDexSide(){const box=$("#dexSide");if(!box)return;const id=DEXUI.sel;const info=pokeInfo(id);const tint=pokeTint(id);const got=caughtOf(id)
+;const chains=linesForSpecies(id);const stageLike={id:id,name:info.name,tint:tint}
+;box.innerHTML=`\n      <div class="dx-hero${got?"":" miss"}">${pokeImg(stageLike,"dx-hero-img",tint,{eager:true
+})}</div>\n      <div class="dx-title">\n        <span class="dx-no">${"No."+pad(id)}</span>\n        <b class="dx-name">${esc(info.name)}</b>\n      </div>\n      <div class="dx-types">${(info.types.length?info.types:["???"]).map(t=>`<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t]||"#9aa4bd")}">${esc(t)}</span>`).join("")}</div>\n      <div class="dx-state ${got?"got":"miss"}">\n        ${got?`✅ ${esc(got)}에 만났어요`:"❔ 아직 만나지 못했어요"}\n      </div>\n      ${got?"":'<p class="dx-tip">이 계열을 파트너로 기르면 도감에 차곡차곡 남아요. 미션을 끝낼 때마다 경험치가 쌓여요!</p>'}\n      <div id="pokemonEncyclopediaInfo"></div>\n      <h4 class="pdx-app-growth-label">이 앱에서 함께 자라는 방법</h4>\n      <div class="dx-chains">${chains.length?chains.map(dexChainHtml).join(""):'<p class="dx-tip">이 친구는 진화하지 않아요. 파트너로 기르면 200P에 이로치로 반짝여요!</p>'}</div>\n    `
 ;if(window.PokemonEncyclopedia)window.PokemonEncyclopedia.render($("#pokemonEncyclopediaInfo"),id,{name:info.name,types:info.types,art:POKE_ART(id)})
 ;checkPokeImages()}function openDex(id){const curLine=partnerOf(S.pokemon.key);const curStageId=(curLine.stages[stageIndex(S.pokemon.xp)]||{}).id
 ;const firstGen1=(curLine.members||[]).find(n=>POKE_INFO[n]&&n<=151);const pick=+id>0&&POKE_INFO[+id]?+id:curStageId||firstGen1||1
-;DEXUI.sel=POKE_INFO[pick]&&pick<=151?pick:firstGen1||1;DEXUI.q="";DEXUI.filter="all";if($("#dexSearch"))$("#dexSearch").value=""
-;if($("#dexMeta"))$("#dexMeta").textContent=`1세대 수집 151종 · 추가 정보 ${window.PokemonExpansionData?.ids.length||0}종 · ${caughtCount()}마리 만남`;renderDexFilters()
-;renderDexGrid();renderDexSide();renderDex();$("#dexModal").hidden=false}function selectDex(id){DEXUI.sel=+id;$$("#dexGrid .dex-cell").forEach(el=>{
-const on=+el.dataset.dexid===DEXUI.sel;el.classList.toggle("sel",on);el.setAttribute("aria-pressed",on?"true":"false")});renderDexSide()}
-function setDexFilter(key){DEXUI.filter=DEX_FILTERS.some(f=>f.key===key)?key:"all";renderDexFilters();renderDexGrid()}function renderPointUses(){
-const box=$("#useList");if(!box)return;const uses=(S.pointUses||[]).slice();const total=uses.reduce((s,u)=>s+Math.max(0,Math.round(+u.amount||0)),0)
+;DEXUI.sel=POKE_INFO[pick]?pick:firstGen1||1;DEXUI.q="";DEXUI.filter="all";DEXUI.gen=0;if($("#dexGen"))$("#dexGen").value="0"
+;if($("#dexSearch"))$("#dexSearch").value="";if($("#dexMeta"))$("#dexMeta").textContent=`전체 ${POKE_NOS.length}종 · ${caughtCount()}마리 만남 · 정보와 성장 경로`
+;renderDexFilters();renderDexGrid();renderDexSide();renderDex();$("#dexModal").hidden=false}function selectDex(id){DEXUI.sel=+id
+;$$("#dexGrid .dex-cell").forEach(el=>{const on=+el.dataset.dexid===DEXUI.sel;el.classList.toggle("sel",on);el.setAttribute("aria-pressed",on?"true":"false")})
+;renderDexSide()}function setDexFilter(key){DEXUI.filter=DEX_FILTERS.some(f=>f.key===key)?key:"all";renderDexFilters();renderDexGrid()}
+function renderPointUses(){const box=$("#useList");if(!box)return;const uses=(S.pointUses||[]).slice()
+;const total=uses.reduce((s,u)=>s+Math.max(0,Math.round(+u.amount||0)),0)
 ;if($("#useCount"))$("#useCount").textContent=uses.length?`${uses.length}건 · ${total}P`:"아직 없어요"
 ;if($("#useBadge"))$("#useBadge").textContent=String(uses.length)
 ;box.innerHTML=uses.length?uses.map(u=>`<div class="use-row">\n          <span class="use-date" title="${esc(u.date||"")} ${esc(u.at||"")}">${esc(fmtMD(u.date))}</span>\n          <span class="use-title">${esc(u.title||"포인트 사용")}</span>\n          <b class="use-amt">-${Math.max(0,Math.round(+u.amount||0))}P</b>\n          <button class="btn icon sm ghost parent-only" data-act="use-del" data-id="${u.id}" aria-label="사용 내역 되돌리기">✕</button>\n        </div>`).join(""):'<div class="shop-empty" style="padding:8px 4px">포인트를 사용하면 내역이 이곳에 남아요</div>'
@@ -617,24 +619,28 @@ el.innerHTML=`<div class="levelup-card dex">\n      <div class="lv-emoji">🏆</
 ;el.innerHTML=`⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i>`;const row=el.closest(".chore")
 ;if(row&&!row.classList.contains("done")&&!row.classList.contains("offday"))row.classList.toggle("overdue",di.cls==="late")})
 ;$$("[data-earlychip]").forEach(el=>{const dueMin=minOf(el.dataset.due);const minutesLeft=dueMin==null||nowMin==null?0:dueMin-nowMin;el.hidden=minutesLeft<5
-;if(minutesLeft>=5)el.textContent=minutesLeft>=10?"⚡ 10분+ 전 +2P(총) · 5~9분 전 +1P":"⚡ 5~9분 전 +1P"})}let partnerQuery="";function renderPartnerGrid(){
-const grid=$("#partnerGrid");if(!grid)return;const q=partnerQuery.trim()
-;const hit=l=>!q||l.label.indexOf(q)>=0||l.members.some(id=>pokeName(id).indexOf(q)>=0)||String(l.members[0])===q
-;const gen1=LINES.filter(l=>l.members.some(id=>id<=151)&&l.key.charAt(0)==="L"&&hit(l));const extra=EXTRA_LINES.filter(hit);const card=p=>{
-const on=resolvePartnerKey(S.pokemon.key)===p.key;const got=!!dexEntryOf(p.key)
+;if(minutesLeft>=5)el.textContent=minutesLeft>=10?"⚡ 10분+ 전 +2P(총) · 5~9분 전 +1P":"⚡ 5~9분 전 +1P"})}let partnerQuery="";let partnerPage=0
+;function renderPartnerGrid(){const grid=$("#partnerGrid");if(!grid)return;const q=partnerQuery.trim()
+;const hit=l=>!q||l.label.indexOf(q)>=0||l.members.some(id=>pokeName(id).indexOf(q)>=0)||l.members.some(id=>String(id)===q);const matched=LINES.filter(hit)
+;const pages=Math.max(1,Math.ceil(matched.length/48));partnerPage=Math.min(partnerPage,pages-1);const gen1=matched.slice(partnerPage*48,(partnerPage+1)*48)
+;const extra=[];const card=p=>{const on=resolvePartnerKey(S.pokemon.key)===p.key;const got=!!dexEntryOf(p.key)
 ;return`<button type="button" class="partner-card${on?" on":""}" data-partner="${p.key}" aria-pressed="${on}">\n        <div class="partner-line">${p.stages.map(s=>`<span class="pstage">${pokeImg(s,"pstage-img",s.tint||p.tint,{
 mini:true,shiny:!!s.shiny
 })}</span>`).join('<i class="pstage-arrow">›</i>')}</div>\n        <div class="partner-name">${esc(p.label)}${on?" <b>사용 중</b>":""}${got?' <b class="got">🏆 도감</b>':""}</div>\n        <div class="partner-stages">${p.stages.map(s=>`${esc(s.name)} ${s.min}P`).join(" · ")}</div>\n      </button>`
-};const total=gen1.length+extra.length
-;grid.innerHTML=(total?"":'<div class="shop-empty" style="grid-column:1/-1">찾는 포켓몬이 없어요</div>')+(gen1.length?`<div class="partner-group-label">1세대 151 · ${gen1.length}계열</div>${gen1.map(card).join("")}`:"")+(extra.length?`<div class="partner-group-label">다른 세대 친구 · ${extra.length}계열</div>${extra.map(card).join("")}`:"")
-;if($("#partnerCount"))$("#partnerCount").textContent=`${total}계열`;checkPokeImages()}let partnerMode="change";function partnerHintText(){
-const p=partnerOf(S.pokemon.key);const cur=p.stages[stageIndex(S.pokemon.xp)];if(partnerMode==="adopt"){
+};const total=matched.length
+;grid.innerHTML=(total?"":'<div class="shop-empty" style="grid-column:1/-1">찾는 포켓몬이 없어요</div>')+(gen1.length?`<div class="partner-group-label">전체 세대 · ${total}계열${total>48?" · "+(partnerPage+1)+"/"+pages+"쪽":""}</div>${gen1.map(card).join("")}`:"")+(extra.length?`<div class="partner-group-label">다른 세대 친구 · ${extra.length}계열</div>${extra.map(card).join("")}`:"")
+;if($("#partnerCount"))$("#partnerCount").textContent=`${total}계열`;let pager=$("#partnerPager");if(!pager){pager=document.createElement("div")
+;pager.id="partnerPager";pager.className="growth-pager";grid.after(pager)}
+pager.innerHTML=pages>1?`<button class="btn sm ghost" data-partnerpage="-1" ${partnerPage===0?"disabled":""}>이전</button><span>${partnerPage+1} / ${pages}</span><button class="btn sm ghost" data-partnerpage="1" ${partnerPage===pages-1?"disabled":""}>다음</button>`:""
+;checkPokeImages()}let partnerMode="change";function partnerHintText(){const p=partnerOf(S.pokemon.key);const cur=p.stages[stageIndex(S.pokemon.xp)]
+;if(partnerMode==="adopt"){
 return`지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`}
-return`지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`}
-function openPartnerPicker(mode="change"){partnerMode=mode==="adopt"?"adopt":"change";partnerQuery="";if($("#partnerSearch"))$("#partnerSearch").value=""
-;$("#partnerTitle").textContent=partnerMode==="adopt"?"✨ 새 포켓몬 입양하기":"🐾 파트너 포켓몬 고르기";$("#partnerHint").textContent=partnerHintText();renderPartnerGrid()
-;$("#partnerModal").hidden=false}function pickPartner(key){if(!POKE_KEYS.includes(key))return;const p=partnerOf(key);if(partnerMode==="adopt"){
-if(S.pokemon.xp<FINAL_P){toast("최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요","",2600);return}syncDex();S.pokemon.key=key
+return`지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1,025종 어느 계열이든 이름·번호로 찾아 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`}
+function openPartnerPicker(mode="change"){partnerMode=mode==="adopt"?"adopt":"change";partnerQuery="";partnerPage=0
+;if($("#partnerSearch"))$("#partnerSearch").value="";$("#partnerTitle").textContent=partnerMode==="adopt"?"✨ 새 포켓몬 입양하기":"🐾 파트너 포켓몬 고르기"
+;$("#partnerHint").textContent=partnerHintText();renderPartnerGrid();$("#partnerModal").hidden=false}function pickPartner(key){
+if(!POKE_KEYS.includes(key))return;const p=partnerOf(key);if(partnerMode==="adopt"){if(S.pokemon.xp<FINAL_P){toast("최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요","",2600)
+;return}syncDex();S.pokemon.key=key
 ;S.pokemon.growth=window.PartnerGrowthCore?PartnerGrowthCore.adopt(window.crypto&&crypto.randomUUID?crypto.randomUUID():uid()+"-"+Date.now().toString(36)):null
 ;S.pokemon.xp=0;save();renderMissions();renderSettings();$("#partnerModal").hidden=true;confetti(60);beep("up")
 ;toast(`🥚 ${p.label} 계열 새 알이에요 · 5XP에 부화해요`,"mint",3200);return}if(S.pokemon.key===key){$("#partnerModal").hidden=true;return}if(S.pokemon.xp>=FINAL_P){
@@ -1238,10 +1244,12 @@ $("#settingsModal").hidden=true});$("#settingsModal").addEventListener("click",e
 ;$("#helpModal").addEventListener("click",e=>{if(e.target.id==="helpModal")$("#helpModal").hidden=true})
 ;$("#partnerBtn").addEventListener("click",()=>openPartnerPicker("change"));$("#partnerBtn2").addEventListener("click",()=>openPartnerPicker("change"))
 ;$("#partnerClose").addEventListener("click",()=>{$("#partnerModal").hidden=true});if($("#partnerSearch"))$("#partnerSearch").addEventListener("input",e=>{
-partnerQuery=e.target.value||"";renderPartnerGrid()});$("#partnerModal").addEventListener("click",e=>{
-if(e.target.id==="partnerModal")$("#partnerModal").hidden=true});$("#partnerGrid").addEventListener("click",e=>{const b=e.target.closest("[data-partner]")
-;if(b)pickPartner(b.dataset.partner)});$("#geoBtn").addEventListener("click",async()=>{$("#locPill").textContent="위치 확인 중…";const got=await requestGeo()
-;if(!got){toast("위치를 가져오지 못했어요. 브라우저 위치 권한을 확인해 주세요.","coral",4e3);renderSettings();return}setLocation(got.lat,got.lon,"현재 위치")})
+partnerQuery=e.target.value||"";partnerPage=0;renderPartnerGrid()});$("#partnerModal").addEventListener("click",e=>{
+if(e.target.id==="partnerModal")$("#partnerModal").hidden=true});$("#partnerModal").addEventListener("click",e=>{const b=e.target.closest("[data-partnerpage]")
+;if(b){partnerPage=Math.max(0,partnerPage+Number(b.dataset.partnerpage));renderPartnerGrid();$("#partnerGrid").scrollTop=0}})
+;$("#partnerGrid").addEventListener("click",e=>{const b=e.target.closest("[data-partner]");if(b)pickPartner(b.dataset.partner)})
+;$("#geoBtn").addEventListener("click",async()=>{$("#locPill").textContent="위치 확인 중…";const got=await requestGeo();if(!got){
+toast("위치를 가져오지 못했어요. 브라우저 위치 권한을 확인해 주세요.","coral",4e3);renderSettings();return}setLocation(got.lat,got.lon,"현재 위치")})
 ;$("#citySearchBtn").addEventListener("click",searchCity);$("#cityInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchCity()}})
 ;$("#cityResults").addEventListener("click",e=>{const b=e.target.closest("[data-city]");if(!b)return;const[lat,lon,name]=b.dataset.city.split(",")
 ;setLocation(+lat,+lon,name);$("#cityResults").innerHTML="";$("#cityInput").value=""});$("#coordBtn").addEventListener("click",()=>{
