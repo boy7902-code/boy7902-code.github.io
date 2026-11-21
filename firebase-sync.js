@@ -1069,17 +1069,22 @@ export function createFamilySync(deps = {}) {
   }
 
   /* ---- 파트너 입양 (아이가 쓸 수 있는 유일한 상태 문서) ---- */
-  async function adoptPartner({ key, sinceXp = 0, growth = null }) {
+  async function adoptPartner({ key, sinceXp = 0, growth = null, expected = null }) {
     const session = activeSession();
     if (!session) return { ok: false, cancelled: true, error: sessionChanged() };
     try {
       if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
-      await sdk.setDoc(docRef(pathOf('child_state/partner')), {
-        partnerKey: String(key || '').toLowerCase(),
-        sinceXp: intOf(sinceXp),
-        ...(normalizePartnerGrowth(growth) ? { growth: normalizePartnerGrowth(growth) } : {}),
-        updatedAt: sdk.serverTimestamp(),
-      });
+      const ref=docRef(pathOf('child_state/partner'));
+      const payload={partnerKey:String(key||'').toLowerCase(),sinceXp:intOf(sinceXp),...(normalizePartnerGrowth(growth)?{growth:normalizePartnerGrowth(growth)}:{}),updatedAt:sdk.serverTimestamp()};
+      if(expected){
+        const applied=await sdk.runTransaction(db,async tx=>{
+          if(!sessionIsCurrent(session.generation,session.role,session.uid))return false;
+          const snap=await tx.get(ref),old=snapExists(snap)?snap.data():{};
+          if(String(old.partnerKey||'').toLowerCase()!==String(expected.key||'').toLowerCase()||String(old.growth?.cycleId||'')!==String(expected.cycleId||'')||intOf(old.sinceXp)!==intOf(expected.sinceXp))return false;
+          tx.set(ref,payload);return true;
+        });
+        if(!applied)return{ok:false,conflict:true};
+      }else await sdk.setDoc(ref,payload);
       return { ok: true };
     } catch (e) {
       if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
@@ -1485,4 +1490,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-                                  }
+         }
