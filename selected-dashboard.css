@@ -122,3 +122,12 @@ body.dashboard-refresh.selected-dashboard .selected-top .weather-temp{font-size:
 body.dashboard-refresh.selected-dashboard #cardChores .chore-wrap{grid-template-columns:minmax(0,1fr) 240px!important}
 }
 @media(min-width:768px) and (max-width:1366px){body.dashboard-refresh.selected-dashboard .selected-top #cardSchool>.card-head{flex:0 0 32px!important;height:32px!important;min-height:32px!important;margin:0!important}body.dashboard-refresh.selected-dashboard .selected-top #schoolBody{flex:1 1 0!important;max-height:none!important;min-height:0!important}body.dashboard-refresh.selected-dashboard .selected-top #schoolDetailsBtn{flex:0 0 18px!important;margin:0!important}}
+/* Earned XP stays visible, separate from spendable gift coins and the next stage. */
+body.dashboard-refresh #cardChores .char-foot{display:flex!important;flex-direction:column;align-items:stretch;gap:3px!important;margin:0!important;padding:10px 12px!important;border:2px solid #c6a355;border-radius:14px;background:#fff7da;color:#44321d;min-width:0;}
+body.dashboard-refresh #cardChores #charCount{display:flex!important;flex-direction:column;gap:2px;font-size:14px!important;font-weight:800;line-height:1.2;white-space:normal!important;}
+body.dashboard-refresh #cardChores #charCount b{font-size:38px!important;line-height:1.05;font-weight:950;font-variant-numeric:tabular-nums;color:#533411;overflow-wrap:anywhere;}
+body.dashboard-refresh #cardChores #charToday{font-size:13px!important;line-height:1.3;}
+@media(max-width:620px){body.dashboard-refresh #cardChores .char-foot{padding:9px 12px!important;}body.dashboard-refresh #cardChores #charCount b{font-size:34px!important;}}
+
+body.dashboard-refresh #cardChores .chore{position:relative!important;padding-top:42px!important;}
+body.dashboard-refresh #cardChores .chore-top .pts{position:absolute!important;top:10px!important;left:10px!important;right:auto!important;margin:0!important;z-index:1;font-size:16px!important;line-height:1.2!important;}
