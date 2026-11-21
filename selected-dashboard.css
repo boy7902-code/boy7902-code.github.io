@@ -80,3 +80,8 @@ body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day b{font-siz
 body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day i{max-height:12px!important;margin:0!important}
 body.dashboard-refresh.selected-dashboard .selected-lower .weekly-day>span{font-size:9px!important;line-height:10px!important}
 }
+@media(min-width:1024px) and (max-width:1366px) and (orientation:landscape){
+body.dashboard-refresh.selected-dashboard #cardChores #choreList .chore-title{word-break:keep-all!important;overflow-wrap:anywhere!important}
+body.dashboard-refresh.selected-dashboard .selected-lower>.weekly-report{grid-template-rows:16px 36px auto!important;row-gap:2px!important}
+body.dashboard-refresh.selected-dashboard .selected-lower #weeklySummary{height:auto!important;min-height:14px!important;line-height:14px!important;clear:both!important;padding-top:2px!important}
+}
