@@ -387,16 +387,17 @@
      deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
    };
  
-@@ -5967,7 +5972,7 @@
+@@ -5967,7 +5972,8 @@
      FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
      FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
      stampCompletedSeen = null; stampCompletingUntil = 0;
 -    FB.deleted.clear();
++    window.FamilyStampGift?.reset();
 +    FB.deleted.clear();FB.missionOps.clear();
      window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
      renderParentBtn();
      renderStampBoards();
-@@ -6138,7 +6143,8 @@
+@@ -6138,7 +6144,8 @@
      const seen = new Set();
      const now = Date.now();
      FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
@@ -406,7 +407,23 @@
        .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
        // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
        .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
-@@ -6482,35 +6488,49 @@
+@@ -6162,13 +6169,13 @@
+     const completed = connected ? Math.max(0, Math.round(+stats.stampBoardsCompleted || 0)) : 0;
+     const pendingBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPending || 0)) : 0;
+     const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
++    window.FamilyStampGift?.observe({ connected, completed, pendingBonus });
+     if (connected && stampCompletedSeen == null) stampCompletedSeen = completed;
+     else if (connected && completed > stampCompletedSeen) {
+       const newBoards = completed - stampCompletedSeen;
+       stampCompletedSeen = completed;
+       stampCompletingUntil = Date.now() + 1800;
+-      confetti(28);
+-      toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600);
++      if (!window.FamilyStampGift) { confetti(28); toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600); }
+       setTimeout(() => { stampCompletingUntil = 0; renderStampBoards(); }, 1850);
+     }
+     const completing = Date.now() < stampCompletingUntil;
+@@ -6482,35 +6489,49 @@
    toggleMission = function (id) {
      const session = FB.session;
      const c = S.missions.find((x) => x.id === id);
