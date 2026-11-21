@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="tab-parity.css?v=20261121-1">
 <link rel="stylesheet" href="mobile-dashboard.css?v=20261121-1">
 <link rel="stylesheet" href="tablet-safe-layout.css?v=20261121-1">
+<link rel="stylesheet" href="calendar-only.css?v=20261121-1">
 </head>
 <body data-parent="off">
 <div class="app">
@@ -406,8 +407,8 @@
           <div class="card-sub">✍️ 그려서 보내요</div>
         </div>
         <div class="card-tools">
-          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="되돌리기">↶</button>
-          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="전부 지우기">🗑️</button>
+          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="한 단계 되돌리기">↶ 뒤로</button>
+          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="편지 전체 초기화">초기화</button>
         </div>
       </div>
       <div class="card-body">
@@ -1002,7 +1003,7 @@
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=type-egg-20261121-1"></script>
 <script src="single-screen.js?v=safe-refresh-20261121-1"></script>
-<script src="dashboard-refresh.js?v=safe-refresh-20261121-1"></script>
+<script src="dashboard-refresh.js?v=calendar-only-20261121-1"></script>
 <script src="quiz-battle.js?v=5"></script>
 <script>
   // 퀴즈 배틀 모듈 초기화 — 퀴즈 배틀 탭의 마운트에 한 번만
