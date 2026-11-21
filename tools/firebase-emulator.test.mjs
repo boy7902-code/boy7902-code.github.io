@@ -63,7 +63,7 @@ async function clearSignedInUser() {
   if (auth.currentUser) await authSdk.signOut(auth);
 }
 
-test('Auth + Firestore emulator enforces family roles and settles child mission logs', async () => {
+test('Auth + Firestore emulator enforces family roles and automatically derives mission and stamp earnings', async () => {
   try {
     const { user: parent } = await createClaimedUser('parent');
     const mission = {
@@ -195,58 +195,31 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
       createdAt: firestoreSdk.serverTimestamp(),
       createdBy: signedInParent.uid,
     });
-    const settlement = await sync.settleUnsettled({ by: signedInParent.uid });
-    assert.equal(settlement.ok, true, JSON.stringify(settlement));
-    assert.equal(settlement.count, 2);
-    assert.equal(settlement.total, 12);
-
-    const summary = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
-    assert.equal(summary.exists(), true);
-    assert.equal(summary.data().totalXp, 5);
-    assert.equal(summary.data().settledCount, 2);
-    assert.equal(summary.data().byMember.m3, 5);
-    assert.equal(summary.data().byMember.m1, 7);
-    assert.equal(summary.data().stampProgress, 2);
-    assert.equal(summary.data().stampBoardsCompleted, 0);
-
-    const stampMissions = Array.from({ length: 8 }, (_, i) => ({
-      id: `emulator-stamp-${i + 1}`,
-      title: `도장 테스트 미션 ${i + 1}`,
-      points: i % 2 ? 3 : 2,
-      due: '',
-      bonus: 0,
-    }));
-    let sevenMissionPoints = 0;
-    for (const missionToLog of stampMissions.slice(0, 7)) {
-      const created = await sync.writeLog(missionToLog, { by: signedInParent.uid, member: 'm3' });
-      assert.equal(created.ok, true, JSON.stringify(created.error || {}));
-      sevenMissionPoints += missionToLog.points;
-    }
-    const nineSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
-    assert.equal(nineSettlement.ok, true, JSON.stringify(nineSettlement));
-    assert.equal(nineSettlement.count, 7);
-    assert.equal(nineSettlement.bonusPoints, 0);
-    const atNine = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
-    assert.equal(atNine.data().stampProgress, 9);
-    assert.equal(atNine.data().stampBoardsCompleted, 0);
-    assert.equal(atNine.data().totalXp, 5 + sevenMissionPoints);
-    assert.equal(atNine.data().byMember.m3, 5 + sevenMissionPoints);
-
-    const tenthLog = await sync.writeLog(stampMissions[7], { by: signedInParent.uid, member: 'm3' });
-    assert.equal(tenthLog.ok, true, JSON.stringify(tenthLog.error || {}));
-    const tenthSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
-    assert.equal(tenthSettlement.ok, true, JSON.stringify(tenthSettlement));
-    assert.equal(tenthSettlement.count, 1);
-    assert.equal(tenthSettlement.bonusPoints, 3);
-    assert.equal(tenthSettlement.boardsCompleted, 1);
-    const atTen = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
-    assert.equal(atTen.data().stampProgress, 0);
-    assert.equal(atTen.data().stampBoardsCompleted, 1);
-    assert.equal(atTen.data().totalXp, 5 + sevenMissionPoints + stampMissions[7].points + 3);
-    assert.equal(atTen.data().byMember.m3, 5 + sevenMissionPoints + stampMissions[7].points + 3);
-    assert.equal(atTen.data().byMember.m1, 7);
-    assert.equal(atTen.data().monthly[logResult.payload.date.slice(0, 7)].total, 12 + sevenMissionPoints + stampMissions[7].points + 3);
-
+    const summaryRef=firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`);
+    const readAuto=async()=>{
+      const snap=await firestoreSdk.getDoc(summaryRef);
+      const all=await firestoreSdk.getDocs(firestoreSdk.collection(db,`${FAMILY_ROOT}/logs`));
+      return computeScreenStats({summary:snap.exists()?snap.data():{},logs:all.docs.map(d=>({...d.data(),id:d.id}))});
+    };
+    const beforeSummary=await firestoreSdk.getDoc(summaryRef);
+    const retired=await sync.settleUnsettled({by:signedInParent.uid});
+    assert.equal(retired.code,'earnings-auto');assert.equal(retired.ok,false);
+    assert.deepEqual((await firestoreSdk.getDoc(summaryRef)).data(),beforeSummary.data());
+    const firstAuto=await readAuto();assert.equal(firstAuto.totalXp,5);assert.equal(firstAuto.byMember.m1,7);assert.equal(firstAuto.stampProgress,2);
+    const stampMissions = Array.from({length:8},(_,i)=>({id:`emulator-stamp-${i+1}`,title:`도장 테스트 미션 ${i+1}`,points:i%2?3:2,due:'',bonus:0}));
+    let sevenMissionPoints=0;
+    for(const m of stampMissions.slice(0,7)){const r=await sync.writeLog(m,{by:signedInParent.uid,member:'m3'});assert.equal(r.ok,true);sevenMissionPoints+=m.points;}
+    const nineAuto=await readAuto();assert.equal(nineAuto.stampProgress,9);assert.equal(nineAuto.stampBoardsCompleted,0);assert.equal(nineAuto.totalXp,5+sevenMissionPoints);
+    const tenthLog=await sync.writeLog(stampMissions[7],{by:signedInParent.uid,member:'m3'});assert.equal(tenthLog.ok,true);
+    const tenAuto=await readAuto();assert.equal(tenAuto.stampProgress,0);assert.equal(tenAuto.stampBoardsCompleted,1);assert.equal(tenAuto.stampBonusPending,0);assert.equal(tenAuto.totalXp,5+sevenMissionPoints+stampMissions[7].points+3);
+    const cancel=await sync.deleteLog(tenthLog.payload);assert.equal(cancel.ok,true);assert.equal((await readAuto()).totalXp,nineAuto.totalXp);assert.equal((await readAuto()).stampProgress,9);
+    const recreated=await sync.writeLog(stampMissions[7],{by:signedInParent.uid,member:'m3'});assert.equal(recreated.ok,true);assert.equal((await readAuto()).totalXp,tenAuto.totalXp);
+    // Emulator-only historical fixture verifies compatibility with old archived summaries.
+    // Production migration and settlement are never invoked by this test.
+    const allForFixture=await firestoreSdk.getDocs(firestoreSdk.collection(db,`${FAMILY_ROOT}/logs`));
+    for(const doc of allForFixture.docs)await firestoreSdk.updateDoc(doc.ref,{settled:true});
+    await firestoreSdk.setDoc(summaryRef,{totalXp:tenAuto.totalXp,byMember:tenAuto.byMember,monthly:tenAuto.monthly,settledCount:10,stampProgress:0,stampBoardsCompleted:1,updatedAt:firestoreSdk.serverTimestamp()});
+    const atTen=await firestoreSdk.getDoc(summaryRef);
     const streakResult = await sync.observeStreak({ date: logResult.payload.date, required: [mission.id], logs: [] });
     assert.equal(streakResult.ok, true, JSON.stringify(streakResult.error));
     assert.deepEqual(streakResult.data.days[logResult.payload.date].done, [mission.id]);
@@ -256,7 +229,8 @@ test('Auth + Firestore emulator enforces family roles and settles child mission 
     const adultLogRef = firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${adultLogId}`);
     const beforeRetry = atTen.data();
     const secondSettlement = await sync.settleUnsettled({ by: signedInParent.uid });
-    assert.equal(secondSettlement.ok, true);
+    assert.equal(secondSettlement.ok, false);
+    assert.equal(secondSettlement.code,'earnings-auto');
     assert.equal(secondSettlement.count, 0);
     const afterRetryLog = await firestoreSdk.getDoc(adultLogRef);
     const afterRetrySummary = await firestoreSdk.getDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/stats/summary`));
