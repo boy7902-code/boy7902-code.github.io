@@ -33,6 +33,7 @@
 <link rel="stylesheet" href="mobile-dashboard.css?v=20261121-1">
 <link rel="stylesheet" href="tablet-safe-layout.css?v=school-balance-20261121-2">
 <link rel="stylesheet" href="calendar-only.css?v=20261121-1">
+<style>.cal-holiday{font-size:13px;color:#b13c42;padding:7px 12px;line-height:1.4;overflow-wrap:anywhere}</style>
 </head>
 <body data-parent="off">
 <div class="app">
@@ -813,9 +814,9 @@
         완료 시각과 조기 보너스는 미션 카드와 완료 이력에 따로 표시됩니다.
         아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.<br />
         <b>📅 월간·연간 달성</b>을 누르면 이번 달 달력과 1년 12개월 요약이 열려, 날짜별 완료·목표 달성·획득 포인트를 되돌아볼 수 있습니다.<br />
-        <b>🎉 일요일은 <span data-freeday-kid>아이</span>의 자유의 날</b>입니다. 숙제를 쉬는 날이라 일요일이 되면
-        <b>오늘 일정</b> 카드와 <b>가족 미션</b> 카드 맨 위에 <b>“오늘은 ○○ 자유의 날! 숙제가 없어요”</b> 배너가 자동으로 뜨고,
-        월요일이 되면 저절로 사라집니다.
+        <b>🎉 토요일은 <span data-freeday-kid>아이</span>의 자유의 날</b>입니다. 숙제를 쉬는 날이라 토요일이 되면
+        <b>오늘 미션</b> 카드에 <b>“오늘은 ○○ 자유의 날! 숙제가 없어요”</b> 배너가 자동으로 뜨고,
+        일요일이 되면 저절로 사라집니다. 미션이나 완료 기록을 자동으로 지우지는 않습니다.
       </p>
     </div>
     <div class="settings-section">
@@ -984,7 +985,8 @@
 <script src="alarm-core.js?v=1"></script>
 <script src="fullscreen-guard.js?v=1"></script>
 <script src="mission-rewards.js?v=early-bonus-1"></script>
-<script src="streak-core.js?v=journal-3"></script>
+<script src="holiday-core.js?v=official-20261122-1"></script>
+<script src="streak-core.js?v=official-holiday-20261122-1"></script>
 <script src="dashboard-insights.js?v=1"></script>
 <script src="pokemon-evolution-effect.js?v=family-refresh-20261121-1"></script>
 <script src="pokemon-encyclopedia-data.js?v=integrated-20261121"></script>
@@ -998,7 +1000,7 @@
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
 <script src="stamp-gift.js?v=friendly-20261121-2"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=content-validation-20261122-1"></script>
+<script src="app-dex-integrated.js?v=official-holiday-20261122-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=review-fixes-20261122-1"></script>
