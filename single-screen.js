@@ -7,15 +7,12 @@
   const wide=matchMedia('(min-width:1024px)');
   function pageMissions() {
     const rows=Array.from(document.querySelectorAll('#choreList > .chore'));
-    const visibleRow=rows.find(r=>!r.classList.contains('ss-page-hidden'));
-    const rowHeight=visibleRow?visibleRow.getBoundingClientRect().height:56;
-    const available=$('#missionScroll').clientHeight;
-    const per=wide.matches?Math.max(1,Math.min(4,Math.floor((available+6)/(Math.max(51,rowHeight)+6)))):4;
+    const per=wide.matches?(matchMedia('(orientation:landscape)').matches?8:6):rows.length||1;
     const pages=Math.max(1,Math.ceil(rows.length/per));
     missionPage=Math.min(missionPage,pages-1);
     rows.forEach((r,i)=>r.classList.toggle('ss-page-hidden', moved!==$('#choreList') && (i<missionPage*per||i>=(missionPage+1)*per)));
     const label=$('#missionPageLabel');
-    if(label) label.textContent=rows.length?`${missionPage+1}/${pages} · 남은 미션 ${rows.length}개`:'오늘 미션';
+    if(label) label.textContent=rows.length?`${missionPage+1} / ${pages} 페이지 · 할 미션 ${rows.length}개`:'오늘 미션';
     $('#missionPrev').disabled=missionPage===0;
     $('#missionNext').disabled=missionPage>=pages-1;
   }
