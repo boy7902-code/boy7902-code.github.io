@@ -6267,11 +6267,12 @@
     fbHatchMaybe();
   }
   function fbSnapOf() {
-    return {
+    // Keep the baseline independent of in-place edits (unshift/splice/field changes).
+    return JSON.parse(JSON.stringify({
       missions: S.missions, logs: S.logs, members: S.members, events: S.events,
       wiki: S.wiki, links: S.links, pointUses: S.pointUses, wishlist: S.wishlist,
       shopping: S.shopping, letters: S.letters,
-    };
+    }));
   }
   function fbOnData(detail) {
     if (!FB.on || !detail) return;
