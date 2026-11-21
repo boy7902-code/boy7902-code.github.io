@@ -80,3 +80,107 @@
      const cell = e.target.closest('[data-dexid]');
      if (cell) selectDex(cell.dataset.dexid);
    });
+@@ -5924,6 +5945,7 @@
+     notedDenied: '', pill: null, gate: null, card: null,
+     schoolSeeded: false,
+     alarmsSeeded: false,
++    missionOps: new Map(),       // Per-mission writes serialize undo/re-complete and overlay in-flight snapshots.
+     deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
+   };
+ 
+@@ -5967,7 +5989,7 @@
+     FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
+     FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
+     stampCompletedSeen = null; stampCompletingUntil = 0;
+-    FB.deleted.clear();
++    FB.deleted.clear();FB.missionOps.clear();
+     window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
+     renderParentBtn();
+     renderStampBoards();
+@@ -6138,7 +6160,8 @@
+     const seen = new Set();
+     const now = Date.now();
+     FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
+-    return [...FB.monthLogs, ...FB.pendingLogs]
++    const writing=[...FB.missionOps.values()].filter(op=>op.session===FB.session&&op.kind==='write').map(op=>op.log);
++    return [...writing,...FB.monthLogs, ...FB.pendingLogs]
+       .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
+       // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
+       .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
+@@ -6482,35 +6505,49 @@
+   toggleMission = function (id) {
+     const session = FB.session;
+     const c = S.missions.find((x) => x.id === id);
+-    const wasDone = !!(c && c.doneOn === todayStr());
+-    const member = c ? (c.member || KID_ID) : KID_ID;
+-    const completionLog = c && (S.logs || []).find((x) => x.mid === id && x.date === todayStr() && (x.member || KID_ID) === member);
+-    if (wasDone && FB.on && completionLog && completionLog.settled === true) {
+-      toast('이미 정산된 기록은 취소할 수 없어요', '', 3000);
+-      return;
+-    }
+-    if (wasDone && FB.on && completionLog) {
+-      FB.deleted.set(fbDocIdOf(completionLog), Date.now());
+-    }
++    if (!FB.on || !c) return fbBaseToggle(id);
++    const member = c.member || KID_ID;
++    const logId = fbDocIdOf({date:todayStr(),mid:id,member});
++    if(FB.missionOps.has(logId)) {toast('미션 기록을 저장 중이에요. 잠시만 기다려 주세요', '', 1800);return;}
++    const wasDone = c.doneOn === todayStr();
++    const completionLog = (S.logs || []).find(x=>fbDocIdOf(x)===logId);
++    if (wasDone && completionLog && completionLog.settled === true) {
++      toast('이미 정산된 기록은 취소할 수 없어요', '', 3000);return;
++    }
++    if(wasDone) FB.deleted.set(logId,Date.now());
++    else FB.deleted.delete(logId); // A new completion is not a late echo of the cancelled one.
+     const out = fbBaseToggle(id);
+-    if (!FB.on || !c) return out;
+-    if (!wasDone) {
+-      FB.sync.writeLog(c, { by: FB.uid, member }).then((r) => {
+-        if (session !== FB.session) return;
+-        if (!r.ok && !r.cancelled) {
+-          fbBaseToggle(id);                 // 체크를 원래대로 되돌림
+-          toast('기록을 보내지 못해 체크를 되돌렸어요', 'coral', 3000);
+-          fbRetryCard(r.error);
++    const localLog = !wasDone ? {...(S.logs || []).find(x=>fbDocIdOf(x)===logId),id:logId,settled:false} : null;
++    const op={session,kind:wasDone?'delete':'write',log:localLog};
++    FB.missionOps.set(logId,op);
++    // Capture the mission now. Later snapshots must not rewrite this request's inputs.
++    const mission={...c};
++    const request=wasDone
++      ? ()=>FB.sync.deleteLog({date:todayStr(),mid:id,member,settled:!!(completionLog&&completionLog.settled)})
++      : ()=>FB.sync.writeLog(mission,{by:FB.uid,member});
++    Promise.resolve().then(request).then(r=>{
++      if(session!==FB.session||FB.missionOps.get(logId)!==op)return;
++      if(r.ok){
++        const without=rows=>rows.filter(x=>fbDocIdOf(x)!==logId);
++        FB.monthLogs=without(FB.monthLogs);FB.pendingLogs=without(FB.pendingLogs);
++        if(!wasDone){
++          FB.deleted.delete(logId);
++          const accepted={...(r.payload||localLog),id:logId};
++          FB.monthLogs.push(accepted);
++          if(accepted.settled!==true)FB.pendingLogs.push(accepted);
+         }
+-      });
+-    } else {
+-      FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: !!(completionLog && completionLog.settled) }).then((r) => {
+-        if (session !== FB.session) return;
+-        if (!r.ok && !r.cancelled) fbRetryCard(r.error);
+-      });
+-    }
+-    fbPushNow();
+-    return out;
++      } else if(!r.cancelled) {
++        if(wasDone)FB.deleted.delete(logId);
++        fbRetryCard(r.error);
++      }
++      FB.missionOps.delete(logId);
++      fbRecalc();
++    }).catch(error=>{
++      if(session!==FB.session||FB.missionOps.get(logId)!==op)return;
++      if(wasDone)FB.deleted.delete(logId);
++      FB.missionOps.delete(logId);fbRecalc();fbRetryCard(FB.core.classifyFirestoreError(error));
++    });
++    fbPushNow();return out;
+   };
+ 
+   // 2) 보호자 동작: 아이 계정 기기에서는 서버 권한이 없으므로 미리 막습니다
