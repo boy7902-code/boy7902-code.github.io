@@ -691,7 +691,8 @@ const left=S.shopping.filter(x=>x.cat==="buy"&&!x.done).length;if($("#wishBadge"
 }if($("#wishSub"))$("#wishSub").textContent=wishHeaderSubtitle(left)}function addShopItem(){const inp=$("#shopInput");const v=inp.value.trim();if(!v){
 inp.focus();return}S.shopping.unshift({id:uid(),cat:shopTab==="fridge"?"fridge":"buy",text:v,done:false});inp.value="";save();renderShopping()}
 const wishItems=()=>S.wishlist||[];function renderWish(){const box=$("#wishList");if(!box)return;const bal=balancePts()
-;const items=wishItems().slice().sort((a,b)=>(a.boughtAt?1:0)-(b.boughtAt?1:0));const card=$("#cardWish")
+;const remainingNeed=w=>+w.need>0?Math.max(0,Math.round(+w.need)-bal):Infinity
+;const items=wishItems().slice().sort((a,b)=>(a.boughtAt?1:0)-(b.boughtAt?1:0)||remainingNeed(a)-remainingNeed(b));const card=$("#cardWish")
 ;if(card)card.classList.toggle("is-empty",items.length===0);if($("#wishSub"))$("#wishSub").textContent=wishHeaderSubtitle()
 ;box.innerHTML=items.length?items.map(w=>{const need=Math.max(0,Math.round(+w.need||0));const bought=!!w.boughtAt;const can=!bought&&need>0&&bal>=need
 ;const left=Math.max(0,need-bal);const pct=need>0?clamp(Math.round(bal/need*100),0,100):0
@@ -1056,21 +1057,16 @@ renderEventCenter();$("#eventModal").hidden=false}function openMvp(){renderMvp()
 ;$("#listTitle").textContent=isUse?"🎁 포인트 사용":"🕒 오늘 완료";$("#todayLog").hidden=isUse;$("#useList").hidden=!isUse;if($("#logCount"))$("#logCount").hidden=isUse
 ;if($("#useCount"))$("#useCount").hidden=!isUse;renderLog();renderPointUses();m.hidden=false}function closeListModal(){const m=$("#listModal")
 ;if(m)m.hidden=true}function closeEventCenter(){const m=$("#eventModal");if(m)m.hidden=true}function closeMvp(){const m=$("#mvpModal");if(m)m.hidden=true}
-let standbyOn=false;let standbyTimer=null;const STANDBY_IDLE_MS=2*60*1e3;let standbyIdleTimer=null;let screenWakeLock=null;let wakeLockRequest=null
-;let sbPokeKey="";let sbWxSig="";let sbMissionSig="";const standbyWakeClickGuard=window.FamilyStandbyGuard.createWakeClickGuard()
+let standbyOn=false;let standbyTimer=null;const STANDBY_PREF_KEY="family-dashboard:standby-minutes";let standbyMinutes;try{
+const raw=localStorage.getItem(STANDBY_PREF_KEY);standbyMinutes=["0","5","10"].includes(raw)?+raw:matchMedia("(max-width:600px)").matches?0:5}catch(_){
+standbyMinutes=matchMedia("(max-width:600px)").matches?0:5}let STANDBY_IDLE_MS=standbyMinutes*60*1e3;let standbyIdleTimer=null;let screenWakeLock=null
+;let wakeLockRequest=null;let sbPokeKey="";let sbWxSig="";let sbMissionSig="";const standbyWakeClickGuard=window.FamilyStandbyGuard.createWakeClickGuard()
 ;const standbyTapGate=window.FamilyStandbyGuard.createMultiTapGate({taps:3,windowMs:1500});let standbyHintTimer=null;function standbyPartnerStage(){
 const p=partnerOf(S.pokemon.key);return{p:p,stage:p.stages[stageIndex(S.pokemon.xp)]}}function wmoKind(code){if(code==null)return"clear";const c=+code
 ;if(c===0||c===1)return"clear";if(c===2||c===3||c===45||c===48)return"cloud";if(c>=51&&c<=67||c>=80&&c<=82||c>=95)return"rain"
 ;if(c>=71&&c<=77||c===85||c===86)return"snow";return"clear"}function todOf(h){if(h>=6&&h<=16)return"day";if(h>=17&&h<=18)return"dusk";return"night"}
-let sbSceneSig="";function applyStandbyScene(now=new Date){const el=$("#standby");if(!el)return;const code=W&&W.now?W.now.weather_code:null
-;const wx=wmoKind(code);const tod=todOf(now.getHours());el.dataset.wx=wx;el.dataset.tod=tod;el.dataset.thunder=code!=null&&+code>=95?"1":"0"
-;const sig=`${wx}|${tod}`;if(sig===sbSceneSig)return;sbSceneSig=sig;const sky=$("#sbSky");if(!sky)return;let html=""
-;const clouds=wx==="rain"||wx==="snow"?5:wx==="cloud"?4:0;for(let i=0;i<clouds;i++)html+=`<span class="sb-cloud c${i+1}"></span>`;if(wx==="rain"){
-for(let i=0;i<30;i++){
-html+=`<i class="sb-drop" style="left:${(i*3.3+Math.random()*2.6).toFixed(1)}%;animation-delay:${(Math.random()*1.5).toFixed(2)}s;animation-duration:${(.62+Math.random()*.6).toFixed(2)}s"></i>`
-}}if(wx==="snow"){for(let i=0;i<24;i++){
-html+=`<i class="sb-flake" style="left:${(i*4.1+Math.random()*3.4).toFixed(1)}%;animation-delay:${(Math.random()*7).toFixed(2)}s;animation-duration:${(6+Math.random()*5).toFixed(2)}s;font-size:${(9+Math.random()*9).toFixed(0)}px">❄</i>`
-}}sky.innerHTML=html;sky.dataset.count=String(sky.children.length)}function renderStandby(){if(!standbyOn)return;const now=new Date;applyStandbyScene(now)
+let sbSceneSig="";function applyStandbyScene(now=new Date){const el=$("#standby");if(!el)return;el.dataset.tod=todOf(now.getHours())
+;el.dataset.quiet=now.getHours()>=21||now.getHours()<7?"1":"0"}function renderStandby(){if(!standbyOn)return;const now=new Date;applyStandbyScene(now)
 ;if($("#sbTime"))$("#sbTime").textContent=`${pad(now.getHours())}:${pad(now.getMinutes())}`;if($("#sbSec"))$("#sbSec").textContent=pad(now.getSeconds())
 ;if($("#sbDate")){$("#sbDate").innerHTML=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 <b>${DAYS[now.getDay()]}요일</b>`}const loc=currentLoc()
 ;let wx=`<div class="sb-wx-now"><span class="sb-wx-ico">🌤️</span><b>—</b><span class="sb-wx-desc">날씨 불러오는 중</span></div>\n      <div class="sb-wx-chips"><span class="sb-wx-place">📍 ${esc(W&&W.locName?W.locName:loc.name||"우리 동네")}</span></div>`
@@ -1081,30 +1077,32 @@ html+=`<i class="sb-flake" style="left:${(i*4.1+Math.random()*3.4).toFixed(1)}%;
 chips.push(`<span class="sb-wx-place">📍 ${esc(W.locName||loc.name||"우리 동네")}</span>`)
 ;wx=`<div class="sb-wx-now"><span class="sb-wx-ico">${icon}</span><b>${Math.round(W.now.temperature_2m)}°</b><span class="sb-wx-desc">${esc(desc)}</span></div>\n        <div class="sb-wx-chips">${chips.join("")}</div>`
 }if($("#sbWeather")){const wxSig=JSON.stringify([W&&W.now&&W.now.temperature_2m,W&&W.now&&W.now.weather_code,W&&W.air,W&&W.daily&&W.daily[0],W&&W.locName])
-;if(wxSig!==sbWxSig){sbWxSig=wxSig;$("#sbWeather").innerHTML=wx}}const dow=now.getDay();const tg=kidTodayGoal(dow)
-;const pct=tg.goal?clamp(Math.round(tg.got/tg.goal*100),0,100):0
-;const doneCount=S.missions.filter(m=>m.member===KID_ID&&m.doneOn===todayStr()&&missionOnDay(m,dow)).length
-;const totalToday=S.missions.filter(m=>m.member===KID_ID&&missionOnDay(m,dow)).length;if($("#sbMission")){
-const sig=[pct,tg.got,tg.goal,tg.left,doneCount,totalToday,balancePts(),Math.round(S.pokemon.xp)].join("|");if(sig===sbMissionSig)return sbSyncPartner()
-;sbMissionSig=sig;const sbStages=stagesOf();const sbLv=stageIndex(S.pokemon.xp);const sbXp=Math.round(S.pokemon.xp)
-;const sbNext=sbStages[sbLv+1]?sbStages[sbLv+1].min:FINAL_P
-;$("#sbMission").innerHTML=`\n        <div class="sb-m-head"><span>🎯 오늘 미션</span><b>${doneCount} / ${totalToday} 완료</b></div>\n        <div class="sb-ring" style="--p:${pct}">\n          <div class="sb-ring-face">\n            <b>${pct}%</b>\n            <span>${tg.got}P / ${tg.goal}P</span>\n          </div>\n        </div>\n        <div class="sb-stats">\n          <div class="sb-stat coin"><span>🪙 선물 코인</span><b>${balancePts()}P</b></div>\n          <div class="sb-stat xp"><span>⚡ 진화 경험치</span><b>${sbXp}/${sbNext}P</b></div>\n        </div>\n        <div class="sb-hint-line">${tg.goal&&tg.got>=tg.goal?"🎉 오늘 목표 달성! 최고예요":tg.left?`${tg.left}P 더 모으면 오늘 목표 달성!`:"오늘은 쉬어 가는 날이에요 🌴"}</div>`
-}sbSyncPartner()}function sbSyncPartner(){const{p:p,stage:stage}=standbyPartnerStage();const key=`${p.key}:${stage.id}:${stage.min}`;if(key!==sbPokeKey){
-sbPokeKey=key;if($("#sbStage")){$("#sbStage").innerHTML=pokeImg(stage,"sb-poke-img",p.tint,{eager:true
-})+(stage.crown?'<span class="poke-crown" aria-hidden="true">👑</span>':"")+(stage.shiny?'<span class="poke-shiny" aria-hidden="true">✨</span>':"")}}
-if($("#sbName"))$("#sbName").textContent=stage.name;const nxt=p.stages[stageIndex(S.pokemon.xp)+1];if($("#sbSub")){
-$("#sbSub").innerHTML=nxt?`다음 진화 <b>${esc(nxt.name)}</b>까지 <b>${Math.max(0,nxt.min-Math.round(S.pokemon.xp))}P</b> 남았어요`:"최종 진화 완료! 🏆 도감에 저장됐어요"}}
-function enterStandby(){if(standbyOn)return;clearTimeout(standbyIdleTimer);standbyIdleTimer=null;standbyOn=true;sbPokeKey="";sbWxSig="";sbMissionSig=""
-;standbyTapGate.reset();standbyTapText("화면을 연속 3번 터치하면 대시보드로 돌아가요","");const el=$("#standby");if(el)el.hidden=false;document.body.classList.add("standby-on")
+;if(wxSig!==sbWxSig){sbWxSig=wxSig;$("#sbWeather").innerHTML=wx}}const dow=now.getDay()
+;const missions=S.missions.filter(m=>m.member===KID_ID&&missionOnDay(m,dow));const remaining=missions.filter(m=>m.doneOn!==todayStr())
+;const limit=innerWidth<=600&&innerHeight<720?2:3;const sig=JSON.stringify([missions.length,remaining.map(m=>[m.id,m.title]),limit])
+;if($("#sbMission")&&sig!==sbMissionSig){sbMissionSig=sig
+;$("#sbMission").innerHTML=`<div class="sb-m-head"><span>오늘 미션</span><b>${missions.length-remaining.length} / ${missions.length} 완료</b></div><div class="sb-rem-label">${remaining.length?"남은 미션 · "+remaining.length+"개":missions.length?"오늘 미션을 모두 마쳤어요":"오늘 예정된 미션이 없어요"}</div><ul class="sb-remaining">${remaining.slice(0,limit).map(m=>`<li>${esc(m.title)}</li>`).join("")}</ul>${remaining.length>limit?`<div class="sb-more">+${remaining.length-limit}개</div>`:""}`
+}
+const next=S.events.filter(e=>!e.done&&/^\d{4}-\d{2}-\d{2}$/.test(e.date||"")&&(e.date>todayStr()||e.date===todayStr()&&(!e.time||e.time>=pad(now.getHours())+":"+pad(now.getMinutes())))).sort((a,b)=>(a.date+" "+(a.time||"00:00")).localeCompare(b.date+" "+(b.time||"00:00")))[0]
+;if($("#sbNext")){
+const nextText=next?`<div class="sb-next-label">다음 가족 일정</div><b>${esc(next.date===todayStr()?"오늘":next.date.slice(5).replace("-","/"))} ${esc(next.time||"종일")} ${esc(next.title)}</b>`:'<div class="sb-next-label">다음 가족 일정</div><b>예정된 일정이 없어요</b>'
+;if($("#sbNext").innerHTML!==nextText)$("#sbNext").innerHTML=nextText}if($("#sbPrep")){
+const prep=[...document.querySelectorAll("#outfitSuggestions .outfit-item small")].slice(0,2).map(e=>e.textContent).join(" · ")
+;if($("#sbPrep").textContent!==prep)$("#sbPrep").textContent=prep}sbSyncPartner()}function sbSyncPartner(){const{p:p,stage:stage}=standbyPartnerStage()
+;const key=`${p.key}:${stage.id}:${stage.min}`;if(key!==sbPokeKey){sbPokeKey=key;if($("#sbStage")){$("#sbStage").innerHTML=pokeImg(stage,"sb-poke-img",p.tint,{
+eager:true})+(stage.crown?'<span class="poke-crown" aria-hidden="true">👑</span>':"")+(stage.shiny?'<span class="poke-shiny" aria-hidden="true">✨</span>':"")}}
+if($("#sbName"))$("#sbName").textContent=stage.name;if($("#sbSub"))$("#sbSub").textContent="사진이 없을 땐 파트너와 쉬는 시간"}function enterStandby(){if(standbyOn)return
+;clearTimeout(standbyIdleTimer);standbyIdleTimer=null;standbyOn=true;sbPokeKey="";sbWxSig="";sbMissionSig="";standbyTapGate.reset()
+;standbyTapText("화면을 연속 3번 터치하면 대시보드로 돌아가요","");const el=$("#standby");if(el)el.hidden=false;document.body.classList.add("standby-on")
 ;if($("#sbTitle"))$("#sbTitle").textContent=appTitle();renderStandby();clearInterval(standbyTimer);standbyTimer=setInterval(renderStandby,1e3)}
 function exitStandby(){if(!standbyOn)return;standbyOn=false;clearInterval(standbyTimer);standbyTimer=null;standbyTapGate.reset();clearTimeout(standbyHintTimer)
 ;standbyHintTimer=null;const el=$("#standby");if(el)el.hidden=true;document.body.classList.remove("standby-on");resetStandbyIdleTimer()}
-function resetStandbyIdleTimer(){clearTimeout(standbyIdleTimer);standbyIdleTimer=null;if(document.hidden||standbyOn)return;standbyIdleTimer=setTimeout(()=>{
-standbyIdleTimer=null;enterStandby()},STANDBY_IDLE_MS)}function requestScreenWakeLock(){const api=window.navigator&&window.navigator.wakeLock
-;if(!api||typeof api.request!=="function"||document.hidden||screenWakeLock||wakeLockRequest)return;wakeLockRequest=api.request("screen").then(lock=>{
-if(document.hidden){lock.release().catch(()=>{});return null}screenWakeLock=lock;lock.addEventListener("release",()=>{
-if(screenWakeLock===lock)screenWakeLock=null},{once:true});return lock}).catch(()=>null).finally(()=>{wakeLockRequest=null});return wakeLockRequest}
-function releaseScreenWakeLock(){const lock=screenWakeLock;screenWakeLock=null;if(lock&&!lock.released)lock.release().catch(()=>{})}
+function resetStandbyIdleTimer(){clearTimeout(standbyIdleTimer);standbyIdleTimer=null;if(document.hidden||standbyOn||!STANDBY_IDLE_MS)return
+;standbyIdleTimer=setTimeout(()=>{standbyIdleTimer=null;enterStandby()},STANDBY_IDLE_MS)}function requestScreenWakeLock(){
+const api=window.navigator&&window.navigator.wakeLock;if(!api||typeof api.request!=="function"||document.hidden||screenWakeLock||wakeLockRequest)return
+;wakeLockRequest=api.request("screen").then(lock=>{if(document.hidden){lock.release().catch(()=>{});return null}screenWakeLock=lock
+;lock.addEventListener("release",()=>{if(screenWakeLock===lock)screenWakeLock=null},{once:true});return lock}).catch(()=>null).finally(()=>{wakeLockRequest=null
+});return wakeLockRequest}function releaseScreenWakeLock(){const lock=screenWakeLock;screenWakeLock=null;if(lock&&!lock.released)lock.release().catch(()=>{})}
 function standbyTapText(msg,tone){const el=$("#sbTap");if(!el)return;el.textContent=msg;el.dataset.tone=tone||""}function showStandbyTapHint(count,needed){
 clearTimeout(standbyHintTimer);standbyTapText(`조금 더! (${count}/${needed})`,"more");standbyHintTimer=setTimeout(()=>{standbyHintTimer=null
 ;standbyTapText("화면을 연속 3번 터치하면 대시보드로 돌아가요","")},1500)}function standbyTapReact(count,needed){const{stage:stage}=standbyPartnerStage()
@@ -1186,6 +1184,10 @@ fullscreenCtl.toggle().then(syncFullscreenBtn,syncFullscreenBtn)})
 ;["fullscreenchange","webkitfullscreenchange","MSFullscreenChange"].forEach(ev=>document.addEventListener(ev,syncFullscreenBtn))
 ;document.addEventListener("visibilitychange",syncFullscreenBtn);syncFullscreenBtn();if(fsMode("fullscreen")&&!fullscreenCtl.isOn())fsBtn.hidden=true}
 if($("#standbyBtn"))$("#standbyBtn").addEventListener("click",enterStandby);if($("#standbyExit"))$("#standbyExit").addEventListener("click",exitStandby)
+;if($("#standbyMinutes")){$("#standbyMinutes").value=String(standbyMinutes);$("#standbyMinutes").addEventListener("change",e=>{if(!parentUnlocked()){
+e.target.value=String(standbyMinutes);toast("부모 잠금 해제 후 바꿔 주세요");return}standbyMinutes=["0","5","10"].includes(e.target.value)?+e.target.value:0
+;STANDBY_IDLE_MS=standbyMinutes*60*1e3;try{localStorage.setItem(STANDBY_PREF_KEY,String(standbyMinutes))}catch(_){toast("전환 설정을 이 기기에 저장하지 못했어요")}
+resetStandbyIdleTimer()})}window.addEventListener("resize",()=>{sbMissionSig="";if(standbyOn)renderStandby()})
 ;$$("#calMode .cmb").forEach(b=>b.addEventListener("click",()=>setCalMode(b.dataset.calmode)));setCalMode("1m");["#listClose","#listCloseBtn"].forEach(sel=>{
 const el=$(sel);if(el)el.addEventListener("click",closeListModal)});if($("#listModal"))$("#listModal").addEventListener("click",e=>{
 if(e.target.id==="listModal")closeListModal()});["#evClose","#evCloseBtn"].forEach(sel=>{const el=$(sel);if(el)el.addEventListener("click",closeEventCenter)})
