@@ -445,6 +445,7 @@
   function syncCaught() {
     const st = stagesOf();
     const idx = stageIndex(S.pokemon.xp);
+    if (window.PartnerGrowthCore && PartnerGrowthCore.isEgg(S.pokemon.growth, S.pokemon.xp)) return false;
     return markCaught(st.slice(0, idx + 1).map((s) => s.id));
   }
   const caughtCount = () => POKE_NOS.filter((id) => caughtOf(id)).length;
@@ -591,6 +592,7 @@
       xp: 0,
       dex: (pkRaw && Array.isArray(pkRaw.dex)) ? pkRaw.dex : [],
       caught: {},
+      growth: window.PartnerGrowthCore ? window.PartnerGrowthCore.normalized(pkRaw && pkRaw.growth) : null,
     };
     if (prevV < 3) {
       // 형식 2까지는 '가족 전체 누적 포인트'로 진화했습니다.
@@ -1198,7 +1200,7 @@
     if (typeof renderEventBadge === 'function') renderEventBadge();   // 🎪 깜짝 이벤트 버튼은 부모 모드에서만 늘 보입니다
     if (!b) return;
     b.dataset.state = on ? 'on' : 'off';
-    b.innerHTML = `<span aria-hidden="true">${on ? '🔓' : '🔒'}</span><span class="parent-word">${on ? '부모 열림' : '부모 잠금'}</span>`;
+    b.innerHTML = `<span class="parent-word">${on ? '부모 열림' : '부모 잠금'}</span>`;
     b.title = on ? `부모 모드 열림 · ${parentLeftText()} 뒤 자동 잠금 (누르면 바로 잠금)` : '부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요';
     b.setAttribute('aria-label', on ? '부모 모드 열림 — 눌러서 잠그기' : '부모 잠금 — 눌러서 열기');
   }
@@ -2296,8 +2298,13 @@
       : (di ? `<span class="due-chip ${di.cls}" data-duechip data-due="${esc(c.due)}">⏰ ${esc(di.short)}<i class="dc-long"> · ${esc(di.long)}</i></span>` : '');
     const pts = done ? earnOf(c) : base;
     const dl = daysLabel(c.days);
-    return `<div class="chore ${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
+    // Decorative art only. Stable per existing mission ID, no new stored data or reward rules.
+    const missionArtIds = [175, 446, 25, 133, 35, 39, 1, 4, 7, 143, 54, 132];
+    const artHash = Array.from(String(c.id || c.title)).reduce((h, ch) => (h * 31 + ch.codePointAt(0)) >>> 0, 0);
+    const missionArt = missionArtIds[artHash % missionArtIds.length];
+    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
+            <img class="mission-art" src="${SPRITE_ROOT}/other/official-artwork/${missionArt}.png" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.hidden=true" />
             <div class="chore-main">
               <div class="chore-top">
                 <span class="chore-title">${esc(c.title)}</span>
@@ -2333,8 +2340,10 @@
     $('#charStage').innerHTML = pokeImg(stage, 'poke-img', p.tint, { eager: true })
       + (stage.crown ? '<span class="poke-crown" aria-hidden="true">👑</span>' : '')
       + (stage.shiny ? '<span class="poke-shiny" aria-hidden="true">✨</span>' : '');
-    $('#charStage').title = `${stage.name} · 톡톡 누르면 반응해요`;
-    $('#charLevel').textContent = stage.name;
+    const isEgg = window.PartnerGrowthCore && PartnerGrowthCore.isEgg(S.pokemon.growth, xp);
+    if (isEgg) $('#charStage').innerHTML = '<span class="partner-egg" role="img" aria-label="새 파트너 알"></span>';
+    $('#charStage').title = isEgg ? '새 파트너 알 · 5XP에 부화해요' : `${stage.name} · 톡톡 누르면 반응해요`;
+    $('#charLevel').textContent = isEgg ? '새 파트너 알' : stage.name;
     if ($('#charLevel')) $('#charLevel').classList.toggle('shiny', !!stage.shiny);
     if ($('#tChores')) $('#tChores').textContent = `${kidLabel()} 미션`;   // 집집마다 아이 이름으로 바뀝니다 (기본값 '아이 미션')
 
@@ -2351,7 +2360,7 @@
     if ($('#histBtnPill')) $('#histBtnPill').textContent = String(monthCount);
 
     // ① 진화 게이지 — '다음 진화 목표'를 분모로 하는 진행률 (누적 XP 값 자체는 바꾸지 않습니다)
-    const nxt = st[lv + 1];
+    const nxt = isEgg ? {name: st[0].name + ' 부화', min: 5} : st[lv + 1];
     const nextMin = nxt ? nxt.min : FINAL_P;
     let evoPct = 100;
     if (nxt) {
@@ -2436,10 +2445,10 @@
       const noTodoMsg = todayList.length
         ? '🎉 오늘 미션을 다 끝냈어요! 수고했어요'
         : `${DAYS[dow]}요일은 할 미션이 없어요 — 오늘은 푹 쉬어요 🌴`;
-      const todayHtml = todoList.length
-        ? todoList.map((c) => choreCardHtml(c, t, nowMin)).join('')
+      const todayHtml = todayList.length
+        ? todayList.map((c) => choreCardHtml(c, t, nowMin)).join('')
         : `<div class="shop-empty">${noTodoMsg}</div>`;
-      const doneHtml = doneListToday.length
+      const doneHtml = false && doneListToday.length
         ? `<details class="chore-off chore-done" id="choreDone"${doneOpen ? ' open' : ''}>
             <summary>✅ 오늘 끝낸 미션 <span class="pill">${doneListToday.length}개</span></summary>
             <div class="chore-off-list">${doneListToday.map((c) => choreCardHtml(c, t, nowMin)).join('')}</div>
@@ -2801,6 +2810,9 @@
 
     if (c.doneOn === t) {
       const undo = earnOf(c);
+      if (isKid && window.PartnerGrowthCore) {
+        S.pokemon.growth = PartnerGrowthCore.transition(S.pokemon.growth, beforeXp, Math.max(0,beforeXp-undo), 'keep-hatched').state;
+      }
       addPoints(key, -undo);
       // 아이 미션 체크를 취소했을 때만 파트너 경험치도 되돌아갑니다 (포인트 사용으로는 절대 줄지 않음)
       if (isKid) S.pokemon.xp = clamp(beforeXp - undo, 0, FINAL_P);
@@ -2824,6 +2836,8 @@
     addLog(c, r, at);
     if (isKid) eventAfterCheck(c, r, at);      // 🔥 콤보 · 🎂 2배 데이 보너스 (아이 미션만)
 
+    let hatchEvent = false;
+    if (isKid && window.PartnerGrowthCore) { const growth = PartnerGrowthCore.transition(S.pokemon.growth,beforeXp,S.pokemon.xp,'keep-hatched'); S.pokemon.growth = growth.state; hatchEvent = growth.event === 'hatch'; }
     const afterXp = clamp(Math.round(+S.pokemon.xp || 0), 0, FINAL_P);
     const after = stageIndex(afterXp);
     const justFinal = isKid && beforeXp < FINAL_P && afterXp >= FINAL_P;
@@ -2832,7 +2846,9 @@
     save();
     renderMissions();
 
-    if (justFinal) {
+    if (hatchEvent) {
+      if (!FB.on && window.PokemonEvolutionEffect) PokemonEvolutionEffect.show({from:{egg:true,name:'새 파트너 알'},to:stagesOf()[after],xp:afterXp,hatch:true});
+    } else if (justFinal) {
       confetti(130);
       beep('up');
       showFinalDone(before);
@@ -2955,7 +2971,7 @@
       || l.label.indexOf(q) >= 0
       || l.members.some((id) => pokeName(id).indexOf(q) >= 0)
       || String(l.members[0]) === q;
-    const gen1 = LINES.filter((l) => !l.members.some((id) => id > 151) && l.key.charAt(0) === 'L' && hit(l));
+    const gen1 = LINES.filter((l) => l.members.some((id) => id <= 151) && l.key.charAt(0) === 'L' && hit(l));
     const extra = EXTRA_LINES.filter(hit);
     const card = (p) => {
       const on = resolvePartnerKey(S.pokemon.key) === p.key;
@@ -3003,6 +3019,7 @@
       if (S.pokemon.xp < FINAL_P) { toast('최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요', '', 2600); return; }
       syncDex();                      // 보호: 지금 완성한 포켓몬은 먼저 도감에 넣어 두고 시작
       S.pokemon.key = key;
+      S.pokemon.growth = window.PartnerGrowthCore ? PartnerGrowthCore.adopt(window.crypto && crypto.randomUUID ? crypto.randomUUID() : uid()+'-'+Date.now().toString(36)) : null;
       S.pokemon.xp = 0;               // 현재 파트너 경험치만 0P부터 (누적 경험치·잔액은 유지)
       save();
       renderMissions();
@@ -3010,7 +3027,7 @@
       $('#partnerModal').hidden = true;
       confetti(60);
       beep('up');
-      toast(`✨ ${p.label} 계열 새 파트너와 0P부터 다시 시작해요`, 'mint', 3200);
+      toast(`🥚 ${p.label} 계열 새 알이에요 · 5XP에 부화해요`, 'mint', 3200);
       return;
     }
 
@@ -6201,6 +6218,24 @@
       if (out.ok) { FB.streakSig = sig; FB.streak = out.data; renderMissions(); }
     }).finally(() => { if (session === FB.session) FB.streakBusy = false; });
   }
+  const fbHatchPending = new Set();
+  function fbHatchMaybe() {
+    const growth = PartnerGrowthCore.normalized(S.pokemon.growth);
+    if (!FB.on || !FB.readyData || !FB.sync || !FB.sync.claimPartnerHatch || !growth || growth.hatched || S.pokemon.xp < 5) return;
+    const session=FB.session, cycleId=growth.cycleId, key=S.pokemon.key, pending=session+':'+cycleId;
+    if(fbHatchPending.has(pending))return;
+    fbHatchPending.add(pending);
+    FB.sync.claimPartnerHatch({cycleId}).then(result=>{
+      if(session!==FB.session)return;
+      if(!result.ok){if(!result.cancelled)fbRetryCard(result.error);return;}
+      if(result.claimed && S.pokemon.key===key && S.pokemon.growth && S.pokemon.growth.cycleId===cycleId){
+        S.pokemon.growth={cycleId,hatched:true,celebrated:true};
+        try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+        renderMissions();
+        if(window.PokemonEvolutionEffect)PokemonEvolutionEffect.show({from:{egg:true,name:'새 파트너 알'},to:stagesOf()[stageIndex(S.pokemon.xp)],xp:S.pokemon.xp,hatch:true});
+      }
+    }).finally(()=>fbHatchPending.delete(pending));
+  }
   function fbRecalc() {
     // Partial snapshots must not erase cached totals/completions before all inputs arrive.
     if (!FB.on || !FB.core || !FB.readyData) return;
@@ -6219,6 +6254,8 @@
     const t = todayStr();
     FB.core.reconcileMissionCompletions(S.missions || [], logs, t);
     S.points = { total: Object.values(stats.byMember || {}).reduce((a, b) => a + Math.max(0, Math.round(+b || 0)), 0), byMember: stats.byMember };
+    if (FB.partner.key) S.pokemon.key = resolvePartnerKey(FB.partner.key);
+    S.pokemon.growth = PartnerGrowthCore.normalized(FB.partner.growth);
     S.pokemon.xp = Math.min(FINAL_P, Math.round(stats.partnerXp));
     // 서버에서 받은 값은 다시 보내지 않습니다(에코 방지) — localStorage 에만 조용히 반영
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ }
@@ -6227,6 +6264,7 @@
     renderMissions();
     if (typeof renderLog === 'function') renderLog();
     if (typeof renderDex === 'function') renderDex();
+    fbHatchMaybe();
   }
   function fbSnapOf() {
     return {
@@ -6239,7 +6277,7 @@
     if (!FB.on || !detail) return;
     const { key, docs } = detail;
     if (key === 'summary') FB.summary = docs[0] || null;
-    else if (key === 'partner') FB.partner = docs[0] ? { key: docs[0].partnerKey, sinceXp: docs[0].sinceXp } : {};
+    else if (key === 'partner') FB.partner = docs[0] ? { key: docs[0].partnerKey, sinceXp: docs[0].sinceXp, growth: PartnerGrowthCore.normalized(docs[0].growth) } : {};
     else if (key === 'parentConfig') {
       FB.parentPinReady = true;
       const remotePin = String((docs[0] && docs[0].parentPin) || '');
@@ -6488,11 +6526,11 @@
   const fbBasePickPartner = pickPartner;
   pickPartner = function (key) {
     const session = FB.session;
-    const beforeKey = S.pokemon.key;
+    const beforeKey = S.pokemon.key, beforeGrowth = JSON.stringify(S.pokemon.growth);
     fbBasePickPartner(key);
-    if (!FB.on || S.pokemon.key === beforeKey) return;
+    if (!FB.on || (S.pokemon.key === beforeKey && JSON.stringify(S.pokemon.growth) === beforeGrowth)) return;
     const sinceXp = Math.max(0, Math.round(kidTotalPts() - Math.min(FINAL_P, Math.round(+S.pokemon.xp || 0))));
-    FB.sync.adoptPartner({ key: S.pokemon.key, sinceXp }).then((r) => { if (session === FB.session && !r.ok && !r.cancelled) fbRetryCard(r.error); });
+    FB.sync.adoptPartner({ key: S.pokemon.key, sinceXp, growth: S.pokemon.growth }).then((r) => { if (session === FB.session && !r.ok && !r.cancelled) fbRetryCard(r.error); });
   };
 
   // 4) 백업 내보내기: 부모만 · Firestore 전체 백업(1MiB 미만 조각)
