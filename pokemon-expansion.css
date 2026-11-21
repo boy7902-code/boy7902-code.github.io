@@ -19,3 +19,6 @@
  .dex-modal .dex-panes{display:flex;flex-direction:column;overflow-y:auto;min-height:160px;gap:10px}.dex-modal .dex-grid{flex:0 0 auto;max-height:170px;overflow-y:auto}.dex-modal .dex-side{flex:0 0 auto;max-height:none;overflow:visible;padding-bottom:12px}
  .dex-modal .dex-tools{gap:6px;margin-bottom:7px}.dex-modal .growth-generation{min-height:38px;padding:6px}
 }
+
+/* Keep result counts readable beside the flexible search input. */
+#partnerSearch{min-width:0}#partnerCount{flex:0 0 auto;white-space:nowrap;word-break:keep-all}
