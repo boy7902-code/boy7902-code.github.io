@@ -51,10 +51,10 @@
   }
   function deletionImpact(raw, date, mid) {
     const row = normalize(raw).days[date];
-    if (!row || row.skip || row.finalized || !row.required.includes(mid)) return null;
+    if (!row || row.skip || (root.FamilyHolidays && root.FamilyHolidays.isRest(date)) || row.finalized || !row.required.includes(mid)) return null;
     return { done: row.done.includes(mid) };
   }
-  const isSunday = (date) => validDate(date) && new Date(date + 'T12:00:00Z').getUTCDay() === 0;
+  const isWeekend = (date) => validDate(date) && [0, 6].includes(new Date(date + 'T12:00:00Z').getUTCDay());
   function status(raw, today) {
     const journal = normalize(raw);
     if (!validDate(today) || !journal.started) return { count: 0, started: '', known: false };
@@ -62,15 +62,15 @@
     for (let i = 0; i < KEEP_DAYS; i += 1, day = prevDay(day)) {
       if (day < journal.started) { exhausted = false; break; }
       const row = journal.days[day];
-      // Sunday is a calendar exemption, not an inferred mission-free day.
+      // Saturday and Sunday are calendar exemptions, not an inferred mission-free day.
       // Do not create a row or a completion for a day never observed.
-      if (!row && isSunday(day)) continue;
+      if (isWeekend(day) || (root.FamilyHolidays && root.FamilyHolidays.name(day))) continue;
       if (!row) { gap = true; exhausted = false; break; }
       if (row.skip) continue;
       if (row.required.every((id) => row.done.includes(id))) count += 1;
       else if (day !== today) { exhausted = false; break; } // Today stays open until midnight.
     }
-    return { count, started: journal.started, known: !!journal.days[today] || isSunday(today), gap, capped: exhausted && day >= journal.started };
+    return { count, started: journal.started, known: !!journal.days[today] || isWeekend(today) || !!(root.FamilyHolidays && root.FamilyHolidays.name(today)), gap, capped: exhausted && day >= journal.started };
   }
   root.FamilyStreak = Object.freeze({ normalize, observe, status, validDate, kstDate, deletionImpact });
 })(globalThis);
