@@ -1,7 +1,7 @@
 /* Selected tablet layout. Read-only display: no persisted values or reward rules. */
 (()=>{
  function install(){
- const $=s=>document.querySelector(s),media=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)');
+ const $=s=>document.querySelector(s),media=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)'),phone=matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)');
  if(!window.FamilyRefresh||!$('#choreList'))return;
  const top=document.createElement('div');top.className='selected-top';
  const lower=document.createElement('div');lower.className='selected-lower';
@@ -11,16 +11,20 @@
  const primary=document.createElement('div');primary.className='selected-primary';
  const caption=document.createElement('button');caption.type='button';caption.className='selected-stamp-caption';caption.addEventListener('click',()=>$('#stampBoardOpenBtn').click());
  const chipsHome=document.createComment('weather-chips-home');$('#wChips').before(chipsHome);
- let active=false,queued=false;
+ let active='initial',queued=false;
  function update(){
   queued=false;
-  const on=media.matches&&!document.body.classList.contains('family-information-open');
-  if(on!==active){if($('#screenDetail')?.open)$('#screenDetailClose').click();active=on;document.body.classList.toggle('selected-dashboard',on);
-   if(on){$('.topbar').insertBefore(top,$('.top-actions'));top.append(nodes[0],nodes[1]);$('.mission-area').append(lower);lower.append(nodes[2],nodes[3],nodes[4]);$('#cardChores>.card-head').append(nodes[5]);$('#cardOverview').append(lead,primary);$('#outfitSuggestions').append($('#wChips'));nodes[2].append(caption);}
-   else{nodes.forEach((n,i)=>homes[i].after(n));chipsHome.after($('#wChips'));top.remove();lower.remove();lead.remove();primary.remove();caption.remove();}
+  const mode=document.body.classList.contains('family-information-open')?'':media.matches?'tablet':phone.matches?'phone':'';
+  if(mode!==active){
+   if($('#screenDetail')?.open)$('#screenDetailClose').click();
+   nodes.forEach((n,i)=>homes[i].after(n));chipsHome.after($('#wChips'));
+   top.remove();lower.remove();lead.remove();primary.remove();caption.remove();
+   active=mode;document.body.classList.toggle('selected-dashboard',mode==='tablet');document.body.classList.toggle('selected-phone',mode==='phone');
+   if(mode==='tablet'){$('.topbar').insertBefore(top,$('.top-actions'));top.append(nodes[0],nodes[1]);$('.mission-area').append(lower);lower.append(nodes[2],nodes[3],nodes[4]);$('#cardChores>.card-head').append(nodes[5]);$('#cardOverview').append(lead,primary);$('#outfitSuggestions').append($('#wChips'));nodes[2].append(caption);}
+   if(mode==='phone'){$('#cardChores').before(top);top.append(nodes[0],nodes[1]);$('#cardChores').append(lower);lower.append(nodes[3]);}
   }
-  if(!on)return;
   top.hidden=$('#mainGrid').hidden;
+  if(mode!=='tablet')return;
   // Weather cache is the same snapshot renderWeather saves before updating #wChips.
   try{const weather=JSON.parse(localStorage.getItem('family-dashboard:weather')||'null');
    if(weather?.now&&Math.round(weather.now.temperature_2m)===parseInt($('#wTempCard').textContent,10)){
@@ -44,7 +48,7 @@
  }
  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
  const obs=new MutationObserver(queue);['#choreList','#wChips','#outfitSuggestions','#readingProgress','#mainGrid'].forEach(s=>obs.observe($(s),{childList:true,subtree:true,characterData:true,attributes:s==='#mainGrid',attributeFilter:s==='#mainGrid'?['hidden']:undefined}));
- obs.observe(document.body,{attributes:true,attributeFilter:['class']});media.addEventListener('change',queue);update();
+ obs.observe(document.body,{attributes:true,attributeFilter:['class']});media.addEventListener('change',queue);phone.addEventListener('change',queue);update();
  }
  if(document.readyState!=='complete')document.addEventListener('DOMContentLoaded',install);else install();
 })();
