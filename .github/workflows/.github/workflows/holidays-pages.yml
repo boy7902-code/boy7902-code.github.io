@@ -1,0 +1,62 @@
+name: Refresh official Korean holidays and deploy
+on:
+  schedule:
+    - cron: '23 21 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: family-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Refresh only public holiday data
+        if: github.event_name != 'push'
+        env:
+          KASI_SERVICE_KEY: ${{ secrets.KASI_SERVICE_KEY }}
+        run: python3 tools/fetch-kr-holidays.py data/kr-holidays.json
+      - name: Save validated official list
+        if: github.event_name != 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/kr-holidays.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh official Korean holiday list'
+            git push
+          fi
+      - name: Syntax and unit checks
+        run: |
+          node --check holiday-core.js
+          node --check app-dex-integrated.js
+          node --test tools/streak-core.test.mjs tools/holiday-core.test.mjs tools/content-validation.test.mjs
+      - uses: actions/configure-pages@v5
+      - name: Prepare static site
+        run: |
+          mkdir _site
+          rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' --exclude='_site' --exclude='screenshots' --exclude='tools' ./ _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy current checked site
+        id: deployment
+        uses: actions/deploy-pages@v4
