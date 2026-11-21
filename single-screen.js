@@ -7,7 +7,8 @@
   const wide=matchMedia('(min-width:1024px)');
   function pageMissions() {
     const rows=Array.from(document.querySelectorAll('#choreList > .chore'));
-    const per=wide.matches?(matchMedia('(orientation:landscape)').matches?8:6):rows.length||1;
+    const trial=matchMedia('(min-width:1024px) and (max-width:1366px) and (orientation:landscape)').matches;
+    const per=trial?rows.length||1:wide.matches?(matchMedia('(orientation:landscape)').matches?8:6):rows.length||1;
     const pages=Math.max(1,Math.ceil(rows.length/per));
     missionPage=Math.min(missionPage,pages-1);
     rows.forEach((r,i)=>r.classList.toggle('ss-page-hidden', moved!==$('#choreList') && (i<missionPage*per||i>=(missionPage+1)*per)));
@@ -95,14 +96,14 @@
   }
   function showPhoto() {
     const image=$('#familyPhoto');const empty=$('#familyPhotoEmpty');
-    image.hidden=!urls.length;empty.hidden=!!urls.length;
+    image.hidden=!urls.length;empty.hidden=true;$('#standby').classList.toggle('has-photo',!!urls.length);
     if(urls.length) { image.src=urls[photoIndex%urls.length];image.alt=`가족 사진 ${(photoIndex%urls.length)+1} / ${urls.length}`; }
     else image.removeAttribute('src');
     $('#familyPhotoCount').textContent=urls.length?`${photoIndex%urls.length+1} / ${urls.length}`:'사진을 아직 선택하지 않았어요';
   }
   function resetPhotoTimer() {
     clearInterval(photoTimer);photoTimer=null;
-    if(!paused && !document.hidden && !$('#standby').hidden && urls.length>1) photoTimer=setInterval(()=>{photoIndex=(photoIndex+1)%urls.length;showPhoto();},10000);
+    if(!paused && !document.hidden && !$('#standby').hidden && new Date().getHours()>=7 && new Date().getHours()<21 && urls.length>1) photoTimer=setInterval(()=>{if(new Date().getHours()>=21||new Date().getHours()<7)return;photoIndex=(photoIndex+1)%urls.length;showPhoto();},10000);
   }
   function setPhotos(list) {
     urls.forEach(URL.revokeObjectURL);photos=list||[];urls=photos.map(x=>URL.createObjectURL(x));photoIndex=0;showPhoto();resetPhotoTimer();
