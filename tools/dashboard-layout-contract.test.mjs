@@ -40,12 +40,12 @@ test('wish balance shares a single header line and preserves a usable list viewp
   assert.match(css, /@media\s*\(max-width:\s*1023px\)\s*\{\s*#cardWish\s*\{\s*height:\s*auto;\s*min-height:\s*0;\s*max-height:\s*none/s);
 });
 
-test('layout checker verifies the last wish item, minimum list height, and 6-week Sunday case', () => {
+test('layout checker verifies the last wish item, minimum list height, and 6-week Saturday case', () => {
   assert.match(layoutCheck, /result\["wish"\]\["lastItemFullyReachable"\]/);
   assert.match(layoutCheck, /result\["wish"\]\["clientH"\]\s*>=\s*32/);
   assert.match(layoutCheck, /weekCount[^\n]*== 6/);
   assert.match(layoutCheck, /cellCount[^\n]*== 42/);
-  assert.match(layoutCheck, /isSunday/);
+  assert.match(layoutCheck, /isSaturday/);
 });
 
 test('stamp-board status and reward policy are separate, without repeated accrual guidance', () => {
