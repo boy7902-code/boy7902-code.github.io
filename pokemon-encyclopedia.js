@@ -93,6 +93,7 @@
     const img = element('img','pdx-detail-art');img.src=basic.art;img.alt=(entry && entry.name) || basic.name;img.decoding='async';img.addEventListener('error',()=>{img.hidden=true;const fallback=element('p','pdx-image-fallback pdx-image-large','그림을 불러오지 못했어요');img.after(fallback);},{once:true});hero.append(img);
     hero.append(element('p','pdx-detail-types',((entry && entry.types) || basic.types || []).join(' · ')));
     const facts = element('div'); renderFacts(facts,id);body.append(hero,facts);dialog.append(header,body);
+    dialog.addEventListener('keydown',e=>{if(e.key === 'Escape') e.stopPropagation();});
     dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
     dialog.addEventListener('click',e=>{if(e.target===dialog)close();});
     document.body.append(dialog);dialog.showModal();exit.focus();
