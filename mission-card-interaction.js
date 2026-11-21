@@ -16,7 +16,7 @@
   const end=(e,cancel)=>{if(!gesture||e.pointerId!==gesture.id)return;const g=gesture;gesture=null;if(cancel||g.moved||Math.abs((g.card.closest('.mission-scroll')?.scrollLeft||0)-g.scroll)>3)blocked={card:g.card,until:performance.now()+700};};
   document.addEventListener('pointerup',e=>end(e,false),true);
   document.addEventListener('pointercancel',e=>end(e,true),true);
-  document.addEventListener('click',e=>{const c=cardOf(e.target);if(!c||excluded(e.target))return;if((blocked&&blocked.card===c&&performance.now()<blocked.until)||(gesture&&gesture.moved)){e.preventDefault();e.stopImmediatePropagation();}},true);
-  document.addEventListener('keydown',e=>{const c=cardOf(e.target);if(!c||e.target!==c||e.repeat||!['Enter',' '].includes(e.key))return;e.preventDefault();c.click();},true);
+  document.addEventListener('click',e=>{const c=cardOf(e.target);if(!c||excluded(e.target))return;if((blocked&&performance.now()<blocked.until)||(gesture&&gesture.moved)){e.preventDefault();e.stopImmediatePropagation();}},true);
+  document.addEventListener('keydown',e=>{const c=cardOf(e.target);if(!c||e.target!==c||e.repeat||!['Enter',' '].includes(e.key))return;e.preventDefault();blocked=null;c.click();},true);
   decorate();new MutationObserver(decorate).observe(document.querySelector('#choreList'),{childList:true});
 })();
