@@ -1263,7 +1263,7 @@ export function createFamilySync(deps = {}) {
     if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
     const familySnap = await sdk.getDoc(docRef(root));
     if (snapExists(familySnap)) records.push({ path: root, data: toPlain(familySnap.data()) });
-    for (const sub of ['stats/summary', 'child_state/partner', 'private/parent_config']) {
+    for (const sub of ['stats/summary', 'child_state/partner', 'child_state/today_school', 'child_state/event_center', 'child_state/custom_alarms', 'child_state/mission_streak', 'private/parent_config']) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
       const path = pathOf(sub);
       const s = await sdk.getDoc(docRef(path));
@@ -1490,4 +1490,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-         }
+                                                                                    }
