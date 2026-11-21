@@ -153,3 +153,5 @@ body.dashboard-refresh.selected-dashboard #cardChores .refresh-partner-info{min-
 body.dashboard-refresh #cardChores #choreList>.chore .mission-streak-star{position:absolute;top:4px;right:8px;width:34px;height:34px;pointer-events:none;z-index:1;display:block;}
 body.dashboard-refresh #cardChores .mission-streak-star svg{display:block;width:100%;height:100%;overflow:visible;}
 body.dashboard-refresh.selected-dashboard #cardChores #choreList>.chore{padding-top:42px!important;}
+/* Transient notices must not cover the save/cancel row on a short screen. */
+body:has(#modal:not([hidden])) .toast-wrap{visibility:hidden;}
