@@ -28,7 +28,7 @@
   const menu = document.createElement('details'); menu.className='display-menu';
   const summary=document.createElement('summary');summary.textContent='보기 · 설정';menu.append(summary);
   const controls=document.createElement('div');controls.className='display-menu-controls';
-  [...actions.children].forEach(n=>{if(n!==$('#parentBtn'))controls.append(n);});
+  [...actions.children].forEach(n=>{if(n!==$('#parentBtn') && n!==$('#safeRefreshBtn'))controls.append(n);});
   menu.append(controls);actions.append(menu);
   document.addEventListener('pointerdown',e=>{if(!actions.contains(e.target))menu.open=false;});
   controls.addEventListener('click',e=>{if(e.target.closest('button'))menu.open=false;});
