@@ -29,10 +29,7 @@
       }
      }
     }
-    let caption=card.querySelector('.mission-stage-note');
-    if(!caption){caption=document.createElement('span');caption.className='mission-stage-note';img.after(caption);}
-    caption.textContent=note;caption.hidden=!note;
-    caption.title=original===132?'진화 관계가 아닌 종족값 합계에 따른 장식 예시':('미션 보상에 따른 장식 그림'+(original===133?' · 이브이 진화 8갈래 중 예시 · 파트너 선택과 무관':''));
+    card.querySelector('.mission-stage-note')?.remove();
     card.dataset.missionArtSpecies=String(id);
     const src=img.src.replace(/\/\d+\.png$/,'/'+id+'.png');if(img.src!==src){img.hidden=false;img.src=src;}
    });
