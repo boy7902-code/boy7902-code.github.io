@@ -1267,8 +1267,8 @@ document.documentElement.style.setProperty("--vh",window.innerHeight*.01+"px")}w
 ;window.addEventListener("orientationchange",()=>setTimeout(setVH,250));setVH();window.addEventListener("beforeunload",()=>{try{
 localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}});const FB={on:false,role:"",uid:"",sync:null,core:null,session:0,blocked:false,busy:false,
 settling:false,timer:null,snap:null,parentPinReady:false,readyData:false,received:new Set,requiredData:new Set,summary:null,partner:{},monthLogs:[],
-pendingLogs:[],lastStats:null,notedDenied:"",pill:null,gate:null,card:null,schoolSeeded:false,alarmsSeeded:false,deleted:new Map};function fbPillEl(){
-if(FB.pill)return FB.pill;const el=document.createElement("div");el.className="fb-pill";el.id="fbPill"
+pendingLogs:[],lastStats:null,notedDenied:"",pill:null,gate:null,card:null,schoolSeeded:false,alarmsSeeded:false,missionOps:new Map,deleted:new Map}
+;function fbPillEl(){if(FB.pill)return FB.pill;const el=document.createElement("div");el.className="fb-pill";el.id="fbPill"
 ;el.innerHTML='<span class="fb-dot"></span><span class="fb-text">로컬 모드</span>';el.addEventListener("click",()=>{if(!FB.on)fbSignIn()})
 ;const host=document.querySelector(".top-actions")||document.querySelector(".topbar")||document.body;host.appendChild(el);FB.pill=el;return el}
 function fbStatus(text,kind){const el=fbPillEl();el.dataset.kind=kind||"off";el.querySelector(".fb-text").textContent=text
@@ -1279,9 +1279,9 @@ const state=kind==="on"?"ok":kind==="busy"?"busy":kind==="bad"?"err":"off";const
 function fbResetSession({dropPin:dropPin=true}={}){FB.session+=1;clearTimeout(FB.timer);FB.timer=null;if(FB.sync&&FB.sync.stopAll)FB.sync.stopAll();FB.on=false
 ;FB.role="";FB.uid="";FB.blocked=false;FB.busy=false;FB.settling=false;FB.snap=null;FB.streak=null;FB.streakSig="";FB.streakBusy=false;FB.parentPinReady=false
 ;FB.readyData=false;FB.received=new Set;FB.requiredData=new Set;FB.summary=null;FB.partner={};FB.monthLogs=[];FB.pendingLogs=[];FB.lastStats=null
-;stampCompletedSeen=null;stampCompletingUntil=0;FB.deleted.clear();window.FamilyParentSessionGuard.reset({session:parentSession,state:S,storage:localStorage,
-key:KEY,dropPin:dropPin});renderParentBtn();renderStampBoards();if(FB.gate)fbGate(false);return FB.session}function fbSignIn(){const boot=window.FamilySyncBoot
-;if(!boot||!boot.signIn){toast("로그인 모듈을 아직 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.","coral",3200);return}fbStatus("로그인 창을 여는 중…","busy")
+;stampCompletedSeen=null;stampCompletingUntil=0;FB.deleted.clear();FB.missionOps.clear();window.FamilyParentSessionGuard.reset({session:parentSession,state:S,
+storage:localStorage,key:KEY,dropPin:dropPin});renderParentBtn();renderStampBoards();if(FB.gate)fbGate(false);return FB.session}function fbSignIn(){
+const boot=window.FamilySyncBoot;if(!boot||!boot.signIn){toast("로그인 모듈을 아직 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.","coral",3200);return}fbStatus("로그인 창을 여는 중…","busy")
 ;Promise.resolve(boot.signIn()).then(r=>{if(!r||r.cancelled){fbStatus("로그인 전 · 눌러서 로그인","off");return}if(r.redirected)fbStatus("로그인 확인 중…","busy")}).catch(e=>{
 const code=e&&e.code||"";fbStatus("로그인 전 · 눌러서 로그인","off")
 ;if(code==="auth/unauthorized-domain")toast("이 주소에서는 로그인할 수 없어요. 관리자에게 도메인 승인을 요청해 주세요.","coral",5200);else if(code==="auth/blocked-by-popup-policy"||code==="auth/popup-blocked")toast("팝업이 막혔어요. 브라우저의 팝업 차단을 꺼 주세요.","coral",4600);else toast("로그인하지 못했어요 ("+(code||"알 수 없는 오류")+")","coral",4600)
@@ -1321,7 +1321,8 @@ const el=document.createElement("div");el.className="fb-card";el.id="fbCard";el.
 if(FB.role!=="child"||!info||info.retryable!==false)return false;try{const k="family-dashboard:needs-parent";const arr=JSON.parse(localStorage.getItem(k)||"[]")
 ;arr.unshift({at:hhmm(),title:info.title||"",kind:info.kind||"",message:info.message||""});localStorage.setItem(k,JSON.stringify(arr.slice(0,20)))}catch(e){}
 return true}function fbMergeLogs(){const seen=new Set;const now=Date.now();FB.deleted.forEach((at,k)=>{if(now-at>2e4)FB.deleted.delete(k)})
-;return[...FB.monthLogs,...FB.pendingLogs].map(d=>({...d,id:d.id||`${d.date}_${d.mid}_${d.member||KID_ID}`
+;const writing=[...FB.missionOps.values()].filter(op=>op.session===FB.session&&op.kind==="write").map(op=>op.log)
+;return[...writing,...FB.monthLogs,...FB.pendingLogs].map(d=>({...d,id:d.id||`${d.date}_${d.mid}_${d.member||KID_ID}`
 })).filter(l=>!FB.deleted.has(fbDocIdOf(l))).filter(l=>{if(seen.has(l.id))return false;seen.add(l.id);return true})}
 const fbDocIdOf=l=>`${l.date}_${l.mid}_${l.member||KID_ID}`;function fbMergeCollection(key,docs){const items=docs.map(d=>{const{id:id,...rest}=d;return{...rest,
 id:rest.id||id}});if(key==="missions"){S.missions=items;return}if(key==="members"){if(items.length)S.members=items;return}
@@ -1413,15 +1414,21 @@ const code=e&&e.code||"";fbStatus("로그인 전 · 눌러서 로그인","off")
 ;if(code&&code!=="auth/popup-closed-by-user"&&code!=="auth/cancelled-popup-request"){toast("로그인을 마무리하지 못했어요 ("+code+") · 다시 시도해 주세요.","coral",5200)}})}
 return true}function fbBootWait(tries=0){if(window.FamilySyncBoot&&window.FamilySyncBoot.ready&&window.FamilySync){fbStart(window.FamilySyncBoot);return}
 if(tries>40){fbStatus("로컬 모드","off");return}setTimeout(()=>fbBootWait(tries+1),300)}const fbBaseToggle=toggleMission;toggleMission=function(id){
-const session=FB.session;const c=S.missions.find(x=>x.id===id);const wasDone=!!(c&&c.doneOn===todayStr());const member=c?c.member||KID_ID:KID_ID
-;const completionLog=c&&(S.logs||[]).find(x=>x.mid===id&&x.date===todayStr()&&(x.member||KID_ID)===member)
-;if(wasDone&&FB.on&&completionLog&&completionLog.settled===true){toast("이미 정산된 기록은 취소할 수 없어요","",3e3);return}if(wasDone&&FB.on&&completionLog){
-FB.deleted.set(fbDocIdOf(completionLog),Date.now())}const out=fbBaseToggle(id);if(!FB.on||!c)return out;if(!wasDone){FB.sync.writeLog(c,{by:FB.uid,member:member
-}).then(r=>{if(session!==FB.session)return;if(!r.ok&&!r.cancelled){fbBaseToggle(id);toast("기록을 보내지 못해 체크를 되돌렸어요","coral",3e3);fbRetryCard(r.error)}})}else{
-FB.sync.deleteLog({date:todayStr(),mid:c.id,member:member,settled:!!(completionLog&&completionLog.settled)}).then(r=>{if(session!==FB.session)return
-;if(!r.ok&&!r.cancelled)fbRetryCard(r.error)})}fbPushNow();return out};const fbBaseAsParent=asParent;asParent=function(reason,run){if(FB.on&&FB.role==="child"){
-toast("이 기기는 아이 계정이에요. 보호자 기기에서 해 주세요.","",3400);return Promise.resolve()}return fbBaseAsParent(reason,run)};const fbBasePickPartner=pickPartner
-;pickPartner=function(key){const session=FB.session;const beforeKey=S.pokemon.key,beforeGrowth=JSON.stringify(S.pokemon.growth);fbBasePickPartner(key)
+const session=FB.session;const c=S.missions.find(x=>x.id===id);if(!FB.on||!c)return fbBaseToggle(id);const member=c.member||KID_ID;const logId=fbDocIdOf({
+date:todayStr(),mid:id,member:member});if(FB.missionOps.has(logId)){toast("미션 기록을 저장 중이에요. 잠시만 기다려 주세요","",1800);return}const wasDone=c.doneOn===todayStr()
+;const completionLog=(S.logs||[]).find(x=>fbDocIdOf(x)===logId);if(wasDone&&completionLog&&completionLog.settled===true){toast("이미 정산된 기록은 취소할 수 없어요","",3e3)
+;return}if(wasDone)FB.deleted.set(logId,Date.now());else FB.deleted.delete(logId);const out=fbBaseToggle(id);const localLog=!wasDone?{
+...(S.logs||[]).find(x=>fbDocIdOf(x)===logId),id:logId,settled:false}:null;const op={session:session,kind:wasDone?"delete":"write",log:localLog}
+;FB.missionOps.set(logId,op);const mission={...c};const request=wasDone?()=>FB.sync.deleteLog({date:todayStr(),mid:id,member:member,
+settled:!!(completionLog&&completionLog.settled)}):()=>FB.sync.writeLog(mission,{by:FB.uid,member:member});Promise.resolve().then(request).then(r=>{
+if(session!==FB.session||FB.missionOps.get(logId)!==op)return;if(r.ok){const without=rows=>rows.filter(x=>fbDocIdOf(x)!==logId)
+;FB.monthLogs=without(FB.monthLogs);FB.pendingLogs=without(FB.pendingLogs);if(!wasDone){FB.deleted.delete(logId);const accepted={...r.payload||localLog,id:logId
+};FB.monthLogs.push(accepted);if(accepted.settled!==true)FB.pendingLogs.push(accepted)}}else if(!r.cancelled){if(wasDone)FB.deleted.delete(logId)
+;fbRetryCard(r.error)}FB.missionOps.delete(logId);fbRecalc()}).catch(error=>{if(session!==FB.session||FB.missionOps.get(logId)!==op)return
+;if(wasDone)FB.deleted.delete(logId);FB.missionOps.delete(logId);fbRecalc();fbRetryCard(FB.core.classifyFirestoreError(error))});fbPushNow();return out}
+;const fbBaseAsParent=asParent;asParent=function(reason,run){if(FB.on&&FB.role==="child"){toast("이 기기는 아이 계정이에요. 보호자 기기에서 해 주세요.","",3400)
+;return Promise.resolve()}return fbBaseAsParent(reason,run)};const fbBasePickPartner=pickPartner;pickPartner=function(key){const session=FB.session
+;const beforeKey=S.pokemon.key,beforeGrowth=JSON.stringify(S.pokemon.growth);fbBasePickPartner(key)
 ;if(!FB.on||S.pokemon.key===beforeKey&&JSON.stringify(S.pokemon.growth)===beforeGrowth)return
 ;const sinceXp=Math.max(0,Math.round(kidTotalPts()-Math.min(FINAL_P,Math.round(+S.pokemon.xp||0))));FB.sync.adoptPartner({key:S.pokemon.key,sinceXp:sinceXp,
 growth:S.pokemon.growth}).then(r=>{if(session===FB.session&&!r.ok&&!r.cancelled)fbRetryCard(r.error)})};const exportJSONLocal=exportJSON;exportJSON=function(){
