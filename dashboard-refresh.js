@@ -8,7 +8,7 @@
   const nav = $('#appTabs');
   const family = document.createElement('button');
   family.type = 'button'; family.className = 'family-nav';
-  family.textContent = '달력 · 학교 · 선물';
+  family.textContent = '달력 · 성장';
   family.setAttribute('aria-pressed','false');
   family.setAttribute('aria-controls','familyInformation');
   $('.col-left').id = 'familyInformation';
@@ -38,7 +38,7 @@
   ['#memberStats','#missionBadges','#todayMeter','.char-aside'].forEach(sel=>{const n=$(sel);if(n)records.append(n);});
   $('.col-left').append(records);
   const recordsTab=document.createElement('button');recordsTab.type='button';recordsTab.dataset.records='true';recordsTab.className='family-nav';recordsTab.textContent='성장 기록';recordsTab.setAttribute('aria-pressed','false');
-  nav.insertBefore(recordsTab,nav.children[2]);
+  recordsTab.hidden=true;
   recordsTab.addEventListener('click',()=>{showFamily(true);body.classList.add('records-open');recordsTab.setAttribute('aria-pressed','true');family.setAttribute('aria-pressed','false');});
   nav.querySelectorAll('[data-apptab]').forEach(b=>b.addEventListener('click',()=>{body.classList.remove('records-open');recordsTab.setAttribute('aria-pressed','false');}));
   $('#cardChores>.card-head .card-tools').prepend($('.mission-pager'));
