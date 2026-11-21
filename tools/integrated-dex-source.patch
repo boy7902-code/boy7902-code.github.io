@@ -1,69 +1,207 @@
 --- a/app.js
 +++ b/app.js
-@@ -2585,11 +2585,18 @@
+@@ -241,6 +241,11 @@
+   // 피츄(No.172)는 2세대 유아 진화지만 피카츄 계열의 첫 단계라 데이터에만 함께 담았습니다 (151 도감 번호에는 넣지 않음)
+   POKE_INFO[172] = { id: 172, name: '피츄', types: ['전기'] };
+ 
++  Object.values(window.PokemonEncyclopediaData?.species || {}).forEach((e) => {
++    if (e.id>151 && e.id<=1025) { POKE_INFO[e.id]={id:e.id,name:e.name,types:e.types};if(!POKE_NOS.includes(e.id))POKE_NOS.push(e.id); }
++  });
++  POKE_NOS.sort((a,b)=>a-b);
++
+   const POKE_TYPE_TINT = {
+     '풀': '#5fae7f', '독': '#a26bd6', '불꽃': '#f0803c', '비행': '#8f9ee0', '물': '#4f9fdf',
+     '벌레': '#94b93c', '노말': '#b0a999', '전기': '#e5b52b', '땅': '#c9964f', '페어리': '#eb9bc9',
+@@ -250,7 +255,7 @@
+   const pokeInfo = (id) => POKE_INFO[id] || { id, name: `No.${id}`, types: [] };
+   const pokeName = (id) => pokeInfo(id).name;
+   const pokeTint = (id) => POKE_TYPE_TINT[pokeInfo(id).types[0]] || '#9aa4bd';
+-  const pokeNoText = (id) => (id <= 151 ? `No.${pad(id)}` : '');
++  const pokeNoText = (id) => `No.${pad(id)}`;
+ 
+   /* 진화 계열 — 한 줄이 파트너가 함께 자라는 한 계열입니다.
+      PokeAPI evolution-chain 을 1세대 종만 남겨 정리했고, 갈라지는 계열(이브이)은 줄마다 따로 두었습니다. */
+@@ -332,6 +337,17 @@
+   ];
+ 
+   const LINES = GEN1_LINES.map(buildLine).concat(EXTRA_LINES);
++  const legacyMembers = new Set(LINES.map(l=>l.members.join('-')));
++  (window.PokemonGrowthPaths || []).forEach((entry) => {
++    const ids=entry.ids;
++    if(legacyMembers.has(ids.join('-')))return;
++    const l=buildLine(ids);
++    if(entry.artIds) {
++      l.stages.forEach((st,i)=>{const j=Math.min(i,ids.length-1);st.artId=entry.artIds[j];if(entry.forms[j])st.name+=(" ("+entry.forms[j]+")");});
++      l.label= l.stages[0].name + (ids.length>1?' → '+pokeName(ids[ids.length-1]):'');
++    } else if(LINES.some(x=>x.members[0]===ids[0])) l.label=pokeName(ids[0])+' → '+pokeName(ids[ids.length-1]);
++    LINES.push(l);
++  });
+   const LINE_BY_KEY = {};
+   LINES.forEach((l) => { LINE_BY_KEY[l.key] = l; });
+ 
+@@ -371,7 +387,7 @@
+      큼직하게 키워도 화질이 그대로라, 움직임은 CSS 애니메이션(숨쉬기·둥실둥실·점프)으로 살립니다.
+      그림을 못 받으면 로컬 SVG로 자동 대체됩니다. */
+   const SPRITE_ROOT = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+-  const POKE_ART = (id) => `${SPRITE_ROOT}/other/official-artwork/${id}.png`;
++  const POKE_ART = (id) => window.PokemonEncyclopediaData?.species?.[String(id)]?.artworkUrl || `${SPRITE_ROOT}/other/official-artwork/${id}.png`;
+   const POKE_ART_SHINY = (id) => `${SPRITE_ROOT}/other/official-artwork/shiny/${id}.png`;
+ 
+   // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
+@@ -402,9 +418,10 @@
+   function pokeImg(stage, cls, tint, opts = {}) {
+     const color = tint || stage.tint || pokeTint(stage.id);
+     const shiny = !!(opts.shiny || stage.shiny);
+-    const src = shiny ? POKE_ART_SHINY(stage.id) : POKE_ART(stage.id);
++    const artId=stage.artId||stage.id;
++    const src = shiny ? POKE_ART_SHINY(artId) : POKE_ART(artId);
+     return `<img class="${cls}" src="${src}" alt="${esc(stage.name)}" data-poke="${stage.id}" data-poke-name="${esc(stage.name)}"`
+-      + ` data-fallback="${esc(POKE_ART(stage.id))}" data-fallback2="${esc(pokeFallback(stage, color))}"`
++      + ` data-fallback="${esc(POKE_ART(artId))}" data-fallback2="${esc(pokeFallback(stage, color))}"`
+       + ` loading="${opts.eager ? 'eager' : 'lazy'}" decoding="async" draggable="false">`;
+   }
+ 
+@@ -2485,7 +2502,7 @@
+   function renderDex() {
+     renderPlayground();   // 🏡 놀이방 — 포인트·파트너가 바뀌면 친구 구성도 따라 바뀝니다
+     const box = $('#dexRow');
+-    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/151`;
++    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/${POKE_NOS.length}`;
+     if (!box) return;
+     const dex = S.pokemon.dex || [];
+     if ($('#dexTrophyCount')) $('#dexTrophyCount').textContent = dex.length ? `${dex.length}계열 완성` : '아직 없어요';
+@@ -2580,30 +2597,32 @@
+   }
+ 
+   /* ---- 🏆 151 도감 모달: 획득 상태·실루엣·진화 단계 탐색 ---- */
+-  const DEXUI = { q: '', filter: 'all', sel: 25 };
++  const DEXUI = { q: '', filter: 'all', gen:0, sel: 25 };
++  const pokemonGen=id=>[151,251,386,493,649,721,809,905,1025].findIndex(n=>id<=n)+1;
+   const DEX_FILTERS = [
      { key: 'all', label: '전체' },
      { key: 'got', label: '획득' },
      { key: 'miss', label: '미획득' },
-+    { key: 'info', label: '추가 정보' },
++
    ];
  
    function dexFilteredIds() {
-     const q = DEXUI.q.trim();
+-    const q = DEXUI.q.trim();
 -    return POKE_NOS.filter((id) => {
-+    return POKE_NOS.concat(window.PokemonExpansionData?.ids || []).filter((id) => {
-+      if (id>151) {
-+        if(DEXUI.filter==='got'||DEXUI.filter==='miss')return false;
-+        const e=window.PokemonEncyclopediaData.species[String(id)];
-+        return !q||e.name.includes(q)||String(id)===q||('no'+id)===q.toLowerCase();
-+      }
-+      if(DEXUI.filter==='info')return false;
-       const got = !!caughtOf(id);
-       if (DEXUI.filter === 'got' && !got) return false;
-       if (DEXUI.filter === 'miss' && got) return false;
-@@ -2603,7 +2610,8 @@
+-      const got = !!caughtOf(id);
+-      if (DEXUI.filter === 'got' && !got) return false;
+-      if (DEXUI.filter === 'miss' && got) return false;
+-      if (!q) return true;
+-      const info = pokeInfo(id);
+-      return info.name.indexOf(q) >= 0 || String(id) === q || pad(id) === q || (`no${id}` === q.toLowerCase());
++    const q=DEXUI.q.trim().toLowerCase();
++    return POKE_NOS.filter(id=>{
++      const got=!!caughtOf(id);
++      if(DEXUI.gen&&pokemonGen(id)!==DEXUI.gen)return false;
++      if(DEXUI.filter==='got'&&!got)return false;
++      if(DEXUI.filter==='miss'&&got)return false;
++      return !q||pokeName(id).toLowerCase().includes(q)||String(id)===q||pad(id)===q||('no'+id)===q;
+     });
+   }
+ 
+   function renderDexFilters() {
++    if(!$('#dexGen')){const select=document.createElement('select');select.id='dexGen';select.className='growth-generation';select.setAttribute('aria-label','세대별 보기');select.innerHTML='<option value="0">모든 세대</option>'+Array.from({length:9},(_,i)=>`<option value="${i+1}">${i+1}세대</option>`).join('');$('#dexFilter').after(select);select.addEventListener('change',()=>{DEXUI.gen=Number(select.value);renderDexGrid();});}
      const box = $('#dexFilter');
      if (!box) return;
      box.innerHTML = DEX_FILTERS.map((f) => {
 -      const n = f.key === 'got' ? caughtCount() : f.key === 'miss' ? (POKE_NOS.length - caughtCount()) : POKE_NOS.length;
-+      const extra=window.PokemonExpansionData?.ids.length||0;
-+      const n=f.key==='info'?extra:f.key==='got'?caughtCount():f.key==='miss'?(POKE_NOS.length-caughtCount()):POKE_NOS.length+extra;
++      const n=f.key==='got'?caughtCount():f.key==='miss'?(POKE_NOS.length-caughtCount()):POKE_NOS.length;
        return `<button type="button" class="dex-fchip${DEXUI.filter === f.key ? ' on' : ''}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`;
      }).join('');
    }
-@@ -2618,6 +2626,10 @@
-     }
-     const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
-     box.innerHTML = ids.map((id) => {
-+      if(id>151){
-+        const e=window.PokemonEncyclopediaData.species[String(id)];
-+        return `<button type="button" class="dex-cell dex-info-cell" data-infoid="${id}" aria-label="${esc(e.name)} No.${id} 정보 보기"><span class="dex-no">${id}</span><img class="dex-mini" src="${esc(e.artworkUrl)}" alt="" loading="lazy" width="72" height="72"><span class="dex-nm">${esc(e.name)}</span></button>`;
-+      }
-       const info = pokeInfo(id);
-       const got = !!caughtOf(id);
-       return `<button type="button" class="dex-cell ${got ? 'got' : 'miss'}${DEXUI.sel === id ? ' sel' : ''}${curId === id ? ' cur' : ''}" data-dexid="${id}" aria-pressed="${DEXUI.sel === id}" aria-label="${esc(info.name)} ${got ? '획득' : '미획득'}" title="${esc(info.name)}${got ? ` · ${esc(caughtOf(id))} 만남` : ' · 아직 만나지 못했어요'}">
-@@ -2655,6 +2667,12 @@
-     const box = $('#dexSide');
-     if (!box) return;
-     const id = DEXUI.sel;
-+    if (id > 151 && window.PokemonExpansionData?.ids.includes(id)) {
-+      const e=window.PokemonEncyclopediaData.species[String(id)];
-+      box.innerHTML=`<div class="dx-hero"><img class="dx-hero-img" src="${esc(e.artworkUrl)}" alt="${esc(e.name)}"></div><div class="dx-title"><span class="dx-no">No.${id}</span><b class="dx-name">${esc(e.name)}</b></div><p class="pdx-note">추가 정보</p><p class="pdx-note">정보 전용 · 입양·획득·보상 대상은 기존과 같아요</p><div id="pokemonEncyclopediaInfo"></div>`;
-+      box.querySelector('.pdx-note').textContent='추가 정보'+(e.displayForm?' · '+e.displayForm:'');
-+      window.PokemonEncyclopedia.render($('#pokemonEncyclopediaInfo'),id,{name:e.name,types:e.types,art:e.artworkUrl});return;
-+    }
-     const info = pokeInfo(id);
-     const tint = pokeTint(id);
-     const got = caughtOf(id);
-@@ -2688,7 +2706,7 @@
+@@ -2624,7 +2643,7 @@
+         <span class="dex-no">${pad(id)}</span>
+         <img class="dex-mini" src="${POKE_ART(id)}" alt="" loading="lazy" decoding="async" draggable="false"
+           data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({ id, name: info.name }, pokeTint(id)))}">
+-        <span class="dex-nm">${got ? esc(info.name) : '???'}</span>
++        <span class="dex-nm">${esc(info.name)}</span><span class="dex-acquire-label">${got?'획득':'미획득'}</span>
+         ${curId === id ? '<span class="dex-cur" aria-hidden="true">★</span>' : ''}
+       </button>`;
+     }).join('');
+@@ -2663,7 +2682,7 @@
+     box.innerHTML = `
+       <div class="dx-hero${got ? '' : ' miss'}">${pokeImg(stageLike, 'dx-hero-img', tint, { eager: true })}</div>
+       <div class="dx-title">
+-        <span class="dx-no">${id <= 151 ? 'No.' + pad(id) : '특별한 친구'}</span>
++        <span class="dx-no">${'No.'+pad(id)}</span>
+         <b class="dx-name">${esc(info.name)}</b>
+       </div>
+       <div class="dx-types">${(info.types.length ? info.types : ['???']).map((t) => `<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t] || '#9aa4bd')}">${esc(t)}</span>`).join('')}</div>
+@@ -2684,11 +2703,12 @@
+     const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
+     const firstGen1 = (curLine.members || []).find((n) => POKE_INFO[n] && n <= 151);
+     const pick = (+id > 0 && POKE_INFO[+id]) ? +id : (curStageId || firstGen1 || 1);
+-    DEXUI.sel = POKE_INFO[pick] && pick <= 151 ? pick : (firstGen1 || 1);
++    DEXUI.sel = POKE_INFO[pick] ? pick : (firstGen1 || 1);
      DEXUI.q = '';
-     DEXUI.filter = 'all';
+-    DEXUI.filter = 'all';
++    DEXUI.filter = 'all';DEXUI.gen=0;
++    if ($('#dexGen'))$('#dexGen').value='0';
      if ($('#dexSearch')) $('#dexSearch').value = '';
 -    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · ${caughtCount()}마리 만남`;
-+    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 수집 151종 · 추가 정보 ${window.PokemonExpansionData?.ids.length||0}종 · ${caughtCount()}마리 만남`;
++    if ($('#dexMeta')) $('#dexMeta').textContent = `전체 ${POKE_NOS.length}종 · ${caughtCount()}마리 만남 · 정보와 성장 경로`;
      renderDexFilters();
      renderDexGrid();
      renderDexSide();
-@@ -5318,6 +5336,8 @@
+@@ -2963,6 +2983,7 @@
+   }
+ 
+   let partnerQuery = '';
++  let partnerPage=0;
+   function renderPartnerGrid() {
+     const grid = $('#partnerGrid');
+     if (!grid) return;
+@@ -2970,9 +2991,11 @@
+     const hit = (l) => !q
+       || l.label.indexOf(q) >= 0
+       || l.members.some((id) => pokeName(id).indexOf(q) >= 0)
+-      || String(l.members[0]) === q;
+-    const gen1 = LINES.filter((l) => l.members.some((id) => id <= 151) && l.key.charAt(0) === 'L' && hit(l));
+-    const extra = EXTRA_LINES.filter(hit);
++      || l.members.some(id=>String(id)===q);
++    const matched=LINES.filter(hit);
++    const pages=Math.max(1,Math.ceil(matched.length/48));partnerPage=Math.min(partnerPage,pages-1);
++    const gen1=matched.slice(partnerPage*48,(partnerPage+1)*48);
++    const extra=[];
+     const card = (p) => {
+       const on = resolvePartnerKey(S.pokemon.key) === p.key;
+       const got = !!dexEntryOf(p.key);
+@@ -2982,11 +3005,13 @@
+         <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
+       </button>`;
+     };
+-    const total = gen1.length + extra.length;
++    const total = matched.length;
+     grid.innerHTML = (total ? '' : '<div class="shop-empty" style="grid-column:1/-1">찾는 포켓몬이 없어요</div>')
+-      + (gen1.length ? `<div class="partner-group-label">1세대 151 · ${gen1.length}계열</div>${gen1.map(card).join('')}` : '')
++      + (gen1.length ? `<div class="partner-group-label">전체 세대 · ${total}계열${total>48?" · "+(partnerPage+1)+"/"+pages+"쪽":""}</div>${gen1.map(card).join('')}` : '')
+       + (extra.length ? `<div class="partner-group-label">다른 세대 친구 · ${extra.length}계열</div>${extra.map(card).join('')}` : '');
+     if ($('#partnerCount')) $('#partnerCount').textContent = `${total}계열`;
++    let pager=$('#partnerPager');if(!pager){pager=document.createElement('div');pager.id='partnerPager';pager.className='growth-pager';grid.after(pager);}
++    pager.innerHTML=pages>1?`<button class="btn sm ghost" data-partnerpage="-1" ${partnerPage===0?'disabled':''}>이전</button><span>${partnerPage+1} / ${pages}</span><button class="btn sm ghost" data-partnerpage="1" ${partnerPage===pages-1?'disabled':''}>다음</button>`:'';
+     checkPokeImages();
+   }
+ 
+@@ -2998,12 +3023,12 @@
+     if (partnerMode === 'adopt') {
+       return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
+     }
+-    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
++    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1,025종 어느 계열이든 이름·번호로 찾아 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
+   }
+ 
+   function openPartnerPicker(mode = 'change') {
+     partnerMode = mode === 'adopt' ? 'adopt' : 'change';
+-    partnerQuery = '';
++    partnerQuery = '';partnerPage=0;
+     if ($('#partnerSearch')) $('#partnerSearch').value = '';
+     $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
+     $('#partnerHint').textContent = partnerHintText();
+@@ -5318,6 +5343,8 @@
      pokeReact($('#sbStage'), $('#sbSay'), name, { text, wiggle: count % 2 === 0, holdMs: 2400 });
    }
    function handleStandbyActivity(event) {
@@ -72,7 +210,7 @@
      if (standbyOn) {
        // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
        if (event.type === 'keydown' || event.type === 'wheel' || event.type === 'scroll') return;
-@@ -5536,6 +5556,7 @@
+@@ -5536,6 +5563,7 @@
    if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
    $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
    if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {
@@ -80,7 +218,20 @@
      const cell = e.target.closest('[data-dexid]');
      if (cell) selectDex(cell.dataset.dexid);
    });
-@@ -5924,6 +5945,7 @@
+@@ -5797,10 +5825,11 @@
+   $('#partnerBtn2').addEventListener('click', () => openPartnerPicker('change'));
+   $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
+   if ($('#partnerSearch')) $('#partnerSearch').addEventListener('input', (e) => {
+-    partnerQuery = e.target.value || '';
++    partnerQuery = e.target.value || '';partnerPage=0;
+     renderPartnerGrid();
+   });
+   $('#partnerModal').addEventListener('click', (e) => { if (e.target.id === 'partnerModal') $('#partnerModal').hidden = true; });
++  $('#partnerModal').addEventListener('click',e=>{const b=e.target.closest('[data-partnerpage]');if(b){partnerPage=Math.max(0,partnerPage+Number(b.dataset.partnerpage));renderPartnerGrid();$('#partnerGrid').scrollTop=0;}});
+   $('#partnerGrid').addEventListener('click', (e) => {
+     const b = e.target.closest('[data-partner]');
+     if (b) pickPartner(b.dataset.partner);
+@@ -5924,6 +5953,7 @@
      notedDenied: '', pill: null, gate: null, card: null,
      schoolSeeded: false,
      alarmsSeeded: false,
@@ -88,7 +239,7 @@
      deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
    };
  
-@@ -5967,7 +5989,7 @@
+@@ -5967,7 +5997,7 @@
      FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
      FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
      stampCompletedSeen = null; stampCompletingUntil = 0;
@@ -97,7 +248,7 @@
      window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
      renderParentBtn();
      renderStampBoards();
-@@ -6138,7 +6160,8 @@
+@@ -6138,7 +6168,8 @@
      const seen = new Set();
      const now = Date.now();
      FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
@@ -107,7 +258,7 @@
        .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
        // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
        .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
-@@ -6482,35 +6505,49 @@
+@@ -6482,35 +6513,49 @@
    toggleMission = function (id) {
      const session = FB.session;
      const c = S.missions.find((x) => x.id === id);
