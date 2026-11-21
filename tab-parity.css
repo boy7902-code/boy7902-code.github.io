@@ -1,0 +1,16 @@
+/* Family and records tabs keep the same information on every screen. */
+body.dashboard-refresh.family-information-open{overflow-y:auto!important}
+body.dashboard-refresh.family-information-open .app{height:auto!important;max-height:none!important;min-height:100dvh!important;overflow:visible!important}
+body.dashboard-refresh.family-information-open #mainGrid{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;flex:none!important}
+body.dashboard-refresh.family-information-open #mainGrid>.col-left{height:auto!important;max-height:none!important;overflow:visible!important}
+body.dashboard-refresh.family-information-open #cardOverview{display:flex!important;flex-direction:column!important;min-height:0!important;height:auto!important;max-height:none!important;padding:18px!important}
+body.dashboard-refresh.family-information-open #cardOverview .card-head{display:flex!important}
+body.dashboard-refresh.family-information-open #cardOverview .outfit-suggestions{display:flex!important}
+body.dashboard-refresh.family-information-open #cardSchool,body.dashboard-refresh.family-information-open #cardWish{height:auto!important;max-height:none!important;min-height:240px!important;overflow:visible!important}
+body.dashboard-refresh.family-information-open .support-grid{height:auto!important;max-height:none!important;overflow:visible!important}
+body.dashboard-refresh.family-information-open #cardOverview .card-title{font-size:18px!important}
+body.dashboard-refresh.family-information-open #cardOverview .card-head{width:100%!important;justify-content:space-between!important}
+body.dashboard-refresh.family-information-open #cardOverview .weather-temp{font-size:32px!important}
+body.dashboard-refresh.family-information-open #cardOverview .weather-icon{font-size:28px!important}
+body.dashboard-refresh.family-information-open #cardOverview .weather-desc,body.dashboard-refresh.family-information-open #cardOverview .weather-week,body.dashboard-refresh.family-information-open #cardOverview .outfit-suggestions{font-size:14px!important}
+body.dashboard-refresh.family-information-open #mainGrid>.col-left>.card{height:auto!important;min-height:70px!important;max-height:none!important;overflow:visible!important;flex:none!important}

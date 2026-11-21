@@ -14,7 +14,7 @@
  let active=false,queued=false;
  function update(){
   queued=false;
-  const on=media.matches;
+  const on=media.matches&&!document.body.classList.contains('family-information-open');
   if(on!==active){if($('#screenDetail')?.open)$('#screenDetailClose').click();active=on;document.body.classList.toggle('selected-dashboard',on);
    if(on){$('.topbar').insertBefore(top,$('.top-actions'));top.append(nodes[0],nodes[1]);$('.mission-area').append(lower);lower.append(nodes[2],nodes[3],nodes[4]);$('#cardChores>.card-head').append(nodes[5]);$('#cardOverview').append(lead,primary);$('#outfitSuggestions').append($('#wChips'));nodes[2].append(caption);}
    else{nodes.forEach((n,i)=>homes[i].after(n));chipsHome.after($('#wChips'));top.remove();lower.remove();lead.remove();primary.remove();caption.remove();}
@@ -44,7 +44,7 @@
  }
  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
  const obs=new MutationObserver(queue);['#choreList','#wChips','#outfitSuggestions','#readingProgress','#mainGrid'].forEach(s=>obs.observe($(s),{childList:true,subtree:true,characterData:true,attributes:s==='#mainGrid',attributeFilter:s==='#mainGrid'?['hidden']:undefined}));
- media.addEventListener('change',queue);update();
+ obs.observe(document.body,{attributes:true,attributeFilter:['class']});media.addEventListener('change',queue);update();
  }
  if(document.readyState!=='complete')document.addEventListener('DOMContentLoaded',install);else install();
 })();
