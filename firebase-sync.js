@@ -14,7 +14,7 @@
       - Node 테스트: `firebase/firestore` 모듈을 그대로 넘깁니다.
       덕분에 같은 코드를 에뮬레이터 테스트에서 실제로 실행할 수 있습니다.
    3) 계산(포인트·경험치·월간 합계)은 저장하지 않고 매번 계산합니다.
-      저장하는 확정값은 `stats/summary` 뿐이고, 그 합계는 **정산 트랜잭션**만 올립니다.
+      저장하는 확정값은 `stats/summary` 뿐이고, 기존 확정 합계는 호환용으로 유지하고 새 획득은 고유 완료기록에서 자동 합산합니다.
    ========================================================================== */
 
 import './mission-rewards.js?v=early-bonus-1';
@@ -537,7 +537,13 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
   });
   const today = kstTodayStr(now);
   let todayXp = 0, todayCount = 0;
-  const pendingLogs = logs.filter((l) => l && l.settled === false);
+  const seenLogs = new Set();
+  const pendingLogs = logs.filter((l) => {
+    if (!l || l.settled !== false) return false;
+    const id = l.id || `${l.date}_${l.mid}_${l.member || KID_ID}`;
+    if (seenLogs.has(id)) return false;
+    seenLogs.add(id); return true;
+  });
 
   pendingLogs.forEach((l) => {
     const earned = intOf(l.earned);
@@ -589,7 +595,8 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
     pendingCount: pendingLogs.length,
     stampProgress: stampBoard.progress,
     stampBoardsCompleted: stampBoard.completed,
-    stampBonusPending: stampBoard.bonusPoints,
+    stampBonusPending: 0, // No acquisition approval or pending reward.
+    stampBonusAuto: stampBoard.bonusPoints,
     stampBonusPoints: stampBoard.completed * STAMP_BONUS_POINTS,
     atFinal: partnerXp >= FINAL_P,
   };
@@ -991,81 +998,9 @@ export function createFamilySync(deps = {}) {
     }
   }
 
-  /* ---- 정산 트랜잭션 (부모 기기) ---- */
-  async function settleUnsettled({ by = uid, chunkSize = 100 } = {}) {
-    const session = activeSession({ by, r: 'parent' });
-    if (!session) return { ok: false, cancelled: true, ...sessionChanged() };
-    try {
-      const pendingSnap = await sdk.getDocs(sdk.query(colRef('logs'), sdk.where('settled', '==', false)));
-      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
-      const refs = pendingSnap.docs.map((d) => d.ref);
-      let total = 0, count = 0, rounds = 0, bonusPoints = 0, boardsCompleted = 0;
-      for (let i = 0; i < refs.length; i += chunkSize) {
-        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, ...sessionChanged() };
-        const slice = refs.slice(i, i + chunkSize);
-        const res = await sdk.runTransaction(db, async (tx) => {
-          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
-          const summRef = docRef(pathOf('stats/summary'));
-          const summSnap = await tx.get(summRef);
-          const before = snapExists(summSnap) ? summSnap.data() : { totalXp: 0, settledCount: 0, monthly: {}, byMember: {} };
-          const targets = [];
-          for (const ref of slice) {                       // 읽기를 모두 끝낸 뒤에 씁니다
-            const s = await tx.get(ref);
-            if (!s.exists || s.data().settled !== false) continue;
-            targets.push({ ref, log: s.data() });
-          }
-          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
-          if (!targets.length) return { total: 0, count: 0 };
-          const stampBoard = advanceStampBoard({
-            progress: before.stampProgress,
-            completed: before.stampBoardsCompleted,
-            logs: targets.map(({ log }) => log),
-          });
-          const monthly = JSON.parse(JSON.stringify(before.monthly || {}));
-          const byMember = { ...(before.byMember || {}) };
-          let t = 0, kidT = 0, c = 0;
-          targets.forEach(({ ref, log }) => {
-            tx.update(ref, { settled: true, settledAt: sdk.serverTimestamp(), settledBy: by });
-            const earned = intOf(log.earned);
-            const key = bmKey(log.member);
-            t += earned; c += 1;
-            if (log.member === kidId) kidT += earned;
-            byMember[key] = intOf(byMember[key]) + earned;
-            const mk = monthOf(log.date);
-            const cur = monthly[mk] || { total: 0, count: 0, byMember: {} };
-            const bm = { ...(cur.byMember || {}) };
-            bm[key] = intOf(bm[key]) + earned;
-            monthly[mk] = { total: intOf(cur.total) + earned, count: intOf(cur.count) + 1, byMember: bm };
-          });
-          Object.entries(stampBoard.bonusByMonth).forEach(([mk, bonus]) => {
-            const cur = monthly[mk] || { total: 0, count: 0, byMember: {} };
-            const bm = { ...(cur.byMember || {}) };
-            bm[kidId] = intOf(bm[kidId]) + bonus;
-            monthly[mk] = { total: intOf(cur.total) + bonus, count: intOf(cur.count), byMember: bm };
-            byMember[kidId] = intOf(byMember[kidId]) + bonus;
-            kidT += bonus;
-          });
-          const payload = {
-            totalXp: intOf(before.totalXp) + kidT,
-            settledCount: intOf(before.settledCount) + c,
-            stampProgress: stampBoard.progress,
-            stampBoardsCompleted: stampBoard.completed,
-            monthly, byMember,
-            updatedAt: sdk.serverTimestamp(),
-          };
-          if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { total: 0, count: 0, cancelled: true };
-          if (snapExists(summSnap)) tx.update(summRef, payload); else tx.set(summRef, payload);
-          return { total: t, count: c, bonusPoints: stampBoard.bonusPoints, boardsCompleted: stampBoard.boardsAwarded };
-        });
-        if (!sessionIsCurrent(session.generation, 'parent', session.uid) || res.cancelled) return { ok: false, cancelled: true, ...sessionChanged() };
-        total += res.total; count += res.count; rounds += 1;
-        bonusPoints += intOf(res.bonusPoints); boardsCompleted += intOf(res.boardsCompleted);
-        if (!res.count) break;
-      }
-      return { ok: true, total, count, rounds, bonusPoints, boardsCompleted };
-    } catch (e) {
-      return { ok: false, ...classifyFirestoreError(e) };
-    }
+  /* Compatibility endpoint: acquisition approval was retired. Never mutate earnings. */
+  async function settleUnsettled() {
+    return { ok: false, code: 'earnings-auto', count: 0, message: '획득 포인트는 자동 반영됩니다. 부모 정산은 포인트 사용에만 필요합니다.' };
   }
 
   /* ---- 파트너 입양 (아이가 쓸 수 있는 유일한 상태 문서) ---- */
@@ -1490,4 +1425,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-                                                                                    }
+       }

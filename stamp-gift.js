@@ -15,7 +15,7 @@
  function paint(){
   if(!dialog)return;
   dialog.dataset.opened=String(opened);dialog.querySelector('.stamp-gift-box').hidden=opened;dialog.querySelector('.stamp-gift-result').hidden=!opened;
-  dialog.querySelector('#stampGiftPoints').textContent='+'+reward+'P';dialog.querySelector('#stampGiftState').textContent=pending?'선물 받을 준비 끝! 포인트 반영을 기다리는 중이야.':'선물 포인트가 쏙 들어왔어!';
+  dialog.querySelector('#stampGiftPoints').textContent='+'+reward+'P';dialog.querySelector('#stampGiftState').textContent='선물 포인트가 쏙 들어왔어! 정산 없이 자동 적립됐어.';
   dialog.querySelector('.stamp-gift-done').textContent=opened?'고마워!':'다음에 볼게';
  }
  function observe({connected,completed,pendingBonus}){

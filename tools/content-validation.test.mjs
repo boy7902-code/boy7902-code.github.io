@@ -51,3 +51,16 @@ test('school card tablet box is invisible without changing its sizing',()=>{
  const css=fs.readFileSync(new URL('../tablet-safe-layout.css',import.meta.url),'utf8');
  assert.match(css,/padding:12px 14px!important;min-height:160px!important;border:1px solid transparent!important;border-radius:0!important;background:none!important;box-shadow:none!important/);
 });
+
+test('editing completed mission 3P to 2P keeps earned history and partner XP unchanged',async()=>{
+ const mission={id:'frozen',title:'test',points:3,member:'m3',days:[],due:'',doneOn:'2026-11-22',doneAt:'08:00',earned:3,goalMet:false,earlyBonusEarned:0};
+ const state={missions:[mission],points:{total:13,byMember:{m3:13}},pokemon:{xp:13},missionLog:[{mid:'frozen',earned:3,base:3,member:'m3',at:'08:00'}]};
+ const baseline=JSON.stringify({points:state.points,pokemon:state.pokemon,logs:state.missionLog});let saved=0;
+ const c={S:state,askModal:async()=>({title:'test',points:2,member:'m3',days:[],due:'09:00'}),basePtsOf:m=>m.points,missionMemberOptions:()=>[],daysOf:m=>m.days,TIME_QUICK:[],parseDays:d=>d,syncDex:()=>{},save:()=>saved++,renderMissions:()=>{},toast:()=>{}};
+ vm.createContext(c);vm.runInContext(source.slice(source.indexOf('  async function editMission('),source.indexOf('  async function resetPoints(')),c);await c.editMission('frozen');
+ assert.equal(mission.points,2);assert.equal(mission.earned,3);assert.equal(mission.doneAt,'08:00');assert.equal(mission.earlyBonusEarned,0);assert.equal(saved,1);assert.equal(JSON.stringify({points:state.points,pokemon:state.pokemon,logs:state.missionLog}),baseline);
+});
+test('standby no-photo rest copy is absent and standby household title is Suho',()=>{
+ assert.match(source,/if \(\$\('#sbSub'\)\) \$\('#sbSub'\)\.textContent = '';/);
+ assert.match(source,/if \(\$\('#sbTitle'\)\) \$\('#sbTitle'\)\.textContent = '수호네';/);
+});

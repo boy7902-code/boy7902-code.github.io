@@ -467,7 +467,7 @@ test('shared summary and pending logs calculate the same +3P on both devices wit
   assert.equal(legacySummaryDevice.byMember.m3, 23);
   assert.equal(deviceA.stampProgress, 0);
   assert.equal(deviceA.stampBoardsCompleted, 1);
-  assert.equal(deviceA.stampBonusPending, 3);
+  assert.equal(deviceA.stampBonusPending, 0);
   assert.equal(deviceA.stampBonusPoints, 3);
   assert.equal(deviceA.totalXp, 23, 'the adult mission contributes to the board; only its own 2P goes to the adult');
   assert.equal(deviceA.byMember.m1, 2);
@@ -569,4 +569,20 @@ test('child sessions cannot write streak history', async () => {
   await sync.applyAuthUser(auth.currentUser);
   assert.equal((await sync.observeStreak({ date: '2026-11-20' })).ok, false);
   assert.equal(fake.writes.length, 0);
+});
+
+test('earnings require no settlement, legacy settlement endpoint cannot write',async()=>{
+ const fake=fakeSdk(),sync=createFamilySync({sdk:fake.sdk,auth:{currentUser:null},db:{}});
+ const out=await sync.settleUnsettled();assert.equal(out.code,'earnings-auto');assert.equal(out.ok,false);assert.equal(fake.writes.length,0);
+});
+test('automatic mission and stamp earnings preserve old balances across month, cancellation and re-completion',()=>{
+ const summary={totalXp:20,byMember:{m3:20},stampProgress:9,stampBoardsCompleted:2,monthly:{}};
+ const log={id:'2026-11-22_one_m3',date:'2026-11-22',at:'08:00',mid:'one',member:'m3',earned:2,settled:false,createdAt:new Date('2026-11-22T08:00:00+09:00')};
+ const input={summary,logs:[log],pointUses:[{amount:4}],now:new Date('2026-12-01T08:00:00+09:00')};
+ const before=JSON.stringify(input),a=computeScreenStats(input),b=computeScreenStats({...input,logs:JSON.parse(JSON.stringify(input.logs))});
+ assert.equal(a.totalXp,25);assert.equal(a.balance,21);assert.equal(a.stampBonusPending,0);assert.equal(a.stampBonusAuto,3);assert.equal(a.stampBoardsCompleted,3);assert.deepEqual(a,b);assert.equal(JSON.stringify(input),before);
+ assert.deepEqual(computeScreenStats({...input,logs:[log,log]}),a,'duplicate snapshot of same completion never adds points or stamps');
+ const cancel=computeScreenStats({...input,logs:[]});assert.equal(cancel.totalXp,20);assert.equal(cancel.balance,16);assert.equal(cancel.stampBoardsCompleted,2);assert.equal(cancel.stampProgress,9);
+ assert.deepEqual(computeScreenStats(input),a,'recompletion once restores exact earnings');
+ const used=computeScreenStats({...input,pointUses:[{amount:8}]});assert.equal(used.totalXp,a.totalXp);assert.equal(used.balance,a.balance-4);
 });
