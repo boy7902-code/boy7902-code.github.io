@@ -48,8 +48,11 @@
    const POKE_ART_SHINY = (id) => `${SPRITE_ROOT}/other/official-artwork/shiny/${id}.png`;
  
    // CDN 그림을 못 받았을 때 쓰는 로컬 SVG (외부 요청 없이 항상 그려짐)
-@@ -402,9 +418,10 @@
+@@ -400,11 +416,13 @@
+   /* 공식 일러스트 한 장으로 파트너·대기화면·도감을 모두 채맵니다 (화질 통일).
+      opts: { shiny } 이로치 · { eager } 바로 불러오기 · { mini } 작은 칸(지연 로딩) */
    function pokeImg(stage, cls, tint, opts = {}) {
++    if(stage.egg)return '<span class="partner-egg" role="img" aria-label="타입 알"></span>';
      const color = tint || stage.tint || pokeTint(stage.id);
      const shiny = !!(opts.shiny || stage.shiny);
 -    const src = shiny ? POKE_ART_SHINY(stage.id) : POKE_ART(stage.id);
@@ -61,7 +64,7 @@
        + ` loading="${opts.eager ? 'eager' : 'lazy'}" decoding="async" draggable="false">`;
    }
  
-@@ -685,6 +702,7 @@
+@@ -685,6 +703,7 @@
    function save() {
      clearTimeout(saveTimer);
      saveTimer = setTimeout(() => {
@@ -69,7 +72,7 @@
        try {
          localStorage.setItem(KEY, JSON.stringify(S));
        } catch (e) {
-@@ -1127,6 +1145,7 @@
+@@ -1127,6 +1146,7 @@
      alarmSyncedSig = sig;
      clearTimeout(alarmSyncTimer);
      alarmSyncTimer = setTimeout(() => {
@@ -77,7 +80,29 @@
        fb.sync.pushAlarms(payload).then((r) => {
          if (r && !r.ok && !r.cancelled) toast('맞춤 알람을 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
        }).catch(() => {});
-@@ -2485,7 +2504,7 @@
+@@ -2360,7 +2380,7 @@
+     if ($('#histBtnPill')) $('#histBtnPill').textContent = String(monthCount);
+ 
+     // ① 진화 게이지 — '다음 진화 목표'를 분모로 하는 진행률 (누적 XP 값 자체는 바꾸지 않습니다)
+-    const nxt = isEgg ? {name: st[0].name + ' 부화', min: 5} : st[lv + 1];
++    const nxt = isEgg ? {name: (typeEggSecret()?'알':st[0].name) + ' 부화', min: 5} : st[lv + 1];
+     const nextMin = nxt ? nxt.min : FINAL_P;
+     let evoPct = 100;
+     if (nxt) {
+@@ -2398,10 +2418,11 @@
+           : `${tg.left}P 더 모으면 오늘 목표 달성!`;
+     }
+ 
++    $('#charEvo').hidden=typeEggSecret();
+     $('#charEvo').innerHTML = st.map((s, i) =>
+       `<span class="evo${i === lv ? ' on' : ''}${i > lv ? ' lock' : ''}" title="${esc(s.name)} · ${s.min}P">${pokeImg(s, 'evo-img', p.tint)}</span>`
+     ).join('');
+-    if ($('#partnerPill')) $('#partnerPill').textContent = `${p.label} 계열`;
++    if ($('#partnerPill')) $('#partnerPill').textContent = typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':`${p.label} 계열`;
+ 
+     const adoptBtn = $('#adoptBtn');
+     if (adoptBtn) {
+@@ -2485,7 +2506,7 @@
    function renderDex() {
      renderPlayground();   // 🏡 놀이방 — 포인트·파트너가 바뀌면 친구 구성도 따라 바뀝니다
      const box = $('#dexRow');
@@ -86,7 +111,16 @@
      if (!box) return;
      const dex = S.pokemon.dex || [];
      if ($('#dexTrophyCount')) $('#dexTrophyCount').textContent = dex.length ? `${dex.length}계열 완성` : '아직 없어요';
-@@ -2580,30 +2599,32 @@
+@@ -2521,7 +2542,7 @@
+     const p = partnerOf(S.pokemon.key);
+     const st = stagesOf();
+     const cur = st[stageIndex(S.pokemon.xp)] || st[0];
+-    if (cur) add(cur.id, cur.name, p.tint);
++    if (cur&&!typeEggSecret()) add(cur.id, cur.name, p.tint);
+     (S.pokemon.dex || []).forEach((d) => {
+       const fin = Math.round(+d.finalId || 0) || (finalStageOf(partnerOf(d.key)) || {}).id;
+       add(fin, d.finalName, d.tint);
+@@ -2580,30 +2601,32 @@
    }
  
    /* ---- 🏆 151 도감 모달: 획득 상태·실루엣·진화 단계 탐색 ---- */
@@ -129,7 +163,16 @@
        return `<button type="button" class="dex-fchip${DEXUI.filter === f.key ? ' on' : ''}" data-dexfilter="${f.key}">${f.label} <b>${n}</b></button>`;
      }).join('');
    }
-@@ -2624,7 +2645,7 @@
+@@ -2616,7 +2639,7 @@
+       box.innerHTML = '<div class="shop-empty" style="padding:16px 6px">찾는 포켓몬이 없어요</div>';
+       return;
+     }
+-    const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
++    const curId = typeEggSecret()?null:(stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
+     box.innerHTML = ids.map((id) => {
+       const info = pokeInfo(id);
+       const got = !!caughtOf(id);
+@@ -2624,7 +2647,7 @@
          <span class="dex-no">${pad(id)}</span>
          <img class="dex-mini" src="${POKE_ART(id)}" alt="" loading="lazy" decoding="async" draggable="false"
            data-fallback="${esc(POKE_ART(id))}" data-fallback2="${esc(pokeFallback({ id, name: info.name }, pokeTint(id)))}">
@@ -138,7 +181,16 @@
          ${curId === id ? '<span class="dex-cur" aria-hidden="true">★</span>' : ''}
        </button>`;
      }).join('');
-@@ -2663,7 +2684,7 @@
+@@ -2632,7 +2655,7 @@
+   }
+ 
+   function dexChainHtml(line) {
+-    const curLine = resolvePartnerKey(S.pokemon.key) === line.key;
++    const curLine = !typeEggSecret()&&resolvePartnerKey(S.pokemon.key) === line.key;
+     const stages = line.stages.map((s) => {
+       const on = s.id === DEXUI.sel;
+       const has = !!caughtOf(s.id);
+@@ -2663,7 +2686,7 @@
      box.innerHTML = `
        <div class="dx-hero${got ? '' : ' miss'}">${pokeImg(stageLike, 'dx-hero-img', tint, { eager: true })}</div>
        <div class="dx-title">
@@ -147,8 +199,12 @@
          <b class="dx-name">${esc(info.name)}</b>
        </div>
        <div class="dx-types">${(info.types.length ? info.types : ['???']).map((t) => `<span class="dx-type" style="--tc:${esc(POKE_TYPE_TINT[t] || '#9aa4bd')}">${esc(t)}</span>`).join('')}</div>
-@@ -2684,11 +2705,12 @@
-     const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
+@@ -2681,14 +2704,15 @@
+ 
+   function openDex(id) {
+     const curLine = partnerOf(S.pokemon.key);
+-    const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
++    const curStageId = typeEggSecret()?1:(curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
      const firstGen1 = (curLine.members || []).find((n) => POKE_INFO[n] && n <= 151);
      const pick = (+id > 0 && POKE_INFO[+id]) ? +id : (curStageId || firstGen1 || 1);
 -    DEXUI.sel = POKE_INFO[pick] && pick <= 151 ? pick : (firstGen1 || 1);
@@ -163,15 +219,54 @@
      renderDexFilters();
      renderDexGrid();
      renderDexSide();
-@@ -2963,6 +2985,7 @@
+@@ -2962,17 +2986,58 @@
+     });
    }
  
++  let typeEggBusy=false,typeEggPending=null;
++  function typeEggPools(){return FamilyTypeEgg.pools(LINES,pokeInfo,window.PokemonGrowthPaths);}
++  function typeEggSecret(){return !!window.FamilyTypeEgg&&FamilyTypeEgg.hidden(S.pokemon.growth,S.pokemon.xp);}
++  async function adoptTypeEgg(type){
++    if(typeEggBusy||S.pokemon.xp<FINAL_P)return;
++    if(FB.on&&(!FB.readyData||!FB.sync)){toast('가족 기록을 불러온 뒤 다시 골라 주세요','',3000);return;}
++    const pool=typeEggPools()[type];if(!pool?.size)return;
++    const before={key:FB.on?(FB.partner.key||''):S.pokemon.key,cycleId:S.pokemon.growth?.cycleId||'',sinceXp:FB.on?Math.max(0,Math.round(FB.partner.sinceXp||0)):0};
++    const signature=JSON.stringify(before)+':'+type;
++    if(!typeEggPending||typeEggPending.signature!==signature){
++      const selected=FamilyTypeEgg.choose(pool);
++      const cycle='typeegg-'+FamilyTypeEgg.TYPES.indexOf(type)+'-'+crypto.randomUUID();
++      typeEggPending={signature,key:selected.key,growth:PartnerGrowthCore.adopt(cycle)};
++    }
++    const chosen=typeEggPending,session=FB.session;
++    const sinceXp=Math.max(0,Math.round(kidTotalPts()));
++    typeEggBusy=true;renderPartnerGrid();
++    try{
++      if(FB.on){
++        const result=await FB.sync.adoptPartner({key:chosen.key,sinceXp,growth:chosen.growth,expected:before});
++        if(session!==FB.session)return;
++        if(!result.ok){if(!result.cancelled)toast(result.conflict?'다른 기기에서 입양 상태가 바뀌었어요. 새 기록을 확인해 주세요.':'알을 저장하지 못했어요. 연결을 확인한 뒤 다시 눌러 주세요.','',4000);return;}
++        FB.partner={key:chosen.key,sinceXp,growth:chosen.growth};
++      }else if(S.pokemon.key!==before.key||(S.pokemon.growth?.cycleId||'')!==before.cycleId){return;}
++      syncDex();S.pokemon.key=chosen.key;S.pokemon.xp=0;S.pokemon.growth=chosen.growth;
++      save();renderMissions();renderSettings();$('#partnerModal').hidden=true;typeEggPending=null;
++      toast(type+' 타입 알을 받았어요! 5P를 모으면 누가 나올지 알 수 있어요.','mint',3600);
++    }finally{typeEggBusy=false;if(!$('#partnerModal').hidden)renderPartnerGrid();}
++  }
++
    let partnerQuery = '';
 +  let partnerPage=0;
    function renderPartnerGrid() {
      const grid = $('#partnerGrid');
      if (!grid) return;
-@@ -2970,9 +2993,11 @@
++    const typeMode=partnerMode==='adopt';
++    $('#partnerSearch').hidden=typeMode;grid.classList.toggle('type-egg-grid',typeMode);
++    if(typeMode){
++      const pools=typeEggPools();
++      grid.innerHTML=FamilyTypeEgg.TYPES.filter(t=>pools[t].size).map(t=>`<button type="button" class="partner-card type-egg-card" data-eggtype="${t}" ${typeEggBusy?'disabled':''}><span class="type-egg-symbol" aria-hidden="true"><svg viewBox="0 0 60 72" width="42" height="50"><path d="M30 3C18 3 5 29 5 45a25 24 0 0050 0C55 29 42 3 30 3Z" fill="#fff5ce" stroke="#c89c53" stroke-width="3"/><path d="m15 27 8 4-4 9-9-4zm25 18 9 3-4 10-9-3zM30 14l7 3-3 7-7-3z" fill="#eaa562"/></svg></span><b>${t} 타입</b><span>${pools[t].size}종 중 랜덤</span></button>`).join('');
++      $('#partnerCount').textContent=typeEggBusy?'알 저장 중…':'타입 선택';
++      const pager=$('#partnerPager');if(pager)pager.innerHTML='';return;
++    }
+     const q = partnerQuery.trim();
      const hit = (l) => !q
        || l.label.indexOf(q) >= 0
        || l.members.some((id) => pokeName(id).indexOf(q) >= 0)
@@ -186,7 +281,7 @@
      const card = (p) => {
        const on = resolvePartnerKey(S.pokemon.key) === p.key;
        const got = !!dexEntryOf(p.key);
-@@ -2982,11 +3007,13 @@
+@@ -2982,11 +3047,13 @@
          <div class="partner-stages">${p.stages.map((s) => `${esc(s.name)} ${s.min}P`).join(' · ')}</div>
        </button>`;
      };
@@ -202,22 +297,53 @@
      checkPokeImages();
    }
  
-@@ -2998,12 +3025,12 @@
+@@ -2996,16 +3063,17 @@
+     const p = partnerOf(S.pokemon.key);
+     const cur = p.stages[stageIndex(S.pokemon.xp)];
      if (partnerMode === 'adopt') {
-       return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
-     }
+-      return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
+-    }
 -    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
++      return '타입을 고르면 그 타입의 첫 단계 친구가 같은 확률로 정해져요. 누구일지는 5P를 모아 부화할 때 만날 수 있어요! 모아 둔 포인트는 그대로예요.';
++    }
 +    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1,025종 어느 계열이든 이름·번호로 찾아 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
    }
  
    function openPartnerPicker(mode = 'change') {
++    if(mode!=='adopt'&&window.FamilyTypeEgg?.type(S.pokemon.growth)){toast('타입 알로 만난 파트너예요. 200P를 모으면 다음 알의 타입을 고를 수 있어요.','',3500);return;}
      partnerMode = mode === 'adopt' ? 'adopt' : 'change';
 -    partnerQuery = '';
 +    partnerQuery = '';partnerPage=0;
      if ($('#partnerSearch')) $('#partnerSearch').value = '';
-     $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
+-    $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
++    $('#partnerTitle').textContent = partnerMode === 'adopt' ? '어떤 타입의 알을 받을까?' : '🐾 파트너 포켓몬 고르기';
      $('#partnerHint').textContent = partnerHintText();
-@@ -3259,7 +3286,8 @@
+     renderPartnerGrid();
+     $('#partnerModal').hidden = false;
+@@ -3015,19 +3083,9 @@
+     if (!POKE_KEYS.includes(key)) return;
+     const p = partnerOf(key);
+ 
+-    if (partnerMode === 'adopt') {
+-      if (S.pokemon.xp < FINAL_P) { toast('최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요', '', 2600); return; }
+-      syncDex();                      // 보호: 지금 완성한 포켓몬은 먼저 도감에 넣어 두고 시작
+-      S.pokemon.key = key;
+-      S.pokemon.growth = window.PartnerGrowthCore ? PartnerGrowthCore.adopt(window.crypto && crypto.randomUUID ? crypto.randomUUID() : uid()+'-'+Date.now().toString(36)) : null;
+-      S.pokemon.xp = 0;               // 현재 파트너 경험치만 0P부터 (누적 경험치·잔액은 유지)
+-      save();
+-      renderMissions();
+-      renderSettings();
+-      $('#partnerModal').hidden = true;
+-      confetti(60);
+-      beep('up');
+-      toast(`🥚 ${p.label} 계열 새 알이에요 · 5XP에 부화해요`, 'mint', 3200);
++    if (partnerMode === 'adopt') { openPartnerPicker('adopt'); return; }
++    if (window.FamilyTypeEgg?.type(S.pokemon.growth)) {
++      toast('타입 알로 만난 파트너예요. 200P를 모으면 다음 알의 타입을 고를 수 있어요.','',3500);
+       return;
+     }
+ 
+@@ -3259,7 +3317,8 @@
      if (!box) return;
      const bal = balancePts();
      // 아직 안 산 것을 위로, 선물 받은 것은 아래로
@@ -227,7 +353,7 @@
      const card = $('#cardWish');
      if (card) card.classList.toggle('is-empty', items.length === 0);
      if ($('#wishSub')) $('#wishSub').textContent = wishHeaderSubtitle();
-@@ -3853,6 +3881,7 @@
+@@ -3853,6 +3912,7 @@
      schoolSyncedSig = sig;
      clearTimeout(schoolSyncTimer);
      schoolSyncTimer = setTimeout(() => {
@@ -235,7 +361,16 @@
        fb.sync.pushSchool(payload).then((r) => {
          if (r && !r.ok && !r.cancelled) toast('학교 급식·시간표를 서버에 못 보냈어요 (이 기기에는 남아 있어요)', '', 3600);
        }).catch(() => {});
-@@ -4645,6 +4674,7 @@
+@@ -4286,7 +4346,7 @@
+     $('#quietToggle').checked = !!S.quiet;
+     if ($('#schoolNameInput')) $('#schoolNameInput').value = (S.school && S.school.name) || '';
+     if ($('#schoolClassInput')) $('#schoolClassInput').value = (S.school && S.school.cls) || '';
+-    if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.pokemon.key).label} 계열`;
++    if ($('#partnerPill')) $('#partnerPill').textContent = typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':`${partnerOf(S.pokemon.key).label} 계열`;
+     try {
+       const bytes = new Blob([JSON.stringify(S)]).size;
+       $('#storageNote').textContent = `지금 저장된 데이터 약 ${(bytes / 1024).toFixed(0)}KB · 브라우저 한도 약 5MB`;
+@@ -4645,6 +4705,7 @@
      evtSig = sig;
      clearTimeout(evtSyncTimer);
      evtSyncTimer = setTimeout(() => {
@@ -243,7 +378,16 @@
        fb.sync.pushEventCenter(payload).catch(() => {});
      }, 700);
    }
-@@ -5074,7 +5104,10 @@
+@@ -5028,7 +5089,7 @@
+     const m = now.getMonth();
+     const st = mvpStats(y, m);
+     const { p } = { p: partnerOf(S.pokemon.key) };
+-    const stage = stagesOf()[stageIndex(S.pokemon.xp)];
++    const stage = typeEggSecret()?{egg:true,name:'타입 알',id:0}:stagesOf()[stageIndex(S.pokemon.xp)];
+     const medal = st.pts >= 250 ? '🥇' : st.pts >= 120 ? '🥈' : st.pts >= 50 ? '🥉' : '🌱';
+     const line = st.pts >= 250 ? '이 달의 최고 미션왕' : st.pts >= 120 ? '이 달의 성실왕' : st.pts >= 50 ? '이 달의 노력왕' : '이 달의 새싹';
+     box.innerHTML = `<div class="mvp-cert">
+@@ -5074,7 +5135,10 @@
    /* ------------------------------------------- 🖼️ 대기화면 (거실 디지털 액자) */
    let standbyOn = false;
    let standbyTimer = null;
@@ -255,7 +399,16 @@
    let standbyIdleTimer = null;
    let screenWakeLock = null;
    let wakeLockRequest = null;
-@@ -5113,32 +5146,8 @@
+@@ -5089,7 +5153,7 @@
+ 
+   function standbyPartnerStage() {
+     const p = partnerOf(S.pokemon.key);
+-    return { p, stage: p.stages[stageIndex(S.pokemon.xp)] };
++    return { p, stage: typeEggSecret()?{egg:true,name:'타입 알',id:0}:p.stages[stageIndex(S.pokemon.xp)] };
+   }
+ 
+   /* ---- 🌦️ 날씨(WMO)·시간대 → 대기화면 배경 ----
+@@ -5113,32 +5177,8 @@
    function applyStandbyScene(now = new Date()) {
      const el = $('#standby');
      if (!el) return;
@@ -290,7 +443,7 @@
    }
  
    function renderStandby() {
-@@ -5176,34 +5185,23 @@
+@@ -5176,34 +5216,23 @@
        if (wxSig !== sbWxSig) { sbWxSig = wxSig; $('#sbWeather').innerHTML = wx; }
      }
  
@@ -340,7 +493,7 @@
      }
  
      // 크게 살아 움직이는 파트너
-@@ -5222,12 +5220,7 @@
+@@ -5222,12 +5251,7 @@
        }
      }
      if ($('#sbName')) $('#sbName').textContent = stage.name;
@@ -354,7 +507,7 @@
    }
  
    function enterStandby() {
-@@ -5266,7 +5259,7 @@
+@@ -5266,7 +5290,7 @@
    function resetStandbyIdleTimer() {
      clearTimeout(standbyIdleTimer);
      standbyIdleTimer = null;
@@ -363,7 +516,7 @@
      standbyIdleTimer = setTimeout(() => {
        standbyIdleTimer = null;
        enterStandby();
-@@ -5318,6 +5311,8 @@
+@@ -5318,6 +5342,8 @@
      pokeReact($('#sbStage'), $('#sbSay'), name, { text, wiggle: count % 2 === 0, holdMs: 2400 });
    }
    function handleStandbyActivity(event) {
@@ -372,7 +525,7 @@
      if (standbyOn) {
        // ESC는 기존 키보드 처리에서 대기화면을 닫고 타이머를 다시 시작합니다.
        if (event.type === 'keydown' || event.type === 'wheel' || event.type === 'scroll') return;
-@@ -5536,6 +5531,7 @@
+@@ -5536,6 +5562,7 @@
    if ($('#dexCloseBtn')) $('#dexCloseBtn').addEventListener('click', () => { $('#dexModal').hidden = true; });
    $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
    if ($('#dexGrid')) $('#dexGrid').addEventListener('click', (e) => {
@@ -380,7 +533,16 @@
      const cell = e.target.closest('[data-dexid]');
      if (cell) selectDex(cell.dataset.dexid);
    });
-@@ -5604,6 +5600,17 @@
+@@ -5558,7 +5585,7 @@
+   if ($('#dexOpenBtn')) $('#dexOpenBtn').addEventListener('click', () => openDex(0));
+   // 파트너 포켓몬 톡톡
+   if ($('#charStage')) $('#charStage').addEventListener('click', () => {
+-    const st = stagesOf()[stageIndex(S.pokemon.xp)];
++    const st = typeEggSecret()?{name:'타입 알'}:stagesOf()[stageIndex(S.pokemon.xp)];
+     pokeReact($('#charStage'), $('#charSay'), st ? st.name : '');
+   });
+   if ($('#sbStage')) $('#sbStage').addEventListener('click', () => {
+@@ -5604,6 +5631,17 @@
    // 🖼️ 대기화면 ↔ 홈
    if ($('#standbyBtn')) $('#standbyBtn').addEventListener('click', enterStandby);
    if ($('#standbyExit')) $('#standbyExit').addEventListener('click', exitStandby);
@@ -398,7 +560,7 @@
  
    // 📅 달력 범위 — 기본 1달, [2주]를 누르면 이번 주와 다음 주
    $$('#calMode .cmb').forEach((b) => b.addEventListener('click', () => setCalMode(b.dataset.calmode)));
-@@ -5797,10 +5804,11 @@
+@@ -5797,12 +5835,14 @@
    $('#partnerBtn2').addEventListener('click', () => openPartnerPicker('change'));
    $('#partnerClose').addEventListener('click', () => { $('#partnerModal').hidden = true; });
    if ($('#partnerSearch')) $('#partnerSearch').addEventListener('input', (e) => {
@@ -410,8 +572,11 @@
 +  $('#partnerModal').addEventListener('click',e=>{const b=e.target.closest('[data-partnerpage]');if(b){partnerPage=Math.max(0,partnerPage+Number(b.dataset.partnerpage));renderPartnerGrid();$('#partnerGrid').scrollTop=0;}});
    $('#partnerGrid').addEventListener('click', (e) => {
      const b = e.target.closest('[data-partner]');
++    const type=e.target.closest('[data-eggtype]');if(type){adoptTypeEgg(type.dataset.eggtype);return;}
      if (b) pickPartner(b.dataset.partner);
-@@ -5924,6 +5932,7 @@
+   });
+ 
+@@ -5924,6 +5964,7 @@
      notedDenied: '', pill: null, gate: null, card: null,
      schoolSeeded: false,
      alarmsSeeded: false,
@@ -419,7 +584,7 @@
      deleted: new Map(),          // 방금 취소한 로그 문서 ID → 시각 (늦게 도착한 스냅샷이 되살리지 않게)
    };
  
-@@ -5967,7 +5976,8 @@
+@@ -5967,7 +6008,8 @@
      FB.readyData = false; FB.received = new Set(); FB.requiredData = new Set();
      FB.summary = null; FB.partner = {}; FB.monthLogs = []; FB.pendingLogs = []; FB.lastStats = null;
      stampCompletedSeen = null; stampCompletingUntil = 0;
@@ -429,7 +594,7 @@
      window.FamilyParentSessionGuard.reset({ session: parentSession, state: S, storage: localStorage, key: KEY, dropPin });
      renderParentBtn();
      renderStampBoards();
-@@ -6138,7 +6148,8 @@
+@@ -6138,7 +6180,8 @@
      const seen = new Set();
      const now = Date.now();
      FB.deleted.forEach((at, k) => { if (now - at > 20000) FB.deleted.delete(k); });
@@ -439,7 +604,7 @@
        .map((d) => ({ ...d, id: d.id || `${d.date}_${d.mid}_${d.member || KID_ID}` }))
        // 방금 취소한 기록은 서버 스냅샷이 늦게 도착해도 되살리지 않습니다(취소 직후 20초)
        .filter((l) => !FB.deleted.has(fbDocIdOf(l)))
-@@ -6162,13 +6173,13 @@
+@@ -6162,13 +6205,13 @@
      const completed = connected ? Math.max(0, Math.round(+stats.stampBoardsCompleted || 0)) : 0;
      const pendingBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPending || 0)) : 0;
      const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
@@ -455,7 +620,7 @@
        setTimeout(() => { stampCompletingUntil = 0; renderStampBoards(); }, 1850);
      }
      const completing = Date.now() < stampCompletingUntil;
-@@ -6334,11 +6345,11 @@
+@@ -6334,11 +6377,11 @@
    function fbLocalChanged() {
      if (!FB.on || !FB.readyData || !FB.sync) return;
      clearTimeout(FB.timer);
@@ -469,7 +634,7 @@
      const session = FB.session;
      const prev = FB.snap || {};
      const next = fbSnapOf();
-@@ -6416,9 +6427,39 @@
+@@ -6416,9 +6459,39 @@
      fbSyncInfo();
    }
  
@@ -510,7 +675,7 @@
      FB.core = window.FamilySync;
      // 📅 같은 창 OAuth(Google 인가 화면)로 돌아온 경우: 결과를 바로 안내하고 일정을 읽습니다
      const calReturn = (boot.calendar && typeof boot.calendar.takeOAuthResult === 'function') ? boot.calendar.takeOAuthResult() : null;
-@@ -6482,35 +6523,49 @@
+@@ -6482,35 +6555,49 @@
    toggleMission = function (id) {
      const session = FB.session;
      const c = S.missions.find((x) => x.id === id);
@@ -587,7 +752,7 @@
    };
  
    // 2) 보호자 동작: 아이 계정 기기에서는 서버 권한이 없으므로 미리 막습니다
-@@ -6621,6 +6676,7 @@
+@@ -6621,6 +6708,7 @@
    window.FamilyDashboard = {
      get state() { return S; },
      version: APP_VERSION,
@@ -595,3 +760,15 @@
      now: () => hhmm(),
      kid: () => ({ id: KID_ID, name: kidLabel() }),
      settings: () => ({
+@@ -6634,9 +6722,9 @@
+     parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentSession.unlockedAt)) : 0 }),
+     pokemon: () => ({
+       key: S.pokemon.key,
+-      label: partnerOf(S.pokemon.key).label,
++      label: typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':partnerOf(S.pokemon.key).label,
+       xp: Math.round(S.pokemon.xp),
+-      stage: stagesOf()[stageIndex(S.pokemon.xp)].name,
++      stage: typeEggSecret()?'타입 알':stagesOf()[stageIndex(S.pokemon.xp)].name,
+       totalXp: kidTotalPts(),
+       balance: balancePts(),
+       spent: spentPts(),
