@@ -86,6 +86,8 @@
     ['pointerdown','touchstart'].forEach(type=>window.addEventListener(type,e=>{if(e.target.closest('.photo-controls'))e.stopPropagation();},true));
     initPhotos();
   }
+  let photoSaving=0;
+  window.FamilyPhotoStatus=()=>({saving:photoSaving>0});
   let dbPromise, photos=[], urls=[],photoIndex=0,photoTimer=null,paused=matchMedia('(prefers-reduced-motion:reduce)').matches;
   function db() {
     if(!dbPromise) dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open('family-dashboard-local-photos',1);r.onupgradeneeded=()=>r.result.createObjectStore('album');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
@@ -120,6 +122,7 @@
   async function selectPhotos(files) {
     if(!photoAllowed()) { photoLocked(); return; }
     const note=$('#photoSettingsStatus');
+    photoSaving++;
     try {
       const list=Array.from(files||[]);if(!list.length)return;
       if(list.length>12)throw Error('사진은 한 번에 최대 12장까지 선택해 주세요.');
@@ -128,12 +131,14 @@
       if(!photoAllowed())throw Error('부모 잠금이 켜져 저장하지 않았어요. 다시 열어 주세요.');
       await store('put',blobs);setPhotos(blobs);note.textContent=`${blobs.length}장 저장 완료 · 이 브라우저에만 보관됩니다.`;
     }catch(e){note.textContent=e.message||'사진을 저장하지 못했어요. 기존 사진은 유지됩니다.';}
-    finally{$('#familyPhotoInput').value='';}
+    finally{photoSaving--;$('#familyPhotoInput').value='';}
   }
   async function clearPhotos() {
     if(!photoAllowed()) { photoLocked(); return; }
+    photoSaving++;
     try{await store('put',[]);setPhotos([]);$('#photoSettingsStatus').textContent='이 기기의 액자 사진을 지웠어요.';}
     catch(e){$('#photoSettingsStatus').textContent='사진을 지우지 못했어요. 다시 시도해 주세요.';}
+    finally{photoSaving--;}
   }
   function initPhotos() {
     $('#familyPhotoPause').textContent=paused?'자동 넘김 재생':'자동 넘김 일시정지';
