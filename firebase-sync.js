@@ -17,8 +17,8 @@
       저장하는 확정값은 `stats/summary` 뿐이고, 기존 확정 합계는 호환용으로 유지하고 새 획득은 고유 완료기록에서 자동 합산합니다.
    ========================================================================== */
 
-import './mission-rewards.js?v=early-bonus-1';
-import './streak-core.js?v=journal-3';
+import './mission-rewards.js?v=board-clock-20261122-1';
+import './streak-core.js?v=mission-stars-20261122-1';
 import './partner-growth-core.js?v=family-refresh-20261121-1';
 export const normalizePartnerGrowth = value => globalThis.PartnerGrowthCore.normalized(value);
 
@@ -66,7 +66,7 @@ export const pad2 = (n) => String(n).padStart(2, '0');
 
 /** 서버/기기 시각을 KST 달력 값으로 */
 export function kstParts(d = new Date()) {
-  const t = new Date(d.getTime() + 9 * 3600 * 1000);
+  const t = new Date(d.getTime() + 9 * 3600 * 1000 + globalThis.FamilyBoardClock.OFFSET_MS);
   return { y: t.getUTCFullYear(), mo: t.getUTCMonth() + 1, d: t.getUTCDate(), h: t.getUTCHours(), mi: t.getUTCMinutes() };
 }
 export const kstTodayStr = (d = new Date()) => { const p = kstParts(d); return `${p.y}-${pad2(p.mo)}-${pad2(p.d)}`; };
@@ -528,7 +528,7 @@ export function migrateFromLegacyJson(legacy, opts = {}) {
  * 화면에 보여 줄 포인트·경험치·월간 합계를 계산합니다.
  * "정산 직후 화면이 튀지 않게" 미정산 로그를 더해서 보여 줍니다.
  */
-export function computeScreenStats({ summary = {}, logs = [], pointUses = [], partner = {}, kidId = KID_ID, now = new Date(), stageCount = 4 } = {}) {
+export function computeScreenStats({ summary = {}, logs = [], pointUses = [], partner = {}, kidId = KID_ID, now = new Date(), stageCount = 4, missionStars = {}, holidays = globalThis.FamilyHolidays } = {}) {
   const byMember = decodeBm(summary.byMember);
   const monthly = {};
   Object.keys(summary.monthly || {}).forEach((mk) => {
@@ -574,6 +574,14 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
   const bonusToday = intOf(stampBoard.bonusByDate[today]);
   todayXp += bonusToday;
 
+  const stars = globalThis.FamilyMissionStars.compute(missionStars, {logs,today,holidays});
+  byMember[kidId] = intOf(byMember[kidId]) + stars.total;
+  stars.bonuses.forEach(b=>{
+    const mk=monthOf(b.date),cur=monthly[mk]||{total:0,count:0,byMember:{}};
+    monthly[mk]={...cur,total:intOf(cur.total)+b.amount,byMember:{...cur.byMember,[kidId]:intOf(cur.byMember[kidId])+b.amount}};
+  });
+  const starsToday=stars.bonuses.filter(b=>b.date===today).reduce((s,b)=>s+b.amount,0);
+  todayXp+=starsToday;
   const totalXp = intOf(byMember[kidId]);
   const spent = pointUses.reduce((s, u) => s + intOf(u.amount), 0);
   const balance = Math.max(0, totalXp - spent);
@@ -589,7 +597,8 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
     partnerXp, stage, stageMins: mins,
     byMember,
     monthly,
-    todayXp: kidsToday.reduce((s, l) => s + intOf(l.earned), 0) + bonusToday,
+    todayXp: kidsToday.reduce((s, l) => s + intOf(l.earned), 0) + bonusToday + starsToday,
+    missionStars: stars,
     todayCount: kidsToday.length,
     todayXpAll: todayXp, todayCountAll: todayCount,
     pendingCount: pendingLogs.length,
@@ -799,6 +808,7 @@ export function createFamilySync(deps = {}) {
     // ⏰ 맞춤 알람 — 부모가 만들고 고치며, 아이 기기·태블릿은 읽어서 그대로 울립니다
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/custom_alarms')), push('alarms'), fail('alarms')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/mission_streak')), push('streak'), fail('streak')));
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/mission_stars')), push('missionStars'), fail('missionStars')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
       unsubs.push(sdk.onSnapshot(docRef(pathOf('private/parent_config')), push('parentConfig'), fail('parentConfig')));
@@ -889,6 +899,22 @@ export function createFamilySync(deps = {}) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e) };
     }
+  }
+
+  async function observeMissionStars({date,missions}={}) {
+    const session=activeSession({r:'parent'});
+    if(!session||role!=='parent'||date!==kstTodayStr(nowFn()))return {ok:false,cancelled:true};
+    try {
+      const data=await sdk.runTransaction(db,async tx=>{
+        const ref=docRef(pathOf('child_state/mission_stars')),snap=await tx.get(ref);
+        if(!sessionIsCurrent(session.generation,'parent',session.uid))return null;
+        const before=snapExists(snap)?snap.data():{};
+        const next=globalThis.FamilyMissionStars.observe(before,{date,missions});
+        if(JSON.stringify(globalThis.FamilyMissionStars.normalize(before))!==JSON.stringify(next))tx.set(ref,{...next,updatedAt:sdk.serverTimestamp()});
+        return next;
+      });
+      return data&&sessionIsCurrent(session.generation,'parent',session.uid)?{ok:true,data}:{ok:false,cancelled:true};
+    }catch(e){return {ok:false,error:classifyFirestoreError(e)};}
   }
 
   // The existing child_state rule is family-read / parent-write. Capture the
@@ -1198,7 +1224,7 @@ export function createFamilySync(deps = {}) {
     if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
     const familySnap = await sdk.getDoc(docRef(root));
     if (snapExists(familySnap)) records.push({ path: root, data: toPlain(familySnap.data()) });
-    for (const sub of ['stats/summary', 'child_state/partner', 'child_state/today_school', 'child_state/event_center', 'child_state/custom_alarms', 'child_state/mission_streak', 'private/parent_config']) {
+    for (const sub of ['stats/summary', 'child_state/partner', 'child_state/today_school', 'child_state/event_center', 'child_state/custom_alarms', 'child_state/mission_streak', 'child_state/mission_stars', 'private/parent_config']) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
       const path = pathOf(sub);
       const s = await sdk.getDoc(docRef(path));
@@ -1372,7 +1398,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, claimPartnerHatch, saveParentPin, pushPatch,
-    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, observeStreak,
+    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, observeStreak, observeMissionStars,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
@@ -1425,4 +1451,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-       }
+     }
