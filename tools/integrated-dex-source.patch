@@ -302,10 +302,9 @@
      const cur = p.stages[stageIndex(S.pokemon.xp)];
      if (partnerMode === 'adopt') {
 -      return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
--    }
--    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
 +      return '타입을 고르면 그 타입의 첫 단계 친구가 같은 확률로 정해져요. 누구일지는 5P를 모아 부화할 때 만날 수 있어요! 모아 둔 포인트는 그대로예요.';
-+    }
+     }
+-    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
 +    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1,025종 어느 계열이든 이름·번호로 찾아 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
    }
  
@@ -688,7 +687,6 @@
 -    }
 -    if (wasDone && FB.on && completionLog) {
 -      FB.deleted.set(fbDocIdOf(completionLog), Date.now());
--    }
 +    if (!FB.on || !c) return fbBaseToggle(id);
 +    const member = c.member || KID_ID;
 +    const logId = fbDocIdOf({date:todayStr(),mid:id,member});
@@ -697,7 +695,7 @@
 +    const completionLog = (S.logs || []).find(x=>fbDocIdOf(x)===logId);
 +    if (wasDone && completionLog && completionLog.settled === true) {
 +      toast('이미 정산된 기록은 취소할 수 없어요', '', 3000);return;
-+    }
+     }
 +    if(wasDone) FB.deleted.set(logId,Date.now());
 +    else FB.deleted.delete(logId); // A new completion is not a late echo of the cancelled one.
      const out = fbBaseToggle(id);
@@ -752,7 +750,48 @@
    };
  
    // 2) 보호자 동작: 아이 계정 기기에서는 서버 권한이 없으므로 미리 막습니다
-@@ -6621,6 +6708,7 @@
+@@ -6551,7 +6638,7 @@
+       const ok = await askModal({
+         title: '⬆︎ 백업 복원',
+         hint: isFs
+-          ? `Firestore 백업 ${data.docCount || '?'}건(${(data.chunks || []).length}조각)을 그대로 덮어씁니다. 지금 기록 중 덮어쓰이지 않은 것은 남지 않아요.`
++          ? `Firestore 백업 ${data.docCount || '?'}건(${(data.chunks || []).length}조각)을 기존 기록에 합칩니다. 같은 항목은 백업 값으로 덮어쓰고, 백업에 없는 현재 기록은 그대로 남아요.`
+           : '이 기기(localStorage) 백업 파일이에요. 화면 상태를 이 파일로 바꿉니다.',
+         fields: [], okText: '복원',
+       });
+@@ -6584,7 +6671,22 @@
+   applyTheme();
+   syncDex();                 // 형식 2에서 옮겨 온 데이터가 이미 최종 진화 상태면 도감에 채워 둡니다
+   renderClock();
+-  setInterval(renderClock, 15000);
++  let renderedDay = todayStr();
++  function refreshDayView() {
++    const next = todayStr();
++    if (next === renderedDay) return;
++    const previous = renderedDay;
++    renderedDay = next;
++    // Follow today only when the calendar was already following today.
++    if (SCHED_UI.sel === previous) {
++      const d = new Date(next + 'T00:00:00');
++      SCHED_UI.sel = next; SCHED_UI.y = d.getFullYear(); SCHED_UI.m = d.getMonth();
++    }
++    // Display-only refresh. Do not save, settle, clear drafts, or reset the canvas.
++    renderFreeDay(); renderSchedule(); renderSchool(); renderMissions(); renderLog();
++  }
++  setInterval(() => { renderClock(); refreshDayView(); }, 15000);
++  window.addEventListener('pageshow', refreshDayView);
+   renderAll();
+   renderPenTools();
+   renderWeather();
+@@ -6608,6 +6710,7 @@
+       releaseScreenWakeLock();
+       return;
+     }
++    refreshDayView();
+     resetStandbyIdleTimer();
+     requestScreenWakeLock();
+     checkAlarms();              // 화면으로 돌아오면 지난 1~2분 안의 알람을 한 번 확인합니다
+@@ -6621,6 +6724,7 @@
    window.FamilyDashboard = {
      get state() { return S; },
      version: APP_VERSION,
@@ -760,7 +799,7 @@
      now: () => hhmm(),
      kid: () => ({ id: KID_ID, name: kidLabel() }),
      settings: () => ({
-@@ -6634,9 +6722,9 @@
+@@ -6634,9 +6738,9 @@
      parent: () => ({ unlocked: parentUnlocked(), leftMs: parentUnlocked() ? Math.max(0, PARENT_MS - (Date.now() - parentSession.unlockedAt)) : 0 }),
      pokemon: () => ({
        key: S.pokemon.key,
