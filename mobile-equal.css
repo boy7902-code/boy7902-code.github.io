@@ -1,0 +1,35 @@
+/* Phone layout keeps natural page scrolling, including a short landscape viewport. */
+@media(max-width:767px),(max-height:599px) and (max-width:1023px){
+ body.dashboard-refresh{overflow:auto!important;height:auto!important;min-height:100dvh!important}
+ body.dashboard-refresh .app{height:auto!important;min-height:100dvh!important;max-height:none!important;overflow:visible!important;padding-top:max(6px,env(safe-area-inset-top))!important;padding-left:max(12px,env(safe-area-inset-left))!important;padding-right:max(12px,env(safe-area-inset-right))!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}
+ body.dashboard-refresh .top-actions{gap:8px!important;flex-wrap:wrap!important}
+ body.dashboard-refresh #safeRefreshBtn{min-height:44px!important;min-width:88px!important;font-size:14px!important;padding:10px 12px!important}
+ body.dashboard-refresh .top-actions #parentBtn,body.dashboard-refresh .top-actions summary{min-height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important}
+ body.dashboard-refresh #mainGrid{height:auto!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh #cardChores{height:auto!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh #cardChores .mission-layout{height:auto!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh #cardChores .mission-area{height:auto!important;min-height:260px!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh #cardChores .mission-scroll{height:auto!important;min-height:240px!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh #cardChores #choreList{height:auto!important;min-height:240px!important;max-height:none!important;grid-template-rows:none!important;grid-auto-rows:minmax(200px,auto)!important}
+ .safe-refresh-note{width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;bottom:max(20px,env(safe-area-inset-bottom))!important}
+ .stamp-gift .stamp-gift-close{width:44px;height:44px;right:6px;top:6px}
+ .stamp-gift .stamp-gift-done{min-height:44px}
+}
+@media(max-height:599px) and (min-width:768px) and (max-width:1023px){
+ body.dashboard-refresh .topbar{height:auto!important;min-height:100px!important;max-height:none!important;flex-wrap:wrap!important}
+ body.dashboard-refresh .main-grid,body.dashboard-refresh #mainGrid{display:block!important}
+ body.dashboard-refresh #cardChores .mission-layout{display:grid!important;grid-template-columns:minmax(0,1fr) 230px!important;align-items:start!important}
+ body.dashboard-refresh #cardChores #choreList{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row!important;width:100%!important}
+ body.dashboard-refresh #cardChores .chore{height:auto!important;min-height:210px!important;max-height:none!important}
+ body.dashboard-refresh #cardChores .mission-poke{height:auto!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh .refresh-summary-row{height:auto!important;min-height:150px!important;max-height:none!important;flex-wrap:wrap!important;overflow:visible!important}
+ body.dashboard-refresh .apptabs{position:static!important;flex-wrap:wrap!important}
+}
+@media(max-height:599px) and (min-width:768px) and (max-width:1023px){
+ body.dashboard-refresh #cardChores .chore{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:flex-start!important;gap:8px!important;padding:16px 12px!important;min-width:0!important}
+ body.dashboard-refresh #cardChores .chore-main{width:100%!important;min-width:0!important}
+ body.dashboard-refresh #cardChores .chore-top{display:flex!important;flex-direction:column!important;align-items:flex-start!important;width:100%!important;gap:8px!important}
+ body.dashboard-refresh #cardChores .chore-title{width:100%!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;font-size:18px!important;line-height:1.4!important}
+ body.dashboard-refresh #cardChores .mission-art{width:76px!important;height:70px!important;object-fit:contain!important;flex:none!important}
+ body.dashboard-refresh #cardChores .chore-meta{flex-wrap:wrap!important}
+}

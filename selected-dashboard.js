@@ -1,7 +1,7 @@
 /* Selected tablet layout. Read-only display: no persisted values or reward rules. */
 (()=>{
  function install(){
- const $=s=>document.querySelector(s),media=matchMedia('(min-width:768px) and (max-width:1366px)');
+ const $=s=>document.querySelector(s),media=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)');
  if(!window.FamilyRefresh||!$('#choreList'))return;
  const top=document.createElement('div');top.className='selected-top';
  const lower=document.createElement('div');lower.className='selected-lower';
