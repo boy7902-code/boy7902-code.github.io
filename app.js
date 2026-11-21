@@ -2662,8 +2662,11 @@
         ${got ? `✅ ${esc(got)}에 만났어요` : '❔ 아직 만나지 못했어요'}
       </div>
       ${got ? '' : '<p class="dx-tip">이 계열을 파트너로 기르면 도감에 차곡차곡 남아요. 미션을 끝낼 때마다 경험치가 쌓여요!</p>'}
+      <div id="pokemonEncyclopediaInfo"></div>
+      <h4 class="pdx-app-growth-label">이 앱에서 함께 자라는 방법</h4>
       <div class="dx-chains">${chains.length ? chains.map(dexChainHtml).join('') : '<p class="dx-tip">이 친구는 진화하지 않아요. 파트너로 기르면 200P에 이로치로 반짝여요!</p>'}</div>
     `;
+    if (window.PokemonEncyclopedia) window.PokemonEncyclopedia.render($('#pokemonEncyclopediaInfo'), id, { name: info.name, types: info.types, art: POKE_ART(id) });
     checkPokeImages();
   }
 
@@ -2832,11 +2835,11 @@
     if (justFinal) {
       confetti(130);
       beep('up');
-      showFinalDone();
+      showFinalDone(before);
     } else if (after > before) {
       confetti(90);
       beep('up');
-      showLevelUp(after);
+      showLevelUp(after, before);
     } else if (r.earlyBonus) {
       confetti(40);
       beep('up');
@@ -2878,11 +2881,18 @@
     });
   }
 
-  function showLevelUp(lv) {
+  function showLevelUp(lv, fromLevel = lv - 1) {
     const el = $('#levelup');
     const st = stagesOf();
     const p = partnerOf(S.pokemon.key);
     const stage = st[lv] || st[st.length - 1];
+    if (window.PokemonEvolutionEffect) {
+      window.PokemonEvolutionEffect.show({
+        from: st[Math.max(0, fromLevel)] || st[0], to: stage,
+        xp: Math.round(S.pokemon.xp), final: false,
+      });
+      return;
+    }
     el.innerHTML = `<div class="levelup-card">
       <div class="lv-emoji">🎉</div>
       <h4>${esc(stage.name)} 진화 완료!</h4>
@@ -2894,10 +2904,17 @@
     setTimeout(() => { el.hidden = true; el.innerHTML = ''; }, 2800);
   }
 
-  function showFinalDone() {
+  function showFinalDone(fromLevel = stagesOf().length - 2) {
     const el = $('#levelup');
     const p = partnerOf(S.pokemon.key);
     const fin = finalStageOf(p);
+    if (window.PokemonEvolutionEffect) {
+      window.PokemonEvolutionEffect.show({
+        from: p.stages[Math.max(0, fromLevel)] || p.stages[0], to: fin,
+        xp: Math.round(S.pokemon.xp), final: true,
+      });
+      return;
+    }
     el.innerHTML = `<div class="levelup-card dex">
       <div class="lv-emoji">🏆</div>
       <h4>${esc(fin.name)} 완성!</h4>
