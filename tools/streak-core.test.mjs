@@ -30,7 +30,9 @@ test('explicit free/no-mission days are skipped, unobserved days never are', () 
   j = observe(j, { date: '2026-11-22', required: [], skip: true, logs: logs('2026-11-20', 'a', 'b') });
   j = observe(j, { date: '2026-11-23', required: ['a','b'], logs: [...logs('2026-11-20', 'a', 'b'), ...logs('2026-11-23', 'a', 'b')] });
   assert.equal(status(j, '2026-11-23').count, 2);
-  delete j.days['2026-11-21'];
+  delete j.days['2026-11-22'];
+  assert.equal(status(j, '2026-11-23').count, 2);
+  delete j.days['2026-11-20'];
   assert.equal(status(j, '2026-11-23').count, 1);
   assert.equal(status(j, '2026-11-23').gap, true);
 });
@@ -75,10 +77,10 @@ test('exactly 120 observed days has no plus, older truncated history has plus', 
     const date = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
     j = observe(j, { date, required: ['a'], logs: logs(date, 'a'), monthStart: date });
   }
-  assert.equal(status(j, '2026-04-30').count, 120);
+  assert.equal(status(j, '2026-04-30').count, 86);
   assert.equal(status(j, '2026-04-30').capped, false);
   j = observe(j, { date: '2026-05-01', required: ['a'], logs: logs('2026-05-01', 'a'), monthStart: '2026-05-01' });
-  assert.equal(status(j, '2026-05-01').count, 120);
+  assert.equal(status(j, '2026-05-01').count, 86);
   assert.equal(status(j, '2026-05-01').capped, true);
 });
 
@@ -104,23 +106,15 @@ test('deletion impact only applies to captured targets on an open non-skip day',
   assert.equal(deletionImpact(j, '2026-11-20', 'a'), null);
 });
 
-test('unobserved Sunday is skipped without fabricating a row, weekdays stay unknown', () => {
-  let j = add({}, '2026-11-20', ['a', 'b']);
-  j = observe(j, { date: '2026-11-21', required: ['a'], logs: logs('2026-11-21', 'a'), monthStart: '2026-11-21' });
-  j = observe(j, { date: '2026-11-23', required: ['a'], logs: logs('2026-11-23', 'a'), monthStart: '2026-11-23' });
-  const before = JSON.stringify(j);
-  assert.equal(status(j, '2026-11-23').count, 3);
-  assert.equal(status(j, '2026-11-23').gap, false);
-  assert.equal(j.days['2026-11-22'], undefined);
-  assert.equal(JSON.stringify(j), before);
-  delete j.days['2026-11-21'];
-  assert.equal(status(j, '2026-11-23').count, 1);
-  assert.equal(status(j, '2026-11-23').gap, true);
+test('unobserved weekend is skipped without fabricating a row, missing weekdays stay unknown',()=>{
+ let j=add({},'2026-11-20',['a','b']);j=observe(j,{date:'2026-11-23',required:['a'],logs:logs('2026-11-23','a'),monthStart:'2026-11-23'});
+ const before=JSON.stringify(j);assert.equal(status(j,'2026-11-23').count,2);assert.equal(status(j,'2026-11-23').gap,false);assert.equal(j.days['2026-11-21'],undefined);assert.equal(j.days['2026-11-22'],undefined);assert.equal(JSON.stringify(j),before);
+ delete j.days['2026-11-20'];assert.equal(status(j,'2026-11-23').count,1);assert.equal(status(j,'2026-11-23').gap,true);
 });
 
 test('Sunday current day needs no row but never crosses the journal start', () => {
   const j = add({}, '2026-11-21', ['a', 'b']);
-  assert.equal(status(j, '2026-11-22').count, 1);
+  assert.equal(status(j, '2026-11-22').count, 0);
   assert.equal(status(j, '2026-11-22').known, true);
   assert.equal(status(j, '2026-11-22').started, '2026-11-21');
   assert.deepEqual(status({}, '2026-11-22'), { count: 0, started: '', known: false });
@@ -138,7 +132,7 @@ test('Sunday exemptions within retention never turn a missing weekday into rest'
   const st = status(j, '2026-05-10');
   assert.equal(st.gap, false);
   assert.equal(st.capped, true);
-  assert.ok(st.count > 90);
+  assert.ok(st.count >= 85);
   assert.ok(Object.keys(j.days).length <= 120);
   delete j.days['2026-05-08'];
   assert.equal(status(j, '2026-05-10').gap, true);
