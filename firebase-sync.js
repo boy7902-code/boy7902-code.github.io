@@ -19,6 +19,8 @@
 
 import './mission-rewards.js?v=early-bonus-1';
 import './streak-core.js?v=journal-3';
+import './partner-growth-core.js?v=family-refresh-20261121-1';
+export const normalizePartnerGrowth = value => globalThis.PartnerGrowthCore.normalized(value);
 
 /* ────────────────────────────── 상수 ────────────────────────────── */
 export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
@@ -470,9 +472,11 @@ export function migrateFromLegacyJson(legacy, opts = {}) {
 
   /* ---- 파트너(child_state/partner) — 진화 게이지 기준점 ---- */
   const pk = (src.pokemon && typeof src.pokemon === 'object') ? src.pokemon : {};
+  const importedPartnerXp = Number.isFinite(pk.xp) ? clamp(intOf(pk.xp), 0, FINAL_P) : Math.min(kidBaseline, FINAL_P);
   const partner = {
     partnerKey: String(pk.key || 'pikachu').toLowerCase().slice(0, 40),
-    sinceXp: 0,                                          // 이관 시점부터 새로 200P를 쌓는 기준
+    sinceXp: Math.max(0, kidBaseline - importedPartnerXp), // Preserve the imported current partner XP.
+    ...(normalizePartnerGrowth(pk.growth) ? { growth: normalizePartnerGrowth(pk.growth) } : {}),
     updatedAt: stamp,
   };
 
@@ -1065,7 +1069,7 @@ export function createFamilySync(deps = {}) {
   }
 
   /* ---- 파트너 입양 (아이가 쓸 수 있는 유일한 상태 문서) ---- */
-  async function adoptPartner({ key, sinceXp = 0 }) {
+  async function adoptPartner({ key, sinceXp = 0, growth = null }) {
     const session = activeSession();
     if (!session) return { ok: false, cancelled: true, error: sessionChanged() };
     try {
@@ -1073,11 +1077,35 @@ export function createFamilySync(deps = {}) {
       await sdk.setDoc(docRef(pathOf('child_state/partner')), {
         partnerKey: String(key || '').toLowerCase(),
         sinceXp: intOf(sinceXp),
+        ...(normalizePartnerGrowth(growth) ? { growth: normalizePartnerGrowth(growth) } : {}),
         updatedAt: sdk.serverTimestamp(),
       });
       return { ok: true };
     } catch (e) {
       if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  // Same-cycle transaction: one device claims the visual hatch. No points/reward writes.
+  async function claimPartnerHatch({ cycleId }) {
+    const session = activeSession();
+    if (!session) return { ok: false, cancelled: true };
+    try {
+      const claimed = await sdk.runTransaction(db, async tx => {
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) return false;
+        const ref = docRef(pathOf('child_state/partner'));
+        const snap = await tx.get(ref);
+        if (!sessionIsCurrent(session.generation, session.role, session.uid) || !snapExists(snap)) return false;
+        const growth = normalizePartnerGrowth(snap.data().growth);
+        if (!growth || growth.cycleId !== cycleId || growth.hatched) return false;
+        tx.update(ref, { growth: { ...growth, hatched: true, celebrated: true }, updatedAt: sdk.serverTimestamp() });
+        return true;
+      });
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true };
+      return { ok: true, claimed };
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true };
       return { ok: false, error: classifyFirestoreError(e) };
     }
   }
@@ -1288,6 +1316,7 @@ export function createFamilySync(deps = {}) {
           currentPath = rec.path;
           const target = docRef(rec.path);
           let data = fromPlain(rec.data, sdk);
+          if (rec.path === pathOf('child_state/partner')) data = { ...data, restoreIntent: sdk.serverTimestamp() };
           // 이미 있는 문서를 덮어쓸 때는 '만든 시각'을 그대로 둡니다
           // (shopping·letters 규칙이 createdBy·createdAt 불변을 요구하기 때문)
           const existing = await sdk.getDoc(target);
@@ -1309,7 +1338,7 @@ export function createFamilySync(deps = {}) {
           const got = toPlain(snapExists(s) ? s.data() : null);
           const want = toPlain(rec.data);
           // 서버 시각 필드는 복원 시 새로 찍히므로 비교에서 뺍니다
-          const strip = (o) => { const c = { ...(o || {}) }; TS_FIELDS.forEach((f) => { if (f in c) delete c[f]; }); return c; };
+          const strip = (o) => { const c = { ...(o || {}) }; delete c.restoreIntent; TS_FIELDS.forEach((f) => { if (f in c) delete c[f]; }); return c; };
           if (JSON.stringify(strip(got)) === JSON.stringify(strip(want))) matched += 1;
           else mismatched.push({ path: rec.path, got: strip(got), want: strip(want) });
         }
@@ -1338,7 +1367,7 @@ export function createFamilySync(deps = {}) {
       ops.push(async () => sdk.setDoc(docRef(pathOf(`logs/${__docId}`)), { ...data, createdAt: stamp, settledAt: stamp, createdBy: by, settledBy: by }));
     });
     ops.push(async () => sdk.setDoc(docRef(pathOf('stats/summary')), { ...plan.summary, updatedAt: stamp }));
-    ops.push(async () => sdk.setDoc(docRef(pathOf('child_state/partner')), { ...plan.partner, updatedAt: stamp }));
+    ops.push(async () => sdk.setDoc(docRef(pathOf('child_state/partner')), { ...plan.partner, updatedAt: stamp, restoreIntent: stamp }));
     ops.push(async () => sdk.setDoc(docRef(pathOf('private/parent_config')), { ...plan.privateConfig, updatedAt: stamp }));
     if (dryRun) return { ok: true, dryRun: true, planned: ops.length, written: 0 };
     let written = 0;
@@ -1402,7 +1431,7 @@ export function createFamilySync(deps = {}) {
     // 실시간
     startSubscriptions, stopAll,
     // 쓰기
-    buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, saveParentPin, pushPatch,
+    buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, claimPartnerHatch, saveParentPin, pushPatch,
     pushEventCenter, pushSchool, pushAlarms, writeBonusLog, observeStreak,
     // 백업
     createBackup, restoreBackup, readAllRecords,
@@ -1451,9 +1480,9 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
     const by = decodeBm(summary.byMember);
     out.points = { total: Object.values(by).reduce((s, v) => s + intOf(v), 0), byMember: by };
   }
-  if (partner) out.partner = { key: partner.partnerKey || 'pikachu', sinceXp: intOf(partner.sinceXp) };
+  if (partner) out.partner = { key: partner.partnerKey || 'pikachu', sinceXp: intOf(partner.sinceXp), growth: normalizePartnerGrowth(partner.growth) };
   const all = [...todayLogs, ...pendingLogs];
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-}
+                                  }

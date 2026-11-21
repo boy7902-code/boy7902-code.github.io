@@ -17,7 +17,8 @@
 <script src="firebase-config.js?v=1"></script>
 <link rel="stylesheet" href="single-screen.css?v=1" />
 <link rel="stylesheet" href="quiz-battle.css?v=2" />
-<link rel="stylesheet" href="pokemon-evolution-effect.css?v=1" />
+<link rel="stylesheet" href="dashboard-refresh.css?v=family-refresh-20261121-1" />
+<link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1" />
 <link rel="stylesheet" href="pokemon-encyclopedia.css?v=1" />
 </head>
 <body data-parent="off">
@@ -212,7 +213,7 @@
             <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
           </div>
           <div class="card-tools">
-            <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1세대 151종 도감과 내 포켓몬 도감을 엽니다"><span aria-hidden="true">📖</span><b class="dex-open-num">151</b></button>
+            <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1세대 151종 도감과 내 포켓몬 도감을 엽니다"><span class="dex-word">도감</span><b class="dex-open-num">151</b></button>
             <button class="btn icon sm parent-only" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
           </div>
         </div>
@@ -242,7 +243,7 @@
                 <!-- ① 진화 게이지 — 굵은 바 + 퍼센트 + '다음 진화까지 딱 N P' -->
                 <div class="evo-meter" id="evoMeter">
                   <div class="evo-meter-head">
-                    <span class="evo-meter-label">🧬 다음 진화까지</span>
+                    <span class="evo-meter-label">다음 진화까지</span>
                     <b class="evo-meter-pct" id="evoPct">0%</b>
                   </div>
                   <div class="evo-bar" id="evoBar" role="progressbar" aria-label="다음 진화까지 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -305,7 +306,7 @@
           </div>
           <section class="reading-stamp-board stamp-board mission-stamp-board" aria-labelledby="readingBoardTitle" tabindex="-1">
             <div class="stamp-board-title">
-              <h3 id="readingBoardTitle">🏅 미션 도장판</h3>
+              <h3 id="readingBoardTitle">미션 도장판</h3>
               <b id="readingProgress">0/10</b>
             </div>
             <ol class="stamp-cells" id="readingCells" aria-label="미션 성공 도장 10칸">
@@ -321,7 +322,7 @@
             </details>
           </section>
               </div>
-              <section class="weekly-report" aria-labelledby="weeklyReportTitle"><div class="weekly-head"><b id="weeklyReportTitle">📈 이번 주 성장 리포트</b><button class="btn sm ghost" id="weeklyDetailsBtn">리포트 상세</button></div><div id="weeklyReportContent"><div id="weeklyBars" class="weekly-bars"></div><p id="weeklySummary"></p><p class="weekly-footnote">저장된 아이·공용 기록 기준 · 누락된 날은 추정하지 않아요</p></div></section>
+              <section class="weekly-report" aria-labelledby="weeklyReportTitle"><div class="weekly-head"><b id="weeklyReportTitle">이번 주 성장 리포트</b><button class="btn sm ghost" id="weeklyDetailsBtn">리포트 상세</button></div><div id="weeklyReportContent"><div id="weeklyBars" class="weekly-bars"></div><p id="weeklySummary"></p><p class="weekly-footnote">저장된 아이·공용 기록 기준 · 누락된 날은 추정하지 않아요</p></div></section>
               <!-- 기록 보기 — 긴 글 대신 아이콘 배지 한 줄 (누르면 기록 창이 열립니다) -->
               <div class="mission-badges" id="missionBadges" role="group" aria-label="기록 보기">
                 <button class="mbtn stamp-jump" id="stampBoardOpenBtn" type="button" aria-controls="readingBoardTitle" title="미션 목록 아래 도장판 보기"><span aria-hidden="true">🏅</span><span class="mb-txt">도장판 ↓</span></button>
@@ -889,7 +890,7 @@
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br />
         <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
         <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
-        대시보드의 <b>🏅 미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 한 번 반영되고 부모 정산 때 확정됩니다.<br />
+        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 한 번 반영되고 부모 정산 때 확정됩니다.<br />
         <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
     </div>
@@ -992,14 +993,17 @@
 <script src="mission-rewards.js?v=early-bonus-1"></script>
 <script src="streak-core.js?v=journal-3"></script>
 <script src="dashboard-insights.js?v=1"></script>
-<script src="pokemon-evolution-effect.js?v=1"></script>
+<script src="pokemon-evolution-effect.js?v=family-refresh-20261121-1"></script>
 <script src="pokemon-encyclopedia-data.js?v=1"></script>
-<script src="pokemon-encyclopedia.js?v=1"></script>
-<script src="app.js?v=pokemon-approved-batch-1"></script>
+<script src="pokemon-partner-details-data.js?v=family-refresh-20261121-1"></script>
+<script src="pokemon-encyclopedia.js?v=family-refresh-20261121-1"></script>
+<script src="partner-growth-core.js?v=family-refresh-20261121-1"></script>
+<script src="app.js?v=family-refresh-20261121-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=12"></script>
-<script src="single-screen.js?v=1"></script>
+<script type="module" src="firebase-boot.js?v=family-refresh-20261121-1"></script>
+<script src="single-screen.js?v=family-refresh-20261121-1"></script>
+<script src="dashboard-refresh.js?v=family-refresh-20261121-1"></script>
 <script src="quiz-battle.js?v=5"></script>
 <script>
   // 퀴즈 배틀 모듈 초기화 — 퀴즈 배틀 탭의 마운트에 한 번만

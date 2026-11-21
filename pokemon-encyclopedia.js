@@ -81,7 +81,7 @@
   }
   function show(id, basic = {}) {
     const entry = root.PokemonEncyclopediaData && root.PokemonEncyclopediaData.species[String(id)];
-    if (!entry) return;
+    if (!entry && !basic.name) return;
     close(); returnFocus = document.activeElement;
     const dialog = element('dialog','pdx-dialog'); activeDialog = dialog;
     dialog.setAttribute('aria-labelledby','pdx-detail-title');
@@ -89,9 +89,9 @@
     const heading = element('h3','','포켓몬 상세 정보'); heading.id = 'pdx-detail-title';
     const exit = element('button','pdx-exit','닫기');exit.type='button';exit.addEventListener('click',close);header.append(heading,exit);
     const body = element('div','pdx-detail-body'); const hero = element('div','pdx-detail-hero');
-    hero.append(element('p','pdx-detail-number',`도감 No.${String(id).padStart(3,'0')}`),element('h2','',entry.name || basic.name));
-    const img = element('img','pdx-detail-art');img.src=basic.art;img.alt=entry.name || basic.name;img.decoding='async';img.addEventListener('error',()=>{img.hidden=true;const fallback=element('p','pdx-image-fallback pdx-image-large','그림을 불러오지 못했어요');img.after(fallback);},{once:true});hero.append(img);
-    hero.append(element('p','pdx-detail-types',(entry.types || basic.types || []).join(' · ')));
+    hero.append(element('p','pdx-detail-number',`도감 No.${String((entry && entry.nationalDexId) || id).padStart(3,'0')}${entry && entry.displayForm ? ' · '+entry.displayForm : ''}`),element('h2','',(entry && entry.name) || basic.name));
+    const img = element('img','pdx-detail-art');img.src=basic.art;img.alt=(entry && entry.name) || basic.name;img.decoding='async';img.addEventListener('error',()=>{img.hidden=true;const fallback=element('p','pdx-image-fallback pdx-image-large','그림을 불러오지 못했어요');img.after(fallback);},{once:true});hero.append(img);
+    hero.append(element('p','pdx-detail-types',((entry && entry.types) || basic.types || []).join(' · ')));
     const facts = element('div'); renderFacts(facts,id);body.append(hero,facts);dialog.append(header,body);
     dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
     dialog.addEventListener('click',e=>{if(e.target===dialog)close();});

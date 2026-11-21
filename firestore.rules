@@ -201,11 +201,11 @@ service cloud.firestore {
        아이가 쓸 수 있는 문서는 이 한 칸으로 제한합니다. */
     match /households/{hh}/child_state/partner {
       allow read: if isFamily();
-      allow write: if isParent() || (isChild() && partnerShape());
+      allow write: if (isParent() && (partnerShape() || explicitPartnerRestore())) || (isChild() && partnerShape());
     }
     match /households/{hh}/child_state/{docId} {
       allow read: if isFamily();
-      allow write: if isParent();
+      allow write: if isParent() && docId != 'partner';
     }
 
     /* ───────────── 부모 전용 비공개 설정(private) ─────────────
@@ -215,15 +215,44 @@ service cloud.firestore {
       allow read, write: if isParent();
     }
 
+    function explicitPartnerRestore() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['partnerKey', 'updatedAt', 'restoreIntent'])
+        && d.keys().hasOnly(['partnerKey', 'sinceXp', 'growth', 'updatedAt', 'restoreIntent'])
+        && d.partnerKey is string && d.partnerKey.matches('^[a-z0-9-]{1,40}$')
+        && d.updatedAt == request.time
+        && (!d.keys().hasAll(['sinceXp']) || (d.sinceXp is int && d.sinceXp >= 0 && d.sinceXp <= 10000000))
+        && d.restoreIntent == request.time
+        && (!request.resource.data.keys().hasAll(['growth']) || partnerGrowthShape(request.resource.data.growth));
+    }
     function partnerShape() {
       let d = request.resource.data;
       return d.keys().hasAll(['partnerKey', 'updatedAt'])
-        && d.keys().hasOnly(['partnerKey', 'sinceXp', 'updatedAt'])
+        && d.keys().hasOnly(['partnerKey', 'sinceXp', 'growth', 'updatedAt', 'restoreIntent'])
         && d.partnerKey is string
         && d.partnerKey.matches('^[a-z0-9-]{1,40}$')
         // sinceXp = 새 파트너를 입양한 시점의 누적 경험치(진화 게이지 기준점). 없어도 됩니다.
         && (!d.keys().hasAll(['sinceXp']) || (d.sinceXp is int && d.sinceXp >= 0 && d.sinceXp <= 10000000))
+        && (!d.keys().hasAll(['growth']) || partnerGrowthShape(d.growth))
+        && partnerGrowthForward(d)
         && d.updatedAt == request.time;
+    }
+    function partnerGrowthShape(g) {
+      return g is map && g.keys().hasAll(['cycleId','hatched','celebrated'])
+        && g.keys().hasOnly(['cycleId','hatched','celebrated'])
+        && g.cycleId is string && g.cycleId.matches('^[a-zA-Z0-9-]{1,80}$')
+        && g.hatched is bool && g.celebrated is bool
+        && g.hatched == g.celebrated;
+    }
+    function partnerGrowthForward(d) {
+      return !exists(/databases/$(database)/documents/households/main/child_state/partner)
+        || !resource.data.keys().hasAll(['growth'])
+        || (d.keys().hasAll(['growth']) && (
+          (d.growth.cycleId == resource.data.growth.cycleId
+            && (!resource.data.growth.hatched || d.growth.hatched))
+          || (d.growth.cycleId != resource.data.growth.cycleId
+            && !d.growth.hatched && !d.growth.celebrated)
+        ));
     }
 
     /* ───────────────────────── 사고 싶은 것(wishlist) ─────────────────────────

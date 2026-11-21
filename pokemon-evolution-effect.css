@@ -10,7 +10,7 @@
 .pe-after {opacity:0;transform:scale(.7);}
 .pe-revealed .pe-before {display:none;}
 .pe-revealed .pe-after {opacity:1;transform:scale(1);animation:pe-reveal .6s ease-out both;}
-.pe-after.pe-shiny {filter:hue-rotate(45deg) saturate(1.25);}
+.pe-after.pe-shiny {filter:none;}
 .pe-fallback {font-size:110px;line-height:210px;}
 .pe-description {font:700 17px/1.5 system-ui,sans-serif;color:#775c35;margin:8px 0;}
 .pe-note {font:500 14px/1.6 system-ui,sans-serif;color:#76664f;margin:4px 0 16px;}
