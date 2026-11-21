@@ -37,3 +37,17 @@ test('free-day banner is Saturday only, without changing family state',()=>{
  }
  assert.equal(JSON.stringify(state),before);
 });
+
+const sortSource=fs.readFileSync(new URL('../selected-dashboard.js',import.meta.url),'utf8');
+test('mission display is descending points for incomplete rows, stable ties, completed last in original order',()=>{
+ const missions=[{id:'a',points:2},{id:'b',points:9},{id:'c',points:5},{id:'d',points:9},{id:'e',points:20},{id:'f',points:1}];
+ const order=new Map(missions.map((m,i)=>[m.id,i])),points=new Map(missions.map(m=>[m.id,m.points]));
+ const rows=missions.map(m=>({dataset:{id:m.id},classList:{contains:()=>m.id==='e'||m.id==='f'}}));
+ const comparator=sortSource.match(/rows\.slice\(\)\.sort\((\(a,b\)=>[^\n]+)\);/)[1];
+ const sort=new Function('order','points','return '+comparator)(order,points);
+ const before=JSON.stringify(missions);assert.deepEqual(rows.slice().sort(sort).map(r=>r.dataset.id),['b','d','c','a','e','f']);assert.equal(JSON.stringify(missions),before);
+});
+test('school card tablet box is invisible without changing its sizing',()=>{
+ const css=fs.readFileSync(new URL('../tablet-safe-layout.css',import.meta.url),'utf8');
+ assert.match(css,/padding:12px 14px!important;min-height:160px!important;border:1px solid transparent!important;border-radius:0!important;background:none!important;box-shadow:none!important/);
+});
