@@ -203,3 +203,25 @@ body.reference-home-ready #cardChores .char-panel .partner-art-summary{margin-to
 /* Preserve the moved button's existing appearance and the photo's red target. */
 body.reference-home-ready .reference-mission-heading #allMissionsBtn{min-height:44px;min-width:44px;background:#fffdf9;color:#645137;border-color:#d9c9ab;font-size:11px}
 @media(min-width:1180px){body.reference-home-ready .reference-mission-heading #allMissionsBtn{margin-left:80px}}
+
+/* Keep the school summary readable within the fixed home header. Full details remain one tap away. */
+@media(min-width:768px){
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardSchool{grid-template-rows:32px minmax(0,1fr) 26px!important;gap:2px!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody{display:flex!important;flex-direction:column!important;gap:4px!important;overflow:auto!important;scrollbar-width:none!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-row{flex-direction:row!important;align-items:flex-start!important;gap:5px!important;margin:0!important;flex:0 0 auto!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-tag{flex:none!important;line-height:17px!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-chips{gap:0 5px!important;max-height:none!important;overflow:visible!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-chip{font-size:12px!important;line-height:17px!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolDetailsBtn{height:26px!important;min-height:26px!important;align-self:stretch!important}
+}
+/* Arrow, touch and keyboard scrolling remain available without opaque native scrollbar tracks. */
+body.dashboard-refresh.reference-home-ready #cardChores #missionScroll{scrollbar-width:none!important;background:transparent!important}
+body.dashboard-refresh.reference-home-ready #cardChores #missionScroll::-webkit-scrollbar,
+body.dashboard-refresh.reference-home-ready .selected-top #schoolBody::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+@media(min-width:768px){
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody{gap:2px!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-tag,
+ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #schoolBody .sch-chip{line-height:16px!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores #missionScroll{overflow-x:auto!important;overflow-y:hidden!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores #choreList>.chore{box-sizing:border-box!important}
+}
