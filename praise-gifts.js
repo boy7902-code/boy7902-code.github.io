@@ -3,7 +3,7 @@
   'use strict';
   const core = root.FamilyPraiseCore;
   let adapter = null, context = { connected: false, role: '', kid: '아이' }, gifts = [], dialog = null, view = 'inbox', selected = '', busy = false, epoch = 0;
-  let draft = null, notice = '', arrivalTimer = null, bodyOverflow = null;
+  let draft = null, notice = '', arrivalTimer = null, arrivalArt = null, arrivalActive = false, bodyOverflow = null;
   const ownIssued = new Set(), seen = new Set();
   const $ = selector => document.querySelector(selector);
   function node(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -156,29 +156,47 @@
     body.append(node('p', 'pg-once', '이 선물은 한 번만 받았어. 다시 열어도 결과와 적립은 그대로야.'));
     body.append(action('고마워!', close)); body.append(action('선물함 보기', () => { view = 'inbox'; render(); }, 'pg-text-button'));
   }
+  function readSeen() { try { JSON.parse(localStorage.getItem(seenKey()) || '[]').forEach(id => seen.add(id)); } catch (e) {} }
+  function anotherDialog() { return [...document.querySelectorAll('dialog[open],.modal:not([hidden])')].some(e => e !== dialog && e.getClientRects().length); }
+  async function presentArrival(next, token) {
+    const announce = async () => {
+      readSeen();
+      if (token !== epoch || !context.connected || document.hidden || busy || dialog?.open || arrivalActive || seen.has(next.id) || anotherDialog()) return;
+      if (!gifts.some(g => g.id === next.id && g.state === 'ready')) return;
+      arrivalActive = true; remember(next.id);
+      const layer = node('div', 'pg-arrival-layer'); layer.setAttribute('aria-hidden', 'true');
+      const box = node('div', 'pg-arrival-box'); box.innerHTML = giftSVG;
+      box.append(node('span', 'pg-arrival-caption', '칭찬 선물이 도착했어요!')); layer.append(box); document.body.append(layer); arrivalArt = layer;
+      try { await Promise.all(box.getAnimations().map(a => a.finished.catch(() => null))); }
+      finally { layer.remove(); if (arrivalArt === layer) arrivalArt = null; arrivalActive = false; }
+      if (token !== epoch || !context.connected || document.hidden || busy || dialog?.open || anotherDialog()) return;
+      if (!gifts.some(g => g.id === next.id && g.state === 'ready')) return;
+      selected = next.id; view = 'gift'; show();
+    };
+    if (root.navigator?.locks?.request) await root.navigator.locks.request('family-praise-arrival:' + identity(), { ifAvailable: true }, lock => lock ? announce() : undefined);
+    else await announce();
+  }
   function maybeArrival() {
     clearTimeout(arrivalTimer); arrivalTimer = null;
-    if (!context.connected || document.hidden || busy || dialog?.open) return;
+    if (!context.connected || document.hidden || busy || dialog?.open || arrivalActive) return;
+    readSeen();
     const next = sorted().find(g => g.state === 'ready' && !seen.has(g.id) && !ownIssued.has(g.id));
     if (!next) return;
-    arrivalTimer = setTimeout(() => {
-      if (!context.connected || document.hidden || busy || dialog?.open) return;
-      // Do not cover another open dialog or an active PIN/input operation.
-      if ([...document.querySelectorAll('dialog[open],.modal:not([hidden])')].some(e => e !== dialog && e.getClientRects().length)) return;
-      selected = next.id; view = 'gift'; remember(next.id); show();
-    }, 600);
+    const token = epoch;
+    arrivalTimer = setTimeout(() => { arrivalTimer = null; presentArrival(next, token).catch(() => {}); }, 600);
   }
   function observe(next) {
     context = { ...context, ...next }; gifts = (next.gifts || []).filter(core.validGift);
-    try { JSON.parse(localStorage.getItem(seenKey()) || '[]').forEach(id => seen.add(id)); } catch (e) {}
+    readSeen();
     launcher(); if (dialog?.open && !busy && view === 'inbox') render();
     // An independent device may have consumed the selected gift already.
     if (dialog?.open && !busy && ['gift', 'wheel'].includes(view) && gift()?.state === 'claimed') { view = 'result'; render(); }
     maybeArrival();
   }
   function openInbox() { if (!context.connected || busy) return; selected = ''; view = 'inbox'; notice = ''; show(); }
-  function reset() { epoch++; busy = false; gifts = []; context = { connected: false, role: '', kid: '아이' }; draft = null; selected = ''; notice = ''; ownIssued.clear(); seen.clear(); clearTimeout(arrivalTimer); dialog?.close(); launcher(); }
+  function reset() { epoch++; busy = false; gifts = []; context = { connected: false, role: '', kid: '아이' }; draft = null; selected = ''; notice = ''; ownIssued.clear(); seen.clear(); clearTimeout(arrivalTimer); arrivalArt?.remove(); arrivalArt = null; arrivalActive = false; dialog?.close(); launcher(); }
   root.FamilyPraise = Object.freeze({ configure: value => { adapter = value; launcher(); }, observe, reset, openInbox, status: () => ({ busy, pending: pending().length, open: !!dialog?.open }) });
   document.addEventListener('click', () => { if (!dialog?.open && !busy) maybeArrival(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeArrival(); });
+  root.addEventListener('storage', e => { if (e.key === seenKey()) readSeen(); });
 })(globalThis);
