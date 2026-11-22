@@ -28,7 +28,8 @@ export const KID_ID = 'm3';              // 아이 구성원 id (앱과 동일)
 export const FINAL_P = 200;              // 최종 진화 기준 경험치 (앱과 동일)
 export const STAMP_START_AT = '2026-11-19T08:22:29+09:00';
 export const STAMPS_PER_BOARD = 10;
-export const STAMP_BONUS_POINTS = 3;
+export const STAMP_BONUS_POINTS = 1;
+export const STAMP_REWARD_CHANGED_AT = '2026-11-23T07:30:33+09:00';
 export const FAMILY_ROOT = 'households/main';
 export const SUMMARY_PATH = `${FAMILY_ROOT}/stats/summary`;
 export const PARTNER_PATH = `${FAMILY_ROOT}/child_state/partner`;
@@ -123,23 +124,26 @@ export function advanceStampBoard({ progress = 0, completed = 0, logs = [], star
     });
   const bonusByMonth = {};
   const bonusByDate = {};
-  let boardsAwarded = 0;
+  let boardsAwarded = 0, bonusPoints = 0;
   eligible.forEach((log) => {
     nextProgress += 1;
     if (nextProgress < STAMPS_PER_BOARD) return;
     nextProgress = 0;
     nextCompleted += 1;
     boardsAwarded += 1;
+    const amount = timestampMillis(log.createdAt) < Date.parse(STAMP_REWARD_CHANGED_AT) ? 3 : STAMP_BONUS_POINTS;
+    bonusPoints += amount;
     const month = monthOf(log.date);
     const date = String(log.date || '');
-    if (month) bonusByMonth[month] = intOf(bonusByMonth[month]) + STAMP_BONUS_POINTS;
-    if (date) bonusByDate[date] = intOf(bonusByDate[date]) + STAMP_BONUS_POINTS;
+    if (month) bonusByMonth[month] = intOf(bonusByMonth[month]) + amount;
+    if (date) bonusByDate[date] = intOf(bonusByDate[date]) + amount;
   });
   return {
     progress: nextProgress,
     completed: nextCompleted,
     boardsAwarded,
-    bonusPoints: boardsAwarded * STAMP_BONUS_POINTS,
+    bonusPoints,
+    totalBonusPoints: intOf(completed) * 3 + bonusPoints,
     counted: eligible.length,
     bonusByMonth,
     bonusByDate,
@@ -607,7 +611,7 @@ export function computeScreenStats({ summary = {}, logs = [], pointUses = [], pa
     stampBoardsCompleted: stampBoard.completed,
     stampBonusPending: 0, // No acquisition approval or pending reward.
     stampBonusAuto: stampBoard.bonusPoints,
-    stampBonusPoints: stampBoard.completed * STAMP_BONUS_POINTS,
+    stampBonusPoints: stampBoard.totalBonusPoints,
     atFinal: partnerXp >= FINAL_P,
   };
 }
@@ -1546,4 +1550,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-                                    }
+       }
