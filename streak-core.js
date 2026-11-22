@@ -75,7 +75,7 @@
   root.FamilyStreak = Object.freeze({ normalize, observe, status, validDate, kstDate, deletionImpact });
 })(globalThis);
 
-/* Per-mission five-school-day stars. Rewards are derived from unique completion
+/* Per-mission five-completion stars. Rest-day completions count; rest-day misses do not reset. Rewards are derived from unique completion
    records, never written back as grants. Schedule versions apply forward only. */
 (function(root){
  'use strict';
@@ -113,14 +113,15 @@
   for(let day=policy.started,n=0;day<=today&&n<10000;day=nextDate(day),n++){
    while(cursor<keys.length&&keys[cursor]<=day){current=policy.snapshots[keys[cursor++]];}
    const dow=new Date(day+'T12:00:00Z').getUTCDay();
-   if(dow===0||dow===6)continue;
    if(!holidays||!holidays.covers(day)){covered=false;break;}
-   if(holidays.isRest(day))continue;
+   const rest=dow===0||dow===6||holidays.isRest(day);
    for(const m of current){
     const row=byMission[m.id]||(byMission[m.id]={progress:0,cycleEarned:0,completed:0,lastAwardDate:'',total:0});
-    if(m.days.length&&!m.days.includes(dow))continue;
     const log=records.get(day+'_'+m.id);
-    if(!log){if(day!==today){row.progress=0;row.cycleEarned=0;}continue;}
+    if(!log){
+     if(!rest&&(!m.days.length||m.days.includes(dow))&&day!==today){row.progress=0;row.cycleEarned=0;}
+     continue;
+    }
     if(row.progress===5){row.progress=0;row.cycleEarned=0;}
     row.progress++;row.cycleEarned+=Math.round(Number(log.earned));
     if(row.progress===5){const earnedSum=row.cycleEarned,amount=Math.round(earnedSum*0.3);row.completed++;row.lastAwardDate=day;row.total+=amount;row.progress=0;row.cycleEarned=0;bonuses.push({id:'mission-star_'+m.id+'_'+day,mid:m.id,date:day,amount,earnedSum});}
