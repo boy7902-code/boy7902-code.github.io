@@ -69,7 +69,7 @@
     $('#missionPrev').addEventListener('click',()=>{missionPage--;pageMissions();});
     $('#missionNext').addEventListener('click',()=>{missionPage++;pageMissions();});
     const board=$('.mission-stamp-board'), area=$('.mission-area');
-    area.append(board); // Always visible, below the report, not inside paginated missions.
+    // The stamp board is already in the current dashboard composition.
     $('#stampBoardOpenBtn').addEventListener('click',()=>{board.querySelector('details').open=true;openDetails(board,'미션 도장판 · 안내');});
     new MutationObserver(pageMissions).observe($('#choreList'),{childList:true});
     wide.addEventListener('change',pageMissions);

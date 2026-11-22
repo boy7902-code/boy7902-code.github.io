@@ -8,7 +8,7 @@ test('locked parent mode hides parent-only controls instead of disabling them', 
   const css = await read('style.css');
   const html = await read('index.html');
   assert.match(css, /body\[data-parent="off"\] \.parent-only \{ display: none !important; \}/);
-  assert.match(html, /<body data-parent="off">/);
+  assert.match(html, /<body data-parent="off" class="dashboard-refresh">/);
   for (const id of ['settingsBtn', 'syncBadge', 'eventAddBtn', 'wikiAddBtn', 'schoolEditBtn', 'choreAddBtn', 'partnerBtn', 'pointUseBtn', 'adoptBtn', 'stickerResetBtn']) {
     const re = new RegExp(`class="[^"]*parent-only[^"]*" id="${id}"`);
     assert.match(html, re, `${id} must be parent-only`);
@@ -41,7 +41,8 @@ test('the schedule opens in month view by default', async () => {
 test('the event center hides parent setups while the shared mission stamp board has no manual reset action', async () => {
   const app = await read('app.js');
   const html = await read('index.html');
-  assert.match(app, /<section class="ev-sec parent-only">\s*<h4>①🔥 3일 연속 콤보/);
+  const active = await read('app-dex-integrated.js');
+  assert.doesNotMatch(active, /comboPrevOk|ev-combo-toggle|3일 연속 콤보/);
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>②⚡ 부모님 깜짝 보너스/);
   assert.match(app, /<section class="ev-sec parent-only">\s*<h4>③🎂 2배 데이/);
   assert.match(app, /class="btn sm ghost parent-only" data-act="ev-gacha-edit"/);
@@ -68,4 +69,19 @@ test('the event button is a surprise on the child screen and always there in par
   assert.match(app, /btn\.classList\.toggle\('surprise', !!surprise\.on && !parent\)/);
   // 부모 모드를 열거나 잠글 때 바로 다시 계산됩니다
   assert.match(app, /renderParentBtn[\s\S]{0,400}renderEventBadge\(\)/);
+});
+
+
+test('current composition is native without the old boot conversion', async () => {
+ const html=await read('index.html'),refresh=await read('dashboard-refresh.js'),selected=await read('selected-dashboard.js');
+ for(const c of ['selected-top','selected-lower','partner-art-summary','partner-bottom-metrics','refresh-record-details','width-access-tools'])assert.ok(html.includes(c),c);
+ assert.doesNotMatch(html,/app-booting|appBootStatus|화면 준비 중/);
+ assert.doesNotMatch(refresh,/createElement|createComment|appendChild|insertBefore/);
+ assert.doesNotMatch(selected,/createComment|home\(|homes|restore\(|append\(overview/);
+});
+test('old combo is retired without removing five-completion stars or other bonuses', async () => {
+ const active=await read('app-dex-integrated.js');
+ assert.doesNotMatch(active,/comboPrevOk|ev-combo-toggle|3일 연속 콤보|comboOn|comboStreakToday/);
+ assert.match(active,/doubleDayOn/);assert.match(active,/awardBonus/);
+ assert.match(await read('streak-core.js'),/MissionStars/);
 });
