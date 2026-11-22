@@ -17,6 +17,7 @@
       저장하는 확정값은 `stats/summary` 뿐이고, 기존 확정 합계는 호환용으로 유지하고 새 획득은 고유 완료기록에서 자동 합산합니다.
    ========================================================================== */
 
+import './praise-core.js?v=praise-20261122-1';
 import './mission-rewards.js?v=board-clock-20261122-1';
 import './streak-core.js?v=mission-stars-20261122-1';
 import './partner-growth-core.js?v=family-refresh-20261121-1';
@@ -791,6 +792,7 @@ export function createFamilySync(deps = {}) {
     PLAIN_COLLECTIONS.forEach((name) => {
       unsubs.push(sdk.onSnapshot(colRef(name), push(name), fail(name)));
     });
+    unsubs.push(sdk.onSnapshot(colRef('praiseGifts'), push('praiseGifts'), fail('praiseGifts')));
     // 이번 달 로그(화면용) + 미정산 로그(합계 계산용)
     const monthStart = kstMonthStart(nowFn());
     unsubs.push(sdk.onSnapshot(
@@ -1024,6 +1026,92 @@ export function createFamilySync(deps = {}) {
     }
   }
 
+  /* Parent seals the random result at issue time; the child reveals it later.
+     Claim and the one immutable bonus log commit atomically, including across dates. */
+  async function issuePraiseGift({ id, reason } = {}) {
+    const session = activeSession({ r: 'parent' });
+    const core = globalThis.FamilyPraiseCore, policy = deps.praisePolicy || core.POLICY;
+    if (!session || role !== 'parent') return { ok: false, denied: true, error: { kind: 'permission', message: '칭찬 선물은 보호자만 보낼 수 있어요.' } };
+    const text = String(reason || '').trim();
+    if (!core.giftIdOk(id) || !text || text.length > 40 || !core.validatePolicy(policy)) return { ok: false, error: { kind: 'validation', message: '칭찬 문구와 선물 설정을 확인해 주세요.' } };
+    let points;
+    try { points = core.pickPoints(policy, core.secureRoll(deps.crypto || globalThis.crypto)); }
+    catch (e) { return { ok: false, error: { kind: 'validation', message: '안전한 선물 추첨을 준비하지 못했어요. 다시 시도해 주세요.' } }; }
+    try {
+      const out = await sdk.runTransaction(db, async tx => {
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+        const ref = docRef(pathOf(`praiseGifts/${id}`)), snap = await tx.get(ref);
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+        if (snapExists(snap)) {
+          const saved = snap.data();
+          if (!core.validGift(saved) || saved.createdBy !== session.uid || saved.reason !== text) throw new Error('Gift ID conflict');
+          return { ok: true, id, alreadyIssued: true };
+        }
+        tx.set(ref, { id, member: kidId, reason: text, points, policyVersion: policy.version, state: 'ready', createdAt: sdk.serverTimestamp(), createdBy: session.uid });
+        return { ok: true, id, alreadyIssued: false };
+      });
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true };
+      return out;
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true };
+      // A concurrent attempt can lose the create permission race after the first
+      // request commits. Recover only from a fresh, matching server document.
+      try {
+        const read = sdk.getDocFromServer || sdk.getDoc;
+        const snap = await read(docRef(pathOf(`praiseGifts/${id}`)));
+        if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true };
+        const saved = snapExists(snap) ? snap.data() : null;
+        if (core.validGift(saved) && saved.createdBy === session.uid && saved.reason === text) return { ok: true, id, alreadyIssued: true };
+      } catch (_) {}
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
+  async function claimPraiseGift({ id } = {}) {
+    const session = activeSession(), core = globalThis.FamilyPraiseCore;
+    if (!session || !['parent', 'child'].includes(session.role)) return { ok: false, cancelled: true };
+    if (!core.giftIdOk(id)) return { ok: false, error: { kind: 'validation', message: '선물 정보를 확인할 수 없어요.' } };
+    const date = kstTodayStr(nowFn()), at = kstHhmm(nowFn());
+    try {
+      const out = await sdk.runTransaction(db, async tx => {
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+        const ref = docRef(pathOf(`praiseGifts/${id}`)), logRef = docRef(pathOf(`logs/${core.logId(id)}`));
+        const giftSnap = await tx.get(ref), logSnap = await tx.get(logRef);
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+        if (!snapExists(giftSnap)) throw new Error('Gift not found');
+        const gift = giftSnap.data();
+        if (!core.validGift(gift) || gift.member !== kidId) throw new Error('Invalid gift');
+        if (gift.state === 'claimed') {
+          if (!snapExists(logSnap) || logSnap.data().giftId !== id || logSnap.data().earned !== gift.points) throw new Error('Gift receipt missing');
+          return { ok: true, id, points: gift.points, alreadyClaimed: true, log: logSnap.data() };
+        }
+        if (snapExists(logSnap)) throw new Error('Gift receipt conflict');
+        const log = { id: core.logId(id), date, at, mid: core.logId(id), giftId: id,
+          title: `🎁 칭찬 선물 · ${gift.reason}`, kind: 'bonus', member: kidId, base: gift.points,
+          bonus: 0, earlyBonus: 0, earned: gift.points, due: '', goalMet: false, settled: false,
+          createdAt: sdk.serverTimestamp(), createdBy: session.uid };
+        tx.set(logRef, log);
+        tx.update(ref, { state: 'claimed', openedAt: sdk.serverTimestamp(), openedBy: session.uid, claimDate: date, claimAt: at });
+        return { ok: true, id, points: gift.points, alreadyClaimed: false, log };
+      });
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true };
+      return out;
+    } catch (e) {
+      if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true };
+      // Rules may reject the losing device before the SDK retries a transaction.
+      // Never redraw or add points locally: read the winning receipt from server.
+      try {
+        const read = sdk.getDocFromServer || sdk.getDoc;
+        const [giftSnap, logSnap] = await Promise.all([read(docRef(pathOf(`praiseGifts/${id}`))), read(docRef(pathOf(`logs/${core.logId(id)}`)))]);
+        if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true };
+        const saved = snapExists(giftSnap) ? giftSnap.data() : null, receipt = snapExists(logSnap) ? logSnap.data() : null;
+        if (core.validGift(saved) && saved.state === 'claimed' && receipt?.giftId === id && receipt.member === kidId && receipt.kind === 'bonus' && receipt.earned === saved.points)
+          return { ok: true, id, points: saved.points, alreadyClaimed: true, log: receipt };
+      } catch (_) {}
+      return { ok: false, error: classifyFirestoreError(e) };
+    }
+  }
+
   /* Compatibility endpoint: acquisition approval was retired. Never mutate earnings. */
   async function settleUnsettled() {
     return { ok: false, code: 'earnings-auto', count: 0, message: '획득 포인트는 자동 반영됩니다. 부모 정산은 포인트 사용에만 필요합니다.' };
@@ -1219,6 +1307,9 @@ export function createFamilySync(deps = {}) {
       snap.docs.forEach((d) => records.push({ path: pathOf(`${name}/${d.id}`), data: toPlain(d.data()) }));
     }
     if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+    if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
+    const giftSnap = await sdk.getDocs(colRef('praiseGifts'));
+    giftSnap.docs.forEach(d => records.push({ path: pathOf(`praiseGifts/${d.id}`), data: toPlain(d.data()) }));
     const logsSnap = await sdk.getDocs(colRef('logs'));
     logsSnap.docs.forEach((d) => records.push({ path: pathOf(`logs/${d.id}`), data: toPlain(d.data()) }));
     if (!sessionIsCurrent(session.generation, 'parent', session.uid)) throw Object.assign(new Error('Session changed'), { code: 'auth/session-changed' });
@@ -1274,11 +1365,14 @@ export function createFamilySync(deps = {}) {
     const session = activeSession({ by, r: 'parent' });
     if (!session) return { ok: false, cancelled: true, reason: 'session-changed', written: 0, verified: { matched: 0, mismatched: [] } };
     let written = 0;
+    const preservedGiftRecords = [];
+    const preserveGift = rec => rec.path.startsWith(pathOf('praiseGifts/')) || rec.path.startsWith(pathOf('logs/praise_'));
     let currentPath = '';
     try {
       for (const chunk of backup.chunks) {
         for (const rec of chunk.records) {
           if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, verified: { matched: 0, mismatched: [] } };
+          if (preserveGift(rec)) { preservedGiftRecords.push(rec.path); continue; }
           currentPath = rec.path;
           const target = docRef(rec.path);
           let data = fromPlain(rec.data, sdk);
@@ -1294,12 +1388,13 @@ export function createFamilySync(deps = {}) {
           written += 1;
         }
       }
-      if (!verify) return { ok: true, written, verified: { matched: 0, mismatched: [] } };
+      if (!verify) return { ok: true, written, preservedGiftRecords, verified: { matched: 0, mismatched: [] } };
       const mismatched = [];
       let matched = 0;
       for (const chunk of backup.chunks) {
         for (const rec of chunk.records) {
           if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, reason: 'session-changed', written, verified: { matched, mismatched } };
+          if (preserveGift(rec)) continue;
           const s = await sdk.getDoc(docRef(rec.path));
           const got = toPlain(snapExists(s) ? s.data() : null);
           const want = toPlain(rec.data);
@@ -1309,7 +1404,7 @@ export function createFamilySync(deps = {}) {
           else mismatched.push({ path: rec.path, got: strip(got), want: strip(want) });
         }
       }
-      return { ok: mismatched.length === 0, written, verified: { matched, mismatched } };
+      return { ok: mismatched.length === 0, written, preservedGiftRecords, verified: { matched, mismatched } };
     } catch (e) {
       return { ok: false, reason: 'write-failed', error: { ...classifyFirestoreError(e), path: currentPath }, written, verified: { matched: 0, mismatched: [] } };
     }
@@ -1398,7 +1493,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, claimPartnerHatch, saveParentPin, pushPatch,
-    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, observeStreak, observeMissionStars,
+    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, issuePraiseGift, claimPraiseGift, observeStreak, observeMissionStars,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
