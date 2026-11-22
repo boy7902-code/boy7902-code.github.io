@@ -30,8 +30,125 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower>.
 body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .mission-area{grid-template-rows:minmax(0,1fr) 240px!important}
 body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower{height:240px!important}
 }
-/* Short browser windows scroll instead of squeezing the missions out of view. */
-@media(min-width:768px) and (max-height:759px){
-body.dashboard-refresh.selected-dashboard.reference-home-ready[data-apptab="dash"]{overflow-y:auto!important}
-body.dashboard-refresh.selected-dashboard.reference-home-ready[data-apptab="dash"] .app{height:800px!important;min-height:800px!important;max-height:none!important}
+/* The duplicate navigation is gone; the two home entries open separate views. */
+body.reference-home-ready #familyNav{display:none!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #familyInformation>.refresh-record-details{display:none!important}
+body.reference-home-ready.family-information-open[data-reference-panel="growth"] #cardSchedule{display:none!important}
+/* Growth is a text action in the existing report heading, not another box. */
+#referenceGrowthEntry{position:relative;min-height:26px;padding:0;border:0;border-radius:0;background:none;color:#375c4c;font-size:14px;line-height:20px;white-space:nowrap}
+#referenceGrowthEntry::before{content:'';position:absolute;inset:50% 0 auto;height:44px;transform:translateY(-50%)}
+@media(min-width:768px){
+body.dashboard-refresh.selected-dashboard.reference-home-ready[data-apptab="dash"]{overflow:hidden!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready[data-apptab="dash"] .app{height:100dvh!important;min-height:0!important;max-height:100dvh!important;position:relative;gap:4px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar{grid-template-columns:132px minmax(0,1fr) 220px!important;min-height:132px!important;height:132px!important;max-height:132px!important;flex:0 0 132px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top{height:132px!important;min-height:132px!important;align-items:start!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardOverview{height:132px!important;max-height:132px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardSchool{height:132px!important;max-height:132px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .top-actions{display:grid!important;grid-template-columns:44px repeat(2,minmax(0,1fr));gap:6px!important;align-items:center!important;width:220px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .top-actions>#parentBtn{grid-column:2;grid-row:1}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .top-actions>.display-menu{grid-column:3;grid-row:1}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .top-actions>#praiseGiftBtn{grid-column:1/-1;justify-self:end}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .top-actions>#fbPill{grid-column:1/-1;justify-self:end}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #referenceHomeAgenda{min-height:46px;padding-top:0;padding-bottom:0}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .mission-area{grid-template-rows:minmax(0,1fr) 189px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower{height:189px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower>.weekly-report{grid-template-rows:26px 36px auto!important;min-height:83px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower .weekly-head{height:26px!important;min-height:26px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #appVersion{position:absolute;right:20px;bottom:18px}
 }
+
+body.dashboard-refresh.reference-home-ready .top-actions #safeRefreshBtn{position:static!important;inset:auto!important;width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;margin:0!important;grid-column:1;grid-row:1}
+body.reference-home-ready .display-menu-controls>#praiseGiftBtn{max-width:none!important;width:100%;justify-content:center}
+/* Reflow header lines and remove spare spacing, never scale text or mission cards. */
+@media(min-width:1024px) and (max-height:759px){
+body.dashboard-refresh.selected-dashboard.reference-home-ready[data-apptab="dash"] .app{padding-top:2px!important;padding-bottom:2px!important;gap:2px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar{height:116px!important;min-height:116px!important;max-height:116px!important;flex-basis:116px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top,body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardOverview,body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardSchool{height:116px!important;min-height:0!important;max-height:116px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top>#cardOverview{grid-template-rows:46px 43px 14px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #cardOverview>.card-head{grid-column:2!important;grid-row:1!important;align-self:start!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #cardOverview>.weather-meta{grid-column:1;grid-row:1}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-outfit{grid-column:2;grid-row:1;align-self:end}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-top #cardOverview>.weather-week{grid-row:2}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-primary{grid-row:3}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores>.card-head{min-height:48px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores{gap:4px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .mission-area{grid-template-rows:minmax(214px,1fr) 178px!important;gap:4px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower{height:178px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower>.mission-stamp-board,body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower>#cardWish{min-height:89px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower>.weekly-report{grid-template-rows:20px 36px auto!important;min-height:77px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .selected-lower .weekly-head{height:20px!important;min-height:20px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #referenceGrowthEntry{min-height:20px}
+}
+@media(min-width:768px) and (max-width:1023px){
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar{grid-template-columns:132px minmax(0,1fr) 220px!important;grid-template-rows:78px 132px!important;height:216px!important;min-height:216px!important;max-height:216px!important;flex-basis:216px!important;gap:6px 10px!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar>.selected-top{grid-column:1/-1!important;grid-row:2!important;min-width:0!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar>.top-actions{grid-column:3!important;grid-row:1!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready .topbar>.header-clock{grid-column:1!important;grid-row:1!important}
+}
+body.reference-home-ready.family-information-open>.app>.footer{display:none!important}
+body.reference-home-ready.family-information-open #cardSchedule .sched-tabs button{width:auto!important;min-width:70px!important;font-size:14px!important;gap:4px;padding:4px 10px!important}
+body.reference-home-ready.family-information-open #cardSchedule .sched-tabs .tab-ico{display:none}
+/* Calendar is its own roomy view, not the compact home tile. */
+.reference-cal-events{display:none}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"]{overflow:auto!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .app{height:auto!important;min-height:100dvh!important;max-height:none!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #cardSchedule{padding:16px!important;overflow:visible!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #cardSchedule>.card-head{min-height:36px;margin:0 0 10px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #tSchedule{font-size:19px!important;line-height:1.4}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #cardSchedule .sched-tabs{top:12px!important;right:16px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #cardSchedule .sched-tabs button{min-height:40px!important;height:40px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #schedPaneCal:not([hidden]){display:grid!important;grid-template-columns:minmax(0,1fr) 260px;grid-template-rows:44px 20px auto;gap:8px 18px;overflow:visible!important;flex:none!important;padding:0!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-top{grid-column:1;grid-row:1;height:44px!important;min-height:44px!important;gap:8px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-nav{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;font-size:22px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-label{font-size:21px!important;margin:0 8px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-mode .cmb,body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-today-btn{height:40px!important;min-height:40px!important;font-size:14px!important;padding:0 12px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-dows{grid-column:1;grid-row:2;font-size:13px!important;line-height:20px}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid{grid-column:1;grid-row:3;grid-auto-rows:minmax(80px,1fr)!important;gap:6px!important;min-height:calc(var(--calendar-weeks,5)*80px + (var(--calendar-weeks,5) - 1)*6px)!important;height:max(calc(var(--calendar-weeks,5)*80px + (var(--calendar-weeks,5) - 1)*6px),calc(100dvh - 350px))!important;flex:none!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-cell{min-height:80px!important;padding:7px 8px!important;gap:4px!important;align-items:stretch!important;text-align:left;border-radius:12px;background:#fffdf8}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-num{font-size:18px!important;line-height:20px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-cell.today{background:#eaf2ff;border-color:#83afff}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-cell.sel{outline:2px solid #719fe1;outline-offset:-2px}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-bars,body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-more{display:none!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .reference-cal-events{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.reference-cal-chip{display:flex;flex-direction:column;gap:1px;min-width:0;border-radius:6px;padding:3px 5px;background:#e9effc;border-left:3px solid #7199d1;color:#3b5881;font-size:12px;line-height:15px}
+.reference-cal-time{font-size:10px;line-height:12px;white-space:nowrap;font-weight:700}
+.reference-cal-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-weight:650;overflow-wrap:anywhere}
+.reference-cal-book{background:#e5f2e9;border-color:#75a783;color:#416c4d}.reference-cal-school{background:#e6eefc;border-color:#7199d1;color:#3b5881}.reference-cal-care{background:#fbe9e5;border-color:#cf9081;color:#895a50}.reference-cal-family{background:#f3ebd4;border-color:#c1a15c;color:#80662f}.reference-cal-celebrate{background:#f8e7f0;border-color:#cf8fb2;color:#8b5574}.reference-cal-more{font-size:10px;color:#83705a;line-height:12px}
+#referenceCalendarRail{grid-column:2;grid-row:1/4;display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;border:1px solid #e7dac7;background:#faf5eb;border-radius:16px}
+#referenceCalendarRail #calDay{display:flex!important;flex:none!important;min-height:0!important;max-height:none!important;overflow:visible!important;gap:12px!important}
+#referenceCalendarRail .cal-day-head{flex-wrap:wrap;gap:6px!important}
+#referenceCalendarRail .cal-day-date{font-size:18px!important;line-height:1.6}
+#referenceCalendarRail .cal-day-count,#referenceCalendarRail .cal-today-pill{font-size:11px!important}
+#referenceCalendarRail .cal-day-list{overflow:visible!important;gap:10px!important;max-height:none!important}
+#referenceCalendarRail .event{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px!important;min-height:84px;padding:12px!important;background:#fff;border:1px solid #e7dac7;border-radius:12px}
+#referenceCalendarRail .event .check{grid-column:1;grid-row:1/3;width:20px;height:20px;margin:0}
+#referenceCalendarRail .event-time{grid-column:2;grid-row:1;justify-self:start;font-size:13px!important;padding:3px 8px!important}
+#referenceCalendarRail .event-main{grid-column:2;grid-row:2}
+#referenceCalendarRail .event-title{font-size:15px!important;line-height:1.6;white-space:normal!important}
+#referenceCalendarRail .event-sub{font-size:11px!important;line-height:1.6}
+#referenceCalendarRail #calDayDetailsBtn{font-size:13px;min-height:44px;border:1px solid #dcc7aa;background:#fff;border-radius:10px;margin-top:auto}
+#referenceCalendarRail #upcomingEvents{display:flex;flex-direction:column;align-items:stretch;gap:7px;max-height:none!important;overflow:visible!important;margin:0!important;padding-top:8px}
+#referenceCalendarRail .cal-up-label{font-size:12px!important}
+#referenceCalendarRail .up-item{min-height:40px;white-space:normal;border-radius:10px;padding:7px 9px!important}
+#referenceCalendarRail .up-title{max-width:none;font-size:12px!important;white-space:normal}
+@media(max-width:1023px){
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #schedPaneCal:not([hidden]){grid-template-columns:minmax(0,1fr)}
+#referenceCalendarRail{grid-column:1;grid-row:4}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid{height:auto!important}
+}
+@media(max-width:599px){
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #cardSchedule{padding:12px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-label{font-size:16px!important;margin:0!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .cal-top{gap:2px!important;flex-wrap:wrap;height:auto!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #schedPaneCal:not([hidden]){grid-template-rows:auto 20px auto}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid{gap:3px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-cell{padding:5px 3px!important}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #calGrid .cal-num{font-size:15px!important}
+.reference-cal-chip{padding:2px;font-size:10px;line-height:13px;border-left-width:2px}.reference-cal-time{font-size:8px;line-height:10px}
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] #tSchedule{font-size:16px!important}
+}
+/* Extra-count badge shares the date line, so it never clips under an event. */
+body.reference-home-ready.family-information-open[data-reference-panel="calendar"] .reference-cal-more{position:absolute;top:9px;right:7px;padding:1px 4px;border-radius:5px;background:#fffaf0;font-size:9px;line-height:12px;color:#806c54}
+
+/* Match the adjacent report-detail typography exactly, without a separate box. */
+#referenceGrowthEntry{font:700 10px var(--font,sans-serif);letter-spacing:normal;color:var(--text-2);border:0;background:none;border-radius:0}
