@@ -17,7 +17,7 @@
   lead.hidden=primary.hidden=caption.hidden=family||mode!=='tablet';
   const data=window.FamilyDashboard?.state,missions=data?.missions||[],order=new Map(missions.map((m,i)=>[String(m.id),i]));
   const points=new Map(missions.map(m=>[String(m.id),Number(m.points)||0]));
-  const early=new Map(missions.map(m=>[String(m.id),Number((window.MissionRewards?.maximumEarlyBonus(m.due)||0)>0)]));
+  const early=new Map(missions.map(m=>[String(m.id),Number((window.MissionRewards?.maximumEarlyBonus(MissionRewards.deadlineOf(m,FamilyStreak.kstDate(FamilyBoardClock.now())))||0)>0)]));
   const rows=[...$('#choreList').children].filter(n=>n.classList.contains('chore'));
   const sorted=rows.slice().sort((a,b)=>Number(a.classList.contains('done'))-Number(b.classList.contains('done'))||(!a.classList.contains('done')?((points.get(b.dataset.id)||0)-(points.get(a.dataset.id)||0)||(early.get(b.dataset.id)||0)-(early.get(a.dataset.id)||0)):0)||(order.get(a.dataset.id)||0)-(order.get(b.dataset.id)||0));
   if(rows.some((r,i)=>r!==sorted[i])){sorted.forEach(r=>$('#choreList').append(r));$('#missionScroll').scrollLeft=0;}

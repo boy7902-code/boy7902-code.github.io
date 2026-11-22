@@ -19,14 +19,24 @@
     return 0;
   }
 
-  function calculateMissionReward(mission, at) {
+  function deadlineOf(mission, date, holidays = root.FamilyHolidays) {
+    const source = mission || {};
+    const weekday = minuteOf(source.due) == null ? '' : source.due;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) return weekday;
+    const day = new Date(date + 'T12:00:00Z').getUTCDay();
+    const rest = day === 0 || day === 6 || !!holidays?.name(date);
+    return rest && minuteOf(source.weekendDue) != null ? source.weekendDue : weekday;
+  }
+
+  function calculateMissionReward(mission, at, date, holidays) {
     const source = mission && typeof mission === 'object' ? mission : {};
     const base = intOf(source.points);
-    const dueMinute = minuteOf(source.due);
+    const due = deadlineOf(source, date, holidays);
+    const dueMinute = minuteOf(due);
     const atMinute = minuteOf(at);
     const goalMet = dueMinute != null && atMinute != null && atMinute <= dueMinute;
     const bonus = 0; // Legacy mission deadline bonus is intentionally ignored.
-    const earlyBonus = goalMet ? earlyBonusOf(source.due, at) : 0;
+    const earlyBonus = goalMet ? earlyBonusOf(due, at) : 0;
     return { base, bonus, earlyBonus, goalMet, earned: base + bonus + earlyBonus };
   }
 
@@ -37,6 +47,7 @@
   root.MissionRewards = Object.freeze({
     MAX_EARLY_BONUS,
     minuteOf,
+    deadlineOf,
     earlyBonusOf,
     calculateMissionReward,
     maximumEarlyBonus,

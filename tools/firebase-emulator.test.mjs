@@ -1,4 +1,9 @@
 import test from 'node:test';
+import fs from 'node:fs';
+import '../holiday-core.js';
+import '../streak-core.js';
+import '../mission-deadline-migration.js';
+globalThis.FamilyHolidays.install(JSON.parse(fs.readFileSync(new URL('../data/kr-holidays.json',import.meta.url))));
 import assert from 'node:assert/strict';
 import { initializeApp as initializeClientApp, deleteApp as deleteClientApp } from 'firebase/app';
 import * as authSdk from 'firebase/auth';
@@ -103,10 +108,21 @@ test('Auth + Firestore emulator enforces family roles and automatically derives 
     await firestoreSdk.deleteDoc(parentPermissionLog);
     assert.equal((await firestoreSdk.getDoc(parentPermissionLog)).exists(), false, 'parent retains existing permission to delete any mission log');
 
+    const todayForDeadline = new Date(Date.now()+(9*60+5)*60000).toISOString().slice(0,10);
+    await firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/child_state/holiday_calendar`), {years:[todayForDeadline.slice(0,4)],dates:[todayForDeadline]});
+    const splitMission={id:'split-deadline',title:'Split deadline',member:'m3',points:2,due:'00:01',weekendDue:hhmmOfMinute(Math.min(1439,kstMinuteNow()+10))};
+    await firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/missions/${splitMission.id}`),splitMission);
+
     await clearSignedInUser();
     const { user: child } = await createClaimedUser('child');
     const childRole = await sync.applyAuthUser(auth.currentUser);
     assert.equal(childRole.role, 'child');
+    const splitLog=sync.buildLogPayload({...splitMission,due:splitMission.weekendDue},{at:hhmmOfMinute(kstMinuteNow()),date:todayForDeadline,by:child.uid,member:'m3'});
+    await firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${splitLog.id}`),splitLog);
+    await firestoreSdk.deleteDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${splitLog.id}`));
+    const forgedSplit={...splitLog,due:'00:01',goalMet:false,earlyBonus:0,earned:2};
+    await assert.rejects(firestoreSdk.setDoc(firestoreSdk.doc(db, `${FAMILY_ROOT}/logs/${splitLog.id}`),forgedSplit),{code:'permission-denied'});
+
 
     const childCollections = await sync.pushPatch({
       prev: { wishlist: [], shopping: [], letters: [] },
@@ -220,7 +236,7 @@ test('Auth + Firestore emulator enforces family roles and automatically derives 
     for(const m of stampMissions.slice(0,7)){const r=await sync.writeLog(m,{by:signedInParent.uid,member:'m3'});assert.equal(r.ok,true);sevenMissionPoints+=m.points;}
     const nineAuto=await readAuto();assert.equal(nineAuto.stampProgress,9);assert.equal(nineAuto.stampBoardsCompleted,0);assert.equal(nineAuto.totalXp,5+sevenMissionPoints);
     const tenthLog=await sync.writeLog(stampMissions[7],{by:signedInParent.uid,member:'m3'});assert.equal(tenthLog.ok,true);
-    const tenAuto=await readAuto();assert.equal(tenAuto.stampProgress,0);assert.equal(tenAuto.stampBoardsCompleted,1);assert.equal(tenAuto.stampBonusPending,0);assert.equal(tenAuto.totalXp,5+sevenMissionPoints+stampMissions[7].points+3);
+    const tenAuto=await readAuto();assert.equal(tenAuto.stampProgress,0);assert.equal(tenAuto.stampBoardsCompleted,1);assert.equal(tenAuto.stampBonusPending,0);assert.equal(tenAuto.totalXp,5+sevenMissionPoints+stampMissions[7].points+1);
     const cancel=await sync.deleteLog(tenthLog.payload);assert.equal(cancel.ok,true);assert.equal((await readAuto()).totalXp,nineAuto.totalXp);assert.equal((await readAuto()).stampProgress,9);
     const recreated=await sync.writeLog(stampMissions[7],{by:signedInParent.uid,member:'m3'});assert.equal(recreated.ok,true);assert.equal((await readAuto()).totalXp,tenAuto.totalXp);
     // Emulator-only historical fixture verifies compatibility with old archived summaries.
@@ -321,6 +337,23 @@ test('Auth + Firestore emulator enforces family roles and automatically derives 
     assert.equal((await sync.restoreBackup(backup)).ok,true);
 
 
+
+    // This migration changes definitions only, preserving today's actual receipt and summary.
+    const splitPairs=[{id:'ms-bab',title:'밥',member:'m3',points:2,due:'07:15',days:[1,2,3,4,5]},{id:'ms-bab-we',title:'주말 밥',member:'m3',points:3,due:'08:00',days:[0,6]},{id:'ms-morning-study',title:'공부',member:'m3',points:1,due:'08:05',days:[1,2,3,4,5]},{id:'fnlwnprw',title:'주말 공부',member:'m3',points:2,due:'08:30',days:[0]}];
+    for(const m of splitPairs)await firestoreSdk.setDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/missions/${m.id}`),m);
+    const fixedDate=new Date(Date.now()+(9*60+5)*60000).toISOString().slice(0,10);
+    const keepRef=firestoreSdk.doc(db,`${FAMILY_ROOT}/logs/${fixedDate}_ms-bab_m3`);
+    await firestoreSdk.setDoc(keepRef,{id:`${fixedDate}_ms-bab_m3`,date:fixedDate,mid:'ms-bab',member:'m3',earned:4,base:2,earlyBonus:2,settled:false,createdAt:firestoreSdk.serverTimestamp()});
+    const keepBefore=(await firestoreSdk.getDoc(keepRef)).data(),summaryBefore=(await firestoreSdk.getDoc(summaryRef)).data();
+    const beforeStars=FamilyMissionStars.observe({},{date:fixedDate,missions:[...splitPairs,mission]});
+    const starsRef=firestoreSdk.doc(db,`${FAMILY_ROOT}/child_state/mission_stars`);await firestoreSdk.setDoc(starsRef,beforeStars);
+    const apply=await sync.migrateMissionDeadlines({holidayData:JSON.parse(fs.readFileSync(new URL('../data/kr-holidays.json',import.meta.url)))});assert.equal(apply.ok,true,JSON.stringify(apply));
+    assert.deepEqual((await firestoreSdk.getDoc(keepRef)).data(),keepBefore);assert.deepEqual((await firestoreSdk.getDoc(summaryRef)).data(),summaryBefore);
+    assert.deepEqual((await firestoreSdk.getDoc(starsRef)).data().snapshots[fixedDate],beforeStars.snapshots[fixedDate]);
+    const tomorrow=new Date(fixedDate+'T12:00:00Z');tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+    assert((await firestoreSdk.getDoc(starsRef)).data().snapshots[tomorrow.toISOString().slice(0,10)].some(m=>m.id===mission.id));
+    const merged=(await firestoreSdk.getDoc(firestoreSdk.doc(db,`${FAMILY_ROOT}/missions/ms-morning-study`))).data();assert.equal(merged.points,2);assert.equal(merged.weekendDue,'08:30');
+    assert.equal((await sync.migrateMissionDeadlines({holidayData:JSON.parse(fs.readFileSync(new URL('../data/kr-holidays.json',import.meta.url)))})).alreadyApplied,true);
 
     await clearSignedInUser();
     const noRole = await adminAuth.createUser({

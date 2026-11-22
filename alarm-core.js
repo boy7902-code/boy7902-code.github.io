@@ -94,7 +94,8 @@
   function missionItems(missions, { date, dow, includeAdults = false, kidId = 'm3', logs = [] } = {}) {
     const out = [];
     (Array.isArray(missions) ? missions : []).forEach((m) => {
-      if (!m || typeof m !== 'object') return;
+      if (!m || typeof m !== 'object' || m.archived) return;
+      m={...m,due:root.MissionRewards?.deadlineOf?root.MissionRewards.deadlineOf(m,date):m.due};
       if (!isHhmm(m.due)) return;                    // 마감 시각이 없는 미션은 알람도 없습니다
       if (completedToday(m, {date, logs, kidId})) return;         // 이미 끝낸 미션은 울리지 않습니다
       if (!onDay(m.days, dow)) return;               // 오늘 쉬는 미션

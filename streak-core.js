@@ -83,12 +83,13 @@
  const valid=root.FamilyStreak.validDate;
  const nextDate=d=>{const n=new Date(d+'T12:00:00Z');n.setUTCDate(n.getUTCDate()+1);return n.toISOString().slice(0,10);};
  function schedule(missions){
-  return (Array.isArray(missions)?missions:[]).filter(m=>m&&typeof m.id==='string'&&(m.member==='m3'||!m.member)).map(m=>({id:m.id,days:[...new Set((Array.isArray(m.days)?m.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort()})).sort((a,b)=>a.id.localeCompare(b.id));
+  return (Array.isArray(missions)?missions:[]).filter(m=>m&&!m.archived&&typeof m.id==='string'&&(m.member==='m3'||!m.member)).map(m=>({id:m.id,days:[...new Set((Array.isArray(m.days)?m.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort()})).sort((a,b)=>a.id.localeCompare(b.id));
  }
  function normalize(raw={}){
   const snapshots={};Object.keys(raw.snapshots||{}).filter(valid).sort().forEach(d=>{snapshots[d]=schedule(raw.snapshots[d]);});
   const started=valid(raw.started)&&raw.started>=APPROVED_START?raw.started:'';
-  return {version:1,started,snapshots};
+  const merges=(Array.isArray(raw.merges)?raw.merges:[]).filter(m=>m&&valid(m.date)&&typeof m.from==='string'&&typeof m.to==='string'&&m.from!==m.to).map(m=>({date:m.date,from:m.from,to:m.to}));
+  return {version:1,started,snapshots,...(merges.length?{merges}: {})};
  }
  function observe(raw,{date,missions=[]}={}){
   const out=normalize(raw);if(!valid(date)||date<APPROVED_START)return out;
@@ -112,6 +113,12 @@
   let current=[],cursor=0;
   for(let day=policy.started,n=0;day<=today&&n<10000;day=nextDate(day),n++){
    while(cursor<keys.length&&keys[cursor]<=day){current=policy.snapshots[keys[cursor++]];}
+   for(const merge of policy.merges||[]){
+    if(merge.date!==day)continue;
+    const source=byMission[merge.from],target=byMission[merge.to]||(byMission[merge.to]={progress:0,cycleEarned:0,completed:0,lastAwardDate:'',total:0});
+    // Carry unfinished fragments forward only. Past bonuses retain their IDs and values.
+    if(source&&source.progress+target.progress<5){target.progress+=source.progress;target.cycleEarned+=source.cycleEarned;source.progress=0;source.cycleEarned=0;}
+   }
    const dow=new Date(day+'T12:00:00Z').getUTCDay();
    if(!holidays||!holidays.covers(day)){covered=false;break;}
    const rest=dow===0||dow===6||holidays.isRest(day);
