@@ -73,3 +73,8 @@ test('standby incomplete missions match dashboard priority and preserve complete
  assert.deepEqual(Array.from(vm.runInContext(expression,c),m=>m.id),['high','early','early2','tie','low']);
  assert.equal(JSON.stringify(missions),before);
 });
+
+ test('stamp reward label shows current per-board 1P, not past cumulative 3P',()=>{
+ assert.match(source,/readingReward'\)\.textContent = '10개 완성 보상 \+1P'/);
+ assert.doesNotMatch(source,/readingReward'\)\.textContent = `누적/);
+ });
