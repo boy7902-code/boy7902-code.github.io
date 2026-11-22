@@ -44,8 +44,9 @@ test('mission display is descending points for incomplete rows, stable ties, com
  const order=new Map(missions.map((m,i)=>[m.id,i])),points=new Map(missions.map(m=>[m.id,m.points]));
  const rows=missions.map(m=>({dataset:{id:m.id},classList:{contains:()=>m.id==='e'||m.id==='f'}}));
  const comparator=sortSource.match(/rows\.slice\(\)\.sort\((\(a,b\)=>[^\n]+)\);/)[1];
- const sort=new Function('order','points','return '+comparator)(order,points);
- const before=JSON.stringify(missions);assert.deepEqual(rows.slice().sort(sort).map(r=>r.dataset.id),['b','d','c','a','e','f']);assert.equal(JSON.stringify(missions),before);
+ const early=new Map([['d',1]]);
+ const sort=new Function('order','points','early','return '+comparator)(order,points,early);
+ const before=JSON.stringify(missions);assert.deepEqual(rows.slice().sort(sort).map(r=>r.dataset.id),['d','b','c','a','e','f']);assert.equal(JSON.stringify(missions),before);
 });
 test('school card tablet box is invisible without changing its sizing',()=>{
  const css=fs.readFileSync(new URL('../tablet-safe-layout.css',import.meta.url),'utf8');
