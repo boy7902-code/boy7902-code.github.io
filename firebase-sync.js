@@ -18,8 +18,8 @@
    ========================================================================== */
 
 import './praise-core.js?v=praise-20261122-1';
-import './mission-rewards.js?v=board-clock-20261122-1';
-import './streak-core.js?v=rest-success-20261123-1';
+import './mission-rewards.js?v=deadlines-current-20261123-1';
+import './streak-core.js?v=deadlines-20261123-1';
 import './partner-growth-core.js?v=family-refresh-20261121-1';
 export const normalizePartnerGrowth = value => globalThis.PartnerGrowthCore.normalized(value);
 
@@ -191,6 +191,10 @@ export function missionDocOf(m, { stamp } = {}) {
     title: String(m.title || ''),
     points: intOf(m.points),
     due: isHhmm(m.due) ? m.due : '',
+    weekendDue: isHhmm(m.weekendDue) ? m.weekendDue : '',
+    ...(m.archived === true ? {archived:true} : {}),
+    ...(m.mergedInto ? {mergedInto:String(m.mergedInto)} : {}),
+    ...(Array.isArray(m.mergedFrom) ? {mergedFrom:m.mergedFrom.filter(x=>typeof x==='string')} : {}),
     bonus: isHhmm(m.due) ? intOf(m.bonus) : 0, // Compatibility data only; new scoring ignores it.
     member: (m.member === 'm1' || m.member === 'm2' || m.member === KID_ID) ? m.member : '',
     days: Array.isArray(m.days) ? m.days.filter((n) => n >= 0 && n <= 6) : [],
@@ -814,6 +818,7 @@ export function createFamilySync(deps = {}) {
     // ⏰ 맞춤 알람 — 부모가 만들고 고치며, 아이 기기·태블릿은 읽어서 그대로 울립니다
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/custom_alarms')), push('alarms'), fail('alarms')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/mission_streak')), push('streak'), fail('streak')));
+    unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/holiday_calendar')), push('holidayCalendar'), fail('holidayCalendar')));
     unsubs.push(sdk.onSnapshot(docRef(pathOf('child_state/mission_stars')), push('missionStars'), fail('missionStars')));
     // PIN은 비공개 문서이며, 부모 세션에만 구독을 열어 부모 기기끼리 맞춥니다.
     if (role === 'parent') {
@@ -834,7 +839,8 @@ export function createFamilySync(deps = {}) {
     const when = at || kstHhmm(nowFn());
     const day = date || kstTodayStr(nowFn());
     const base = intOf(mission.points);
-    const due = isHhmm(mission.due) ? mission.due : '';
+    if (mission.weekendDue && !globalThis.FamilyHolidays?.covers(day)) throw new Error('공휴일 자료를 확인한 뒤 다시 완료해 주세요.');
+    const due = globalThis.MissionRewards.deadlineOf(mission, day);
     const reward = globalThis.MissionRewards.calculateMissionReward({ points: base, due }, when);
     const goalMet = reward.goalMet;
     const bonus = 0;
@@ -905,6 +911,47 @@ export function createFamilySync(deps = {}) {
       if (!sessionIsCurrent(session.generation, 'parent', session.uid)) return { ok: false, cancelled: true, error: sessionChanged() };
       return { ok: false, error: classifyFirestoreError(e) };
     }
+  }
+
+  async function migrateMissionDeadlines({holidayData}={}) {
+    const session=activeSession({r:'parent'});
+    if(!session||role!=='parent')return {ok:false,cancelled:true};
+    const date=kstTodayStr(nowFn());
+    try {
+      const known=await sdk.getDocs(sdk.collection(db,pathOf('missions')));
+      const data=await sdk.runTransaction(db,async tx=>{
+        const ids=['ms-bab','ms-bab-we','ms-morning-study','fnlwnprw'];
+        const refs=known.docs.map(snap=>docRef(pathOf('missions/'+snap.id)));
+        const snaps=await Promise.all(refs.map(ref=>tx.get(ref)));
+        const starRef=docRef(pathOf('child_state/mission_stars')),star=await tx.get(starRef);
+        const current=snaps.map((snap,i)=>{if(!snapExists(snap))throw Error('Expected mission missing');return {...snap.data(),id:known.docs[i].id};});
+        const logs=await Promise.all(ids.map(id=>tx.get(docRef(pathOf('logs/'+date+'_'+id+'_'+kidId)))));
+        if(!sessionIsCurrent(session.generation,'parent',session.uid))throw Error('Session changed');
+        if(ids.slice(1).filter(id=>['ms-bab-we','fnlwnprw'].includes(id)).every(id=>current.find(m=>m.id===id)?.archived))return {alreadyApplied:true};
+        for(let i=0;i<ids.length;i++)if(snapExists(logs[i]))current.find(m=>m.id===ids[i]).doneOn=date;
+        const plan=globalThis.FamilyDeadlineMigration.prepare({missions:current,missionStars:snapExists(star)?star.data():{},date,holidayData});
+        plan.missions.forEach((m,i)=>{if(ids.includes(m.id))tx.set(refs[i],missionDocOf(m),{merge:true});});
+        tx.set(starRef,{...plan.missionStars,updatedAt:sdk.serverTimestamp()});
+        tx.set(docRef(pathOf('child_state/holiday_calendar')),{...plan.holidayCalendar,updatedAt:sdk.serverTimestamp()});
+        return {alreadyApplied:false};
+      });
+      return {ok:true,...data};
+    }catch(e){return {ok:false,error:classifyFirestoreError(e)};}
+  }
+
+  async function pushHolidayCalendar(holidayData) {
+    const session=activeSession({r:'parent'});
+    if(!session||role!=='parent'||!globalThis.FamilyHolidays.valid(holidayData))return {ok:false,cancelled:true};
+    try{
+      const ref=docRef(pathOf('child_state/holiday_calendar'));
+      await sdk.runTransaction(db,async tx=>{
+        const snap=await tx.get(ref);if(!sessionIsCurrent(session.generation,'parent',session.uid))return;
+        const before=snapExists(snap)?snap.data():null;
+        // Seed only after an explicit migration; do not silently alter legacy boards.
+        if(!before||Date.parse(before.holidayData?.checkedAt||'')>=Date.parse(holidayData.checkedAt))return;
+        tx.set(ref,{years:Object.keys(holidayData.years),dates:Object.values(holidayData.years).flat().map(r=>r.date),holidayData,updatedAt:sdk.serverTimestamp()});
+      });return {ok:true};
+    }catch(e){return {ok:false,error:classifyFirestoreError(e)};}
   }
 
   async function observeMissionStars({date,missions}={}) {
@@ -1497,7 +1544,7 @@ export function createFamilySync(deps = {}) {
     startSubscriptions, stopAll,
     // 쓰기
     buildLogPayload, writeLog, deleteLog, settleUnsettled, adoptPartner, claimPartnerHatch, saveParentPin, pushPatch,
-    pushEventCenter, pushSchool, pushAlarms, writeBonusLog, issuePraiseGift, claimPraiseGift, observeStreak, observeMissionStars,
+    migrateMissionDeadlines, pushHolidayCalendar, pushEventCenter, pushSchool, pushAlarms, writeBonusLog, issuePraiseGift, claimPraiseGift, observeStreak, observeMissionStars,
     // 백업
     createBackup, restoreBackup, readAllRecords,
     // 이관
@@ -1550,4 +1597,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-       }
+     }
