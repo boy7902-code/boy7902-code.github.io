@@ -152,3 +152,54 @@ body.reference-home-ready.family-information-open[data-reference-panel="calendar
 
 /* Match the adjacent report-detail typography exactly, without a separate box. */
 #referenceGrowthEntry{font:700 10px var(--font,sans-serif);letter-spacing:normal;color:var(--text-2);border:0;background:none;border-radius:0}
+
+/* Requested home display cleanup, 2026-11-22: keep all content and behavior. */
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower,
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower>.mission-stamp-board,
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower>#cardWish,
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower>.weekly-report,
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #wishList>.wish-item{
+ background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #weeklySummary{display:none!important}
+body.reference-home-ready #referenceCalendarEntry{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;min-height:44px}
+/* Put each price beside its item, leaving room for the full remaining-points line. */
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #wishList .wish-top{flex-direction:row!important;align-items:baseline!important;justify-content:space-between;gap:6px!important}
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #wishList .wish-title{flex:1;min-width:0!important}
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #wishList .wish-need{flex:none;white-space:nowrap!important}
+
+/* Swap the two existing mission indicators without changing their values. */
+body.dashboard-refresh.reference-home-ready #cardChores #choreList>.chore .mission-streak-star{left:8px!important;right:auto!important}
+body.dashboard-refresh.reference-home-ready #cardChores #choreList>.chore .pts{left:auto!important;right:8px!important}
+
+/* Wrapped item names and remaining points must not be clipped in portrait. */
+body.dashboard-refresh.reference-home-ready #cardChores .selected-lower #wishPane{max-height:none!important;overflow:visible!important}
+@media(min-width:768px) and (max-width:1023px){
+ body.dashboard-refresh.reference-home-ready #cardChores .mission-area{grid-template-rows:minmax(0,1fr) 210px!important}
+ body.dashboard-refresh.reference-home-ready #cardChores .selected-lower{height:210px!important}
+}
+
+/* Photo-guided mockup: mission controls align with the mission-card column. */
+body.reference-home-ready .reference-mission-heading{display:flex;align-items:center;gap:12px;min-width:0}
+body.reference-home-ready .reference-mission-heading #tChores{white-space:nowrap}
+body.reference-home-ready .reference-mission-heading #allMissionsBtn{flex:none}
+body.reference-home-ready .reference-mission-headline{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;min-width:0;width:100%}
+body.reference-home-ready .reference-mission-headline>.width-access-tools{display:flex!important;align-items:center;justify-content:flex-end;gap:7px!important;min-width:0!important;margin:0!important;font-size:11px;line-height:15px}
+body.reference-home-ready .reference-mission-headline>.width-access-tools>span{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center}
+body.reference-home-ready .reference-mission-headline>.width-access-tools>button{flex:none;width:44px;min-width:44px;height:44px;min-height:44px}
+body.reference-home-ready #cardChores .char-panel{position:relative}
+body.reference-home-ready #cardChores .char-panel>#dexOpenBtn{position:absolute;top:12px;right:12px;z-index:2}
+body.reference-home-ready #cardChores .char-panel .partner-art-summary{margin-top:20px}
+@media(min-width:768px){
+ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores>.card-head{display:grid!important;grid-template-columns:var(--reference-mission-column,minmax(0,1fr)) minmax(0,1fr)!important;column-gap:18px!important;row-gap:0!important}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores>.card-head>.reference-mission-headline{grid-column:1;grid-row:1}
+ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores>.card-head>.card-tools{grid-column:2;grid-row:1;justify-self:end}
+}
+@media(max-width:767px){
+ body.reference-home-ready .reference-mission-headline{display:flex;flex-wrap:wrap;gap:8px}
+ body.reference-home-ready .reference-mission-headline>.width-access-tools{flex:1 1 240px;justify-content:flex-end;width:100%}
+}
+
+/* Preserve the moved button's existing appearance and the photo's red target. */
+body.reference-home-ready .reference-mission-heading #allMissionsBtn{min-height:44px;min-width:44px;background:#fffdf9;color:#645137;border-color:#d9c9ab;font-size:11px}
+@media(min-width:1180px){body.reference-home-ready .reference-mission-heading #allMissionsBtn{margin-left:80px}}
