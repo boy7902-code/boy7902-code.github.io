@@ -5,6 +5,14 @@
   if(!window.FamilyRefresh||!window.FamilyDashboard)return;
   const grid=document.querySelector('#mainGrid'),head=document.querySelector('.weekly-head');
   if(!grid||!head)return;
+  const actions=document.querySelector('.top-actions'),menu=document.querySelector('.display-menu-controls');
+  const refresh=document.querySelector('#safeRefreshBtn'),inbox=document.querySelector('#praiseGiftBtn');
+  if(actions&&refresh)actions.prepend(refresh);
+  if(menu&&inbox)menu.append(inbox);
+  document.querySelectorAll('[data-schedtab]').forEach(b=>{const label=document.createElement('span');label.textContent=b.dataset.schedtab==='cal'?'달력':'우리 집 위키';b.append(label);});
+  document.querySelector('#tSchedule').textContent='가족 달력 · 위키';
+  const calPane=document.querySelector('#schedPaneCal'),rail=document.createElement('aside');rail.id='referenceCalendarRail';rail.setAttribute('aria-label','선택한 날짜 일정');
+  ['#calDay','#calDayDetailsBtn','#upcomingEvents'].forEach(s=>rail.append(document.querySelector(s)));calPane.append(rail);
   const agenda=document.createElement('section');agenda.id='referenceHomeAgenda';agenda.setAttribute('aria-label','오늘 가족 일정');
   const title=document.createElement('b');title.textContent='오늘 가족 일정';
   const text=document.createElement('span');text.id='referenceHomeAgendaText';
@@ -17,8 +25,8 @@
    text.textContent=events.length?events.map(e=>[e.time,e.title].filter(Boolean).join(' ')).join(' · '):'오늘 등록된 일정이 없어요.';
    text.title=text.textContent;
   }
-  calendar.addEventListener('click',()=>{FamilyRefresh.showFamily(true);document.querySelector('[data-schedtab="cal"]').click();requestAnimationFrame(()=>document.querySelector('#calToday').focus({preventScroll:true}));});
-  growth.addEventListener('click',()=>{FamilyRefresh.showFamily(true);requestAnimationFrame(()=>{const node=document.querySelector('.refresh-record-details');node.scrollIntoView({block:'start'});document.querySelector('#histOpenBtn').focus({preventScroll:true});});});
+  calendar.addEventListener('click',()=>{document.body.dataset.referencePanel='calendar';FamilyRefresh.showFamily(true);document.querySelector('[data-schedtab="cal"]').click();requestAnimationFrame(()=>document.querySelector('#calToday').focus({preventScroll:true}));});
+  growth.addEventListener('click',()=>{document.body.dataset.referencePanel='growth';FamilyRefresh.showFamily(true);requestAnimationFrame(()=>{const node=document.querySelector('.refresh-record-details');node.scrollIntoView({block:'start'});document.querySelector('#histOpenBtn').focus({preventScroll:true});});});
   new MutationObserver(render).observe(document.querySelector('#calGrid'),{childList:true,subtree:true});
   render();
  }
