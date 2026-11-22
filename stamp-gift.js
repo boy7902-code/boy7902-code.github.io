@@ -23,7 +23,7 @@
   const count=Math.max(0,Math.round(Number(completed)||0));pending=Math.max(0,Number(pendingBonus)||0);latest=count;
   // First authoritative snapshot is a baseline, not a new completion. Refresh and another device never award anything here.
   if(seen===null){seen=count;return;}
-  if(count>seen){const delta=count-seen;seen=count;reward=(dialog?.open?reward:0)+delta*3;opened=false;ensure();paint();if(!dialog.open){returnFocus=document.activeElement;dialog.showModal();}dialog.querySelector('.stamp-gift-box').focus();}
+  if(count>seen){const delta=count-seen;seen=count;reward=(dialog?.open?reward:0)+delta*1;opened=false;ensure();paint();if(!dialog.open){returnFocus=document.activeElement;dialog.showModal();}dialog.querySelector('.stamp-gift-box').focus();}
   else if(dialog?.open)paint();
  }
  window.FamilyStampGift=Object.freeze({observe,reset});

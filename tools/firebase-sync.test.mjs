@@ -586,3 +586,13 @@ test('automatic mission and stamp earnings preserve old balances across month, c
  assert.deepEqual(computeScreenStats(input),a,'recompletion once restores exact earnings');
  const used=computeScreenStats({...input,pointUses:[{amount:8}]});assert.equal(used.totalXp,a.totalXp);assert.equal(used.balance,a.balance-4);
 });
+
+
+test('stamp reward boundary preserves old 3P, progress and future 1P without duplicate replay',()=>{
+ const before=new Date('2026-11-23T07:30:32+09:00');const after=new Date('2026-11-23T07:30:34+09:00');
+ const make=(i)=>({id:'new'+i,date:'2026-11-23',at:'08:'+String(i).padStart(2,'0'),mid:'m'+i,member:'m3',settled:false,createdAt:i<10?before:after,earned:1});
+ const logs=Array.from({length:20},(_,i)=>make(i));
+ const fifteen=advanceStampBoard({logs:logs.slice(0,15)});assert.equal(fifteen.progress,5);assert.equal(fifteen.bonusPoints,3);
+ const twenty=advanceStampBoard({logs:[...logs,...logs]});assert.equal(twenty.progress,0);assert.equal(twenty.completed,2);assert.equal(twenty.bonusPoints,4);assert.equal(twenty.bonusByDate['2026-11-23'],4);
+ assert.deepEqual(advanceStampBoard({logs}),twenty);
+});

@@ -39,7 +39,7 @@
 <link rel="stylesheet" href="tablet-safe-layout.css?v=school-unboxed-20261122-1"/>
 <link rel="stylesheet" href="calendar-only.css?v=20261121-1"/>
 <style>.cal-holiday{font-size:13px;color:#b13c42;padding:7px 12px;line-height:1.4;overflow-wrap:anywhere}</style>
-<link rel="stylesheet" href="reference-home-entry.css?v=home-display-20261123-1">
+<link rel="stylesheet" href="reference-home-entry.css?v=header-safe-20261123-1">
 </head>
 <body data-parent="off" class="dashboard-refresh"><script>document.body.classList.add(matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches?'selected-phone':'selected-dashboard');</script>
 
@@ -307,9 +307,9 @@
 </div>
 <details class="stamp-help"><summary>도장 안내</summary>
 <p class="stamp-board-note" id="readingPoints">총 미션 성공 횟수는 가족 동기화 후 표시돼요</p>
-<p class="stamp-board-note" id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10/10 완성 시 +3P</p>
+<p class="stamp-board-note" id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10/10 완성 시 +1P</p>
 </details>
-<button type="button" class="selected-stamp-caption">10개 더 모으면 +3P</button></section><section class="card wish" id="cardWish" aria-labelledby="tWish">
+<button type="button" class="selected-stamp-caption">10개 더 모으면 +1P</button></section><section class="card wish" id="cardWish" aria-labelledby="tWish">
 <div class="card-head">
 <div class="card-ico mint" aria-hidden="true">🎁</div>
 <div>
@@ -835,7 +835,7 @@
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br/>
 <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
         <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br/>
-        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 정산 없이 자동 적립됩니다.<br/>
+        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +1P</b>가 정산 없이 자동 적립됩니다.<br/>
 <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
 </div>
@@ -945,12 +945,12 @@
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
 <script src="praise-core.js?v=praise-20261122-1"></script>
 <script src="praise-gifts.js?v=family-final-20261122-1"></script>
-<script src="stamp-gift.js?v=auto-earned-20261122-1"></script>
+<script src="stamp-gift.js?v=stamp-one-20261123-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=completed-silent-20261123-1"></script>
+<script src="app-dex-integrated.js?v=stamp-one-20261123-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=rest-success-20261123-1"></script>
+<script type="module" src="firebase-boot.js?v=stamp-one-20261123-1"></script>
 <script src="single-screen.js?v=current-default-20261122-1"></script>
 <script src="dashboard-refresh.js?v=current-default-20261122-1"></script>
 <script src="quiz-battle.js?v=5"></script>
@@ -977,7 +977,7 @@
 <script src="pokemon-expansion.js?v=integrated-20261121" defer=""></script>
 <script src="dex-wide.js?v=20261121-1" defer=""></script>
 <script src="mission-card-interaction.js?v=stars-board-clock-20261122-1" defer=""></script>
-<script src="selected-dashboard.js?v=current-default-20261122-1" defer=""></script>
+<script src="selected-dashboard.js?v=bonus-sort-20261123-1" defer=""></script>
 <script src="mission-point-art.js?v=20261121-3" defer=""></script>
 <script src="safe-refresh.js?v=20261121-1" defer=""></script>
 <script src="dashboard-icons.js?v=20261121-1" defer=""></script>
@@ -985,4 +985,4 @@
 <link rel="stylesheet" href="weather-details.css?v=family-final-20261122-1">
 <script src="weather-details.js?v=family-final-20261122-1" defer></script>
 </body>
-</html>
+      </html>
