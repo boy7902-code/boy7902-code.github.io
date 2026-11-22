@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1"/>
 <link rel="stylesheet" href="selected-dashboard.css?v=current-default-20261122-1"/>
 <link rel="stylesheet" href="standby-clock.css?v=20261121-1"/>
+<link rel="stylesheet" href="praise-gifts.css?v=praise-20261122-1"/>
 <link rel="stylesheet" href="stamp-gift.css?v=20261121-1"/>
 <style>.mission-stage-note{font-size:11px;line-height:1.35;color:#626c85;white-space:normal;text-align:center;flex:none;max-width:100%;font-weight:600}.mission-stage-note[hidden]{display:none}</style>
 <style>.safe-refresh{font-size:12px!important;padding:7px 9px!important;min-height:34px}.safe-refresh-note{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:14px 18px;border-radius:14px;background:#3b4260;color:white;z-index:30000;font-size:14px;text-align:center;box-shadow:0 4px 20px #0003}.top-actions{flex-wrap:wrap}</style>
@@ -109,6 +110,7 @@
 
 
 
+<button type="button" class="btn praise-launch" id="praiseGiftBtn" hidden>칭찬 선물</button>
 <details class="display-menu"><summary>보기 · 설정</summary><div class="display-menu-controls"><button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button><button class="btn icon fs-btn" id="fullscreenBtn" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><span aria-hidden="true">⛶</span></button><button class="btn alarm-btn" id="alarmSoundBtn" data-state="locked" title="알람 소리" aria-label="알람 소리" aria-pressed="true"><span aria-hidden="true">🔔</span><span class="alarm-word">알람 소리</span><span class="alarm-tap">1번 터치</span></button><button class="btn sync-badge parent-only" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button><button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button><button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button><button class="btn icon parent-only" id="settingsBtn" title="설정" aria-label="설정">⚙️</button></div></details></div>
 </header>
 <!-- ======================= 상단 탭 : 대시보드 · 손글씨 편지 · 포켓몬 놀이방 ======================= -->
@@ -940,12 +942,14 @@
 <script src="pokemon-info-3.js?v=integrated-20261121"></script>
 <script src="pokemon-info-4.js?v=integrated-20261121"></script>
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
+<script src="praise-core.js?v=praise-20261122-1"></script>
+<script src="praise-gifts.js?v=praise-20261122-1"></script>
 <script src="stamp-gift.js?v=auto-earned-20261122-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=current-default-20261122-1"></script>
+<script src="app-dex-integrated.js?v=praise-20261122-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=stars-board-clock-20261122-1"></script>
+<script type="module" src="firebase-boot.js?v=praise-20261122-1"></script>
 <script src="single-screen.js?v=current-default-20261122-1"></script>
 <script src="dashboard-refresh.js?v=current-default-20261122-1"></script>
 <script src="quiz-battle.js?v=5"></script>
