@@ -19,7 +19,7 @@
 
 import './praise-core.js?v=praise-20261122-1';
 import './mission-rewards.js?v=board-clock-20261122-1';
-import './streak-core.js?v=mission-stars-20261122-1';
+import './streak-core.js?v=rest-success-20261123-1';
 import './partner-growth-core.js?v=family-refresh-20261121-1';
 export const normalizePartnerGrowth = value => globalThis.PartnerGrowthCore.normalized(value);
 
@@ -1546,4 +1546,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-     }
+                                    }
