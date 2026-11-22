@@ -41,3 +41,14 @@ test('board date and mission payload share five-minute clock, including month/ye
   const shifted=C.now(+new Date(real));assert.equal(shifted.getTime()-new Date(real).getTime(),300000);
  }
 });
+test('rest-day achievements count while rest-day misses preserve progress, including weekend-only missions',()=>{
+ const p=C.observe({}, {date:'2026-11-22',missions:[mission,{id:'weekend',member:'m3',days:[0,6]}]});
+ const sunday=log('2026-11-22',2), weekend={...sunday,id:'weekend',mid:'weekend',earned:3};
+ const first=C.compute(p,{logs:[sunday,weekend],today:'2026-11-23',holidays});
+ assert.equal(first.byMission.a.progress,1);assert.equal(first.byMission.weekend.progress,1);assert.equal(first.total,0);
+ const records=[sunday,log('2026-11-23',3),log('2026-11-24',1),log('2026-11-25',2),log('2026-11-26',2)];
+ const fifth=C.compute(p,{logs:records,today:'2026-11-26',holidays});assert.equal(fifth.byMission.a.progress,0);assert.equal(fifth.total,3);assert.equal(fifth.bonuses[0].earnedSum,10);
+ const skipHoliday=C.compute(p,{logs:records.filter(l=>l.date!=='2026-11-25'),today:'2026-11-26',holidays});assert.equal(skipHoliday.byMission.a.progress,4);
+ const missingRequired=C.compute(p,{logs:[sunday],today:'2026-11-24',holidays});assert.equal(missingRequired.byMission.a.progress,0);
+ const dedup=C.compute(p,{logs:[...records,...records],today:'2026-11-26',holidays});assert.deepEqual(dedup,fifth);
+});

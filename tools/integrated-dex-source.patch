@@ -393,7 +393,7 @@
 +    const gid='star-'+String(mission.id).replace(/[^a-zA-Z0-9_-]/g,'');
 +    const points=Array.from({length:10},(_,i)=>{const r=i%2?21:46,a=i*Math.PI/5;return [50+r*Math.sin(a),50-r*Math.cos(a)];});
 +    const arms=Array.from({length:5},(_,i)=>{const p=[[50,50],points[(2*i+9)%10],points[2*i],points[(2*i+1)%10]];return `<polygon points="${p.map(([x,y])=>x.toFixed(1)+','+y.toFixed(1)).join(' ')}" fill="url(#${gid}-${i<progress?'gold':'silver'})" stroke="#8d7a55" stroke-width="1.4"/>`;}).join('');
-+    const label=view?.started?`미션 연속별 ${progress}조각, 예정된 평일 5회마다 실제 적립의 30% 반올림 보너스 후 초기화. 토·일·공식 공휴일은 쉬어요.`:'미션 연속별, 보호자 연결 후 기록 시작';
++    const label=view?.started?`미션 연속별 ${progress}조각, 미션 5회 연속 달성마다 실제 적립의 30% 반올림 보너스 후 초기화. 쉬는 날도 달성하면 인정하고, 쉬는 날 미완료는 연속을 끊지 않아요.`:'미션 연속별, 보호자 연결 후 기록 시작';
 +    return `<span class="mission-streak-star" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="${gid}-gold" x2=".8" y2="1"><stop stop-color="#fff8ad"/><stop offset=".45" stop-color="#e6b747"/><stop offset="1" stop-color="#b48225"/></linearGradient><linearGradient id="${gid}-silver" x2=".8" y2="1"><stop stop-color="#f7f9fa"/><stop offset=".5" stop-color="#c3cbd1"/><stop offset="1" stop-color="#8997a4"/></linearGradient></defs>${arms}</svg></span>`;
 +  }
  
