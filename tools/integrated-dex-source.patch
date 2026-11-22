@@ -845,6 +845,9 @@
 -      confetti(28);
 -      toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600);
 +      if (!window.FamilyStampGift) { confetti(28); toast(`🎉 도장판 10/10 · +${newBoards * 1}P 자동 적립`, 'mint', 3600); }
+@@ -6182 +6210 @@
+-    $('#readingReward').textContent = `누적 +${totalBonus}P`;
++    $('#readingReward').textContent = '10개 완성 보상 +1P';
 @@ -6187 +6215 @@
 -      ? `🎉 도장판 완성 · 기본 미션 포인트와 별도로 +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
 +      ? `🎉 도장판 완성 · 기본 미션 포인트와 별도로 +1P 자동 적립 · 다음 판 시작`
