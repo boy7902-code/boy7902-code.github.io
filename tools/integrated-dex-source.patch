@@ -286,15 +286,17 @@
      const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
      const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(m.due), 0);
      const got = kidTodayPts();
-@@ -2022,7 +2059,7 @@
+@@ -2022,8 +2059,8 @@
      const dueM = minOf(c.due), doneM = minOf(c.doneAt);
      const ahead = dueM != null && doneM != null && dueM > doneM ? ` · ${durText(dueM - doneM)} 일찍` : '';
      if (early) return `<span class="done-badge early">${at} 완료${ahead} · ⚡ 조기 +${early}P</span>`;
 -    if (c.goalMet) return `<span class="done-badge goal">${at} 완료${ahead || ' · 마감 전 완료'}</span>`;
+-    return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
 +    if (c.goalMet) return `<span class="done-badge goal">${at} 완료${ahead || ' · 보너스 기준 전 완료'}</span>`;
-     return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
++    return `<span class="done-badge late">${at} 완료 · ⏱️ 보너스 기준 이후 · 기본 적립</span>`;
    }
  
+   function renderLog() {
 @@ -2046,7 +2083,7 @@
          : `<div class="log-row">
            <span class="log-time">${esc(l.at)}</span>
