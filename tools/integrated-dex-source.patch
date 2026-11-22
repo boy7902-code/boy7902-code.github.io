@@ -141,9 +141,22 @@
 +    if (left > 0) return { cls: left <= 15 ? 'soon' : 'ok', short: `${due} 보너스까지`, long: `${durText(left)} 남음`, text: `${due} 보너스까지 · ${durText(left)} 남음` };
 +    if (left === 0) return { cls: 'soon', short: '보너스 마감', long: '', text: `${due} 보너스까지 · 지금 마감!` };
 +    return { cls: 'late', short: `${due} 보너스 마감`, long: '기본 적립 가능', text: `${due} 보너스 마감 · 기본 적립 가능` };
-@@ -1972 +2016 @@
+@@ -1947 +1991 @@
+-    return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM);
++    return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM, todayStr());
+@@ -1955 +1999 @@
+-    const all = S.missions.slice();
++    const all = S.missions.filter((m) => !m.archived);
+@@ -1972,3 +2016,3 @@
 -  function kidTodayGoal(dow = new Date().getDay()) {
+-    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
+-    const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(m.due), 0);
 +  function kidTodayGoal(dow = boardNow().getDay()) {
++    const list = (S.missions || []).filter((m) => !m.archived && m.member === KID_ID && missionOnDay(m, dow));
++    const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(m, todayStr())), 0);
+@@ -2008 +2052 @@
+-      due: c.due || '', goalMet: !!r.goalMet,
++      due: MissionRewards.deadlineOf(c, t) || '', goalMet: !!r.goalMet,
 @@ -2025,2 +2069,2 @@
 -    if (c.goalMet) return `<span class="done-badge goal">${at} 완료${ahead || ' · 마감 전 완료'}</span>`;
 -    return `<span class="done-badge late">${at} 완료 · ⏱️ 목표 시간 초과</span>`;
@@ -179,44 +192,46 @@
 +    return `<span class="mission-streak-star" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="${gid}-gold" x2=".8" y2="1"><stop stop-color="#fff8ad"/><stop offset=".45" stop-color="#e6b747"/><stop offset="1" stop-color="#b48225"/></linearGradient><linearGradient id="${gid}-silver" x2=".8" y2="1"><stop stop-color="#f7f9fa"/><stop offset=".5" stop-color="#c3cbd1"/><stop offset="1" stop-color="#8997a4"/></linearGradient></defs>${arms}</svg></span>`;
 +  }
 +
-@@ -2305 +2360 @@
+@@ -2284,0 +2340 @@
++    c = { ...c, due: MissionRewards.deadlineOf(c, t) };
+@@ -2305 +2361 @@
 -    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
 +    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' bonus-ended' : ''}" data-act="chore-toggle" data-id="${c.id}">
-@@ -2315 +2370 @@
+@@ -2315 +2371 @@
 -                <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
 +                ${dl === '매일' ? '' : `<span class="days-chip">${esc(dl)}</span>`}
-@@ -2319,0 +2375 @@
+@@ -2319,0 +2376 @@
 +            ${missionStarHtml(c)}
-@@ -2351 +2407 @@
+@@ -2351 +2408 @@
 -    const dowToday = new Date().getDay();
 +    const dowToday = boardNow().getDay();
-@@ -2363 +2419 @@
+@@ -2363 +2420 @@
 -    const nxt = isEgg ? {name: st[0].name + ' 부화', min: 5} : st[lv + 1];
 +    const nxt = isEgg ? {name: (typeEggSecret()?'알':st[0].name) + ' 부화', min: 5} : st[lv + 1];
-@@ -2400,0 +2457 @@
+@@ -2400,0 +2458 @@
 +    $('#charEvo').hidden=typeEggSecret();
-@@ -2404 +2461 @@
+@@ -2404 +2462 @@
 -    if ($('#partnerPill')) $('#partnerPill').textContent = `${p.label} 계열`;
 +    if ($('#partnerPill')) $('#partnerPill').textContent = typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':`${p.label} 계열`;
-@@ -2433 +2490 @@
+@@ -2433 +2491 @@
 -    const dow = new Date().getDay();
 +    const dow = boardNow().getDay();
-@@ -2438 +2495 @@
+@@ -2438 +2496 @@
 -      const todayList = list.filter((c) => missionOnDay(c, dow));
 +      const todayList = list.filter((c) => missionOnDay(c, dow)).sort((a,b) => Number(a.doneOn===t)-Number(b.doneOn===t) || (a.doneOn!==t ? (Number(b.points)||0)-(Number(a.points)||0) : 0) || S.missions.indexOf(a)-S.missions.indexOf(b));
-@@ -2488 +2545 @@
+@@ -2488 +2546 @@
 -    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/151`;
 +    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/${POKE_NOS.length}`;
-@@ -2524 +2581 @@
+@@ -2524 +2582 @@
 -    if (cur) add(cur.id, cur.name, p.tint);
 +    if (cur&&!typeEggSecret()) add(cur.id, cur.name, p.tint);
-@@ -2583 +2640,2 @@
+@@ -2583 +2641,2 @@
 -  const DEXUI = { q: '', filter: 'all', sel: 25 };
 +  const DEXUI = { q: '', filter: 'all', gen:0, sel: 25 };
 +  const pokemonGen=id=>[151,251,386,493,649,721,809,905,1025].findIndex(n=>id<=n)+1;
-@@ -2587,0 +2646 @@
+@@ -2587,0 +2647 @@
 +
-@@ -2591,8 +2650,7 @@
+@@ -2591,8 +2651,7 @@
 -    const q = DEXUI.q.trim();
 -    return POKE_NOS.filter((id) => {
 -      const got = !!caughtOf(id);
@@ -232,55 +247,55 @@
 +      if(DEXUI.filter==='got'&&!got)return false;
 +      if(DEXUI.filter==='miss'&&got)return false;
 +      return !q||pokeName(id).toLowerCase().includes(q)||String(id)===q||pad(id)===q||('no'+id)===q;
-@@ -2602,0 +2661 @@
+@@ -2602,0 +2662 @@
 +    if(!$('#dexGen')){const select=document.createElement('select');select.id='dexGen';select.className='growth-generation';select.setAttribute('aria-label','세대별 보기');select.innerHTML='<option value="0">모든 세대</option>'+Array.from({length:9},(_,i)=>`<option value="${i+1}">${i+1}세대</option>`).join('');$('#dexFilter').after(select);select.addEventListener('change',()=>{DEXUI.gen=Number(select.value);renderDexGrid();});}
-@@ -2606 +2665 @@
+@@ -2606 +2666 @@
 -      const n = f.key === 'got' ? caughtCount() : f.key === 'miss' ? (POKE_NOS.length - caughtCount()) : POKE_NOS.length;
 +      const n=f.key==='got'?caughtCount():f.key==='miss'?(POKE_NOS.length-caughtCount()):POKE_NOS.length;
-@@ -2619 +2678 @@
+@@ -2619 +2679 @@
 -    const curId = (stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
 +    const curId = typeEggSecret()?null:(stagesOf()[stageIndex(S.pokemon.xp)] || {}).id;
-@@ -2627 +2686 @@
+@@ -2627 +2687 @@
 -        <span class="dex-nm">${got ? esc(info.name) : '???'}</span>
 +        <span class="dex-nm">${esc(info.name)}</span><span class="dex-acquire-label">${got?'획득':'미획득'}</span>
-@@ -2635 +2694 @@
+@@ -2635 +2695 @@
 -    const curLine = resolvePartnerKey(S.pokemon.key) === line.key;
 +    const curLine = !typeEggSecret()&&resolvePartnerKey(S.pokemon.key) === line.key;
-@@ -2666 +2725 @@
+@@ -2666 +2726 @@
 -        <span class="dx-no">${id <= 151 ? 'No.' + pad(id) : '특별한 친구'}</span>
 +        <span class="dx-no">${'No.'+pad(id)}</span>
-@@ -2684 +2743 @@
+@@ -2684 +2744 @@
 -    const curStageId = (curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
 +    const curStageId = typeEggSecret()?1:(curLine.stages[stageIndex(S.pokemon.xp)] || {}).id;
-@@ -2687 +2746 @@
+@@ -2687 +2747 @@
 -    DEXUI.sel = POKE_INFO[pick] && pick <= 151 ? pick : (firstGen1 || 1);
 +    DEXUI.sel = POKE_INFO[pick] ? pick : (firstGen1 || 1);
-@@ -2689 +2748,2 @@
+@@ -2689 +2749,2 @@
 -    DEXUI.filter = 'all';
 +    DEXUI.filter = 'all';DEXUI.gen=0;
 +    if ($('#dexGen'))$('#dexGen').value='0';
-@@ -2691 +2751 @@
+@@ -2691 +2752 @@
 -    if ($('#dexMeta')) $('#dexMeta').textContent = `1세대 151종 · ${caughtCount()}마리 만남`;
 +    if ($('#dexMeta')) $('#dexMeta').textContent = `전체 ${POKE_NOS.length}종 · ${caughtCount()}마리 만남 · 정보와 성장 경로`;
-@@ -2739 +2799 @@
+@@ -2739 +2800 @@
 -      title: '🎁 포인트 사용',
 +      title: '🎁 포인트 사용 정산',
-@@ -2745 +2805 @@
+@@ -2745 +2806 @@
 -      okText: '사용',
 +      okText: '사용 정산 확정',
-@@ -2837 +2897 @@
+@@ -2837 +2898 @@
 -    if (isKid) eventAfterCheck(c, r, at);      // 🔥 콤보 · 🎂 2배 데이 보너스 (아이 미션만)
 +    if (isKid) eventAfterCheck(c, r, at);      // 🎂 2배 데이 보너스 (아이 미션만)
-@@ -2864 +2924 @@
+@@ -2864 +2925 @@
 -      toast(`+${r.earned}P · 마감 시간 안에 완료했어요`, 'mint', 2000);
 +      toast(`+${r.earned}P · 완료했어요`, 'mint', 2000);
-@@ -2866 +2926 @@
+@@ -2866 +2927 @@
 -      toast(`+${r.earned}P · 마감 후 완료 · 시간 보너스 없음`, '', 2600);
 +      toast(`+${r.earned}P · 기본 포인트 적립 · 시간 보너스 없음`, '', 2600);
-@@ -2955 +3015 @@
+@@ -2955 +3016 @@
 -      if (row && !row.classList.contains('done') && !row.classList.contains('offday')) row.classList.toggle('overdue', di.cls === 'late');
 +      if (row && !row.classList.contains('done') && !row.classList.contains('offday')) row.classList.toggle('bonus-ended', di.cls === 'late');
-@@ -2964,0 +3025,30 @@
+@@ -2964,0 +3026,30 @@
 +  let typeEggBusy=false,typeEggPending=null;
 +  function typeEggPools(){return FamilyTypeEgg.pools(LINES,pokeInfo,window.PokemonGrowthPaths);}
 +  function typeEggSecret(){return !!window.FamilyTypeEgg&&FamilyTypeEgg.hidden(S.pokemon.growth,S.pokemon.xp);}
@@ -311,9 +326,9 @@
 +    }finally{typeEggBusy=false;if(!$('#partnerModal').hidden)renderPartnerGrid();}
 +  }
 +
-@@ -2965,0 +3056 @@
+@@ -2965,0 +3057 @@
 +  let partnerPage=0;
-@@ -2968,0 +3060,8 @@
+@@ -2968,0 +3061,8 @@
 +    const typeMode=partnerMode==='adopt';
 +    $('#partnerSearch').hidden=typeMode;grid.classList.toggle('type-egg-grid',typeMode);
 +    if(typeMode){
@@ -322,7 +337,7 @@
 +      $('#partnerCount').textContent=typeEggBusy?'알 저장 중…':'타입 선택';
 +      const pager=$('#partnerPager');if(pager)pager.innerHTML='';return;
 +    }
-@@ -2973,3 +3072,5 @@
+@@ -2973,3 +3073,5 @@
 -      || String(l.members[0]) === q;
 -    const gen1 = LINES.filter((l) => l.members.some((id) => id <= 151) && l.key.charAt(0) === 'L' && hit(l));
 -    const extra = EXTRA_LINES.filter(hit);
@@ -331,30 +346,30 @@
 +    const pages=Math.max(1,Math.ceil(matched.length/48));partnerPage=Math.min(partnerPage,pages-1);
 +    const gen1=matched.slice(partnerPage*48,(partnerPage+1)*48);
 +    const extra=[];
-@@ -2985 +3086 @@
+@@ -2985 +3087 @@
 -    const total = gen1.length + extra.length;
 +    const total = matched.length;
-@@ -2987 +3088 @@
+@@ -2987 +3089 @@
 -      + (gen1.length ? `<div class="partner-group-label">1세대 151 · ${gen1.length}계열</div>${gen1.map(card).join('')}` : '')
 +      + (gen1.length ? `<div class="partner-group-label">전체 세대 · ${total}계열${total>48?" · "+(partnerPage+1)+"/"+pages+"쪽":""}</div>${gen1.map(card).join('')}` : '')
-@@ -2989,0 +3091,2 @@
+@@ -2989,0 +3092,2 @@
 +    let pager=$('#partnerPager');if(!pager){pager=document.createElement('div');pager.id='partnerPager';pager.className='growth-pager';grid.after(pager);}
 +    pager.innerHTML=pages>1?`<button class="btn sm ghost" data-partnerpage="-1" ${partnerPage===0?'disabled':''}>이전</button><span>${partnerPage+1} / ${pages}</span><button class="btn sm ghost" data-partnerpage="1" ${partnerPage===pages-1?'disabled':''}>다음</button>`:'';
-@@ -2999 +3102 @@
+@@ -2999 +3103 @@
 -      return `지금 파트너 ${cur.name}는 도감에 그대로 남고, 새 포켓몬은 현재 파트너 경험치만 0P부터 다시 시작해요. 누적 경험치(${kidTotalPts()}P)와 사용 가능 포인트(${balancePts()}P)는 그대로 유지됩니다.`;
 +      return '타입을 고르면 그 타입의 첫 단계 친구가 같은 확률로 정해져요. 누구일지는 5P를 모아 부화할 때 만날 수 있어요! 모아 둔 포인트는 그대로예요.';
-@@ -3001 +3104 @@
+@@ -3001 +3105 @@
 -    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1세대 151종 어느 계열이든 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
 +    return `지금은 ${p.label} 계열 ${cur.name}(파트너 경험치 ${S.pokemon.xp}P)을(를) 키우는 중이에요. 1,025종 어느 계열이든 이름·번호로 찾아 고를 수 있고, 200P에 닿으면 이로치가 되어 도감에 남아요.`;
-@@ -3004,0 +3108 @@
+@@ -3004,0 +3109 @@
 +    if(mode!=='adopt'&&window.FamilyTypeEgg?.type(S.pokemon.growth)){toast('타입 알로 만난 파트너예요. 200P를 모으면 다음 알의 타입을 고를 수 있어요.','',3500);return;}
-@@ -3006 +3110 @@
+@@ -3006 +3111 @@
 -    partnerQuery = '';
 +    partnerQuery = '';partnerPage=0;
-@@ -3008 +3112 @@
+@@ -3008 +3113 @@
 -    $('#partnerTitle').textContent = partnerMode === 'adopt' ? '✨ 새 포켓몬 입양하기' : '🐾 파트너 포켓몬 고르기';
 +    $('#partnerTitle').textContent = partnerMode === 'adopt' ? '어떤 타입의 알을 받을까?' : '🐾 파트너 포켓몬 고르기';
-@@ -3018,13 +3122,3 @@
+@@ -3018,13 +3123,3 @@
 -    if (partnerMode === 'adopt') {
 -      if (S.pokemon.xp < FINAL_P) { toast('최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요', '', 2600); return; }
 -      syncDex();                      // 보호: 지금 완성한 포켓몬은 먼저 도감에 넣어 두고 시작
@@ -371,33 +386,37 @@
 +    if (partnerMode === 'adopt') { openPartnerPicker('adopt'); return; }
 +    if (window.FamilyTypeEgg?.type(S.pokemon.growth)) {
 +      toast('타입 알로 만난 파트너예요. 200P를 모으면 다음 알의 타입을 고를 수 있어요.','',3500);
-@@ -3070 +3164 @@
+@@ -3070 +3165 @@
 -      hint: '마감 시간이 있는 미션은 5분 전 완료 시 +1P, 10분 이상 전 완료 시 +2P(총점) 조기 보너스를 받아요. 마감 시간이 없거나 마감 시각에 끝내면 기본 포인트만 쌓입니다.',
 +      hint: '보너스 기준 시각이 있는 미션은 5분 전 완료 시 +1P, 10분 이상 전 완료 시 +2P(총점) 조기 보너스를 받아요. 기준 시각 이후에도 미션 완료·기본 포인트 적립·연속별 기록은 가능해요.',
-@@ -3076 +3170,2 @@
+@@ -3076 +3171,3 @@
 -        { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: '', quick: TIME_QUICK },
 +        { name: 'timeBonus', label: '시간 보너스', type: 'select', value: 'off', options: [{value:'off',label:'사용 안 함'},{value:'on',label:'사용 · 5~9분 전 +1P / 10분 이상 전 +2P'}] },
-+        { name: 'due', label: '사용할 때의 보너스 기준 시각', type: 'time', value: '08:00', quick: TIME_QUICK },
-@@ -3080,0 +3176 @@
++        { name: 'due', label: '평일 목표시간', type: 'time', value: '08:00', quick: TIME_QUICK },
++        { name: 'weekendDue', label: '주말·공휴일 목표시간 · 비우면 평일과 같게', type: 'time', value: '' },
+@@ -3080,0 +3178 @@
 +    r.due=r.timeBonus==='on'?(r.due||''):'';
-@@ -3094 +3190 @@
+@@ -3094 +3192 @@
 -    toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due} 마감 · 5~9분 전 +1P / 10분 이상 전 +2P(총)` : `미션을 추가했어요 · ${dl}`), 'mint');
 +    toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due} 보너스 기준 · 5~9분 전 +1P / 10분 이상 전 +2P(총)` : `미션을 추가했어요 · ${dl}`), 'mint');
-@@ -3117 +3213 @@
+@@ -3117 +3215 @@
 -      hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 마감 시간에 따른 조기 보너스만 적용되며, 예전 미션별 보너스 값은 무시됩니다.',
 +      hint: '바꾼 포인트·보너스 기준 시각은 이후 완료부터 적용돼요. 이미 적립된 포인트와 완료 기록은 그대로 유지돼요. 요일을 바꾸면 해당 요일에만 미션이 나와요.',
-@@ -3123 +3219,2 @@
+@@ -3123 +3221,3 @@
 -        { name: 'due', label: '목표 시간 (마감 시각)', type: 'time', value: c.due || '', quick: TIME_QUICK },
 +        { name: 'timeBonus', label: '시간 보너스', type: 'select', value: c.due ? 'on' : 'off', options: [{value:'off',label:'사용 안 함'},{value:'on',label:'사용 · 5~9분 전 +1P / 10분 이상 전 +2P'}] },
-+        { name: 'due', label: '사용할 때의 보너스 기준 시각', type: 'time', value: c.due || '08:00', quick: TIME_QUICK },
-@@ -3141,5 +3238 @@
++        { name: 'due', label: '평일 목표시간', type: 'time', value: c.due || '08:00', quick: TIME_QUICK },
++        { name: 'weekendDue', label: '주말·공휴일 목표시간 · 비우면 평일과 같게', type: 'time', value: c.weekendDue || '' },
+@@ -3141,5 +3241 @@
 -    const t = todayStr();
 -    const wasDone = c.doneOn === t;
 -    const oldKey = c.member || '';
 -    const oldEarned = earnOf(c);
 -
 +    r.due=r.timeBonus==='on'?(r.due||''):'';
-@@ -3152,19 +3245,2 @@
+@@ -3148,0 +3245 @@
++    c.weekendDue = r.timeBonus === 'on' ? r.weekendDue || '' : '';
+@@ -3152,19 +3249,2 @@
 -    // 오늘 이미 끝낸 미션이면 실제 완료 시각을 새 목표 시간과 다시 비교해 포인트를 맞춰 준다
 -    if (wasDone) {
 -      const rr = missionEarn(c, c.doneAt || hhmm());
@@ -419,17 +438,17 @@
 -    }
 +    // Mission settings apply only to future completions. Keep the completed
 +    // record, earned amount, owner, completion time and early bonus untouched.
-@@ -3262 +3338,2 @@
+@@ -3262 +3342,2 @@
 -    const items = wishItems().slice().sort((a, b) => (a.boughtAt ? 1 : 0) - (b.boughtAt ? 1 : 0));
 +    const remainingNeed = w => +w.need > 0 ? Math.max(0, Math.round(+w.need)-bal) : Infinity;
 +    const items = wishItems().slice().sort((a,b) => (a.boughtAt?1:0)-(b.boughtAt?1:0) || remainingNeed(a)-remainingNeed(b));
-@@ -3458 +3535 @@
+@@ -3458 +3539 @@
 -      title: '🎁 선물 사주기',
 +      title: '🎁 선물 사용 정산',
-@@ -3464 +3541 @@
+@@ -3464 +3545 @@
 -      okText: '선물하기',
 +      okText: '선물 사용 정산 확정',
-@@ -3617,13 +3694,29 @@
+@@ -3617,13 +3698,29 @@
 -    box.innerHTML = S.letters.length
 -      ? S.letters.map((l) => `<div class="letter-card">
 -          <img src="${l.img}" alt="손글씨 편지" data-act="letter-open" data-id="${l.id}" loading="lazy" />
@@ -472,23 +491,23 @@
 +      }
 +      card.append(controls); box.append(card);
 +    });
-@@ -3724 +3817 @@
+@@ -3724 +3821 @@
 -    const now = new Date();
 +    const now = boardNow();
-@@ -3744 +3837,3 @@
+@@ -3744 +3841,3 @@
 -    $('#letterModalImg').src = l.img;
 +    const source = letterImageSource(l.img);
 +    if (!source) { toast('이 편지 그림은 안전하게 표시할 수 없어요. 원본 기록은 유지돼요.', 'coral'); return; }
 +    $('#letterModalImg').src = source;
-@@ -3855,0 +3951 @@
+@@ -3855,0 +3955 @@
 +      schoolSyncTimer = null;
-@@ -3961,2 +4057,3 @@
+@@ -3961,2 +4061,3 @@
 -    const mm = Math.floor(ms / 60000);
 -    const ss = Math.floor((ms % 60000) / 1000);
 +    const seconds = Math.ceil(ms / 1000);
 +    const mm = Math.floor(seconds / 60);
 +    const ss = seconds % 60;
-@@ -4008,8 +4105,18 @@
+@@ -4008,8 +4109,18 @@
 -    $('#linkList').innerHTML = S.links.length
 -      ? S.links.map((l) => `<div class="link-item">
 -          <span class="link-dot"></span>
@@ -515,30 +534,30 @@
 +      }
 +      list.append(item);
 +    });
-@@ -4033,0 +4141,2 @@
+@@ -4033,0 +4145,2 @@
 +    if (url && !savedLinkSource(url)) { toast('http 또는 https 웹 주소를 확인해 주세요.', 'coral'); return; }
 +    if (url) url = savedLinkSource(url);
-@@ -4289 +4398 @@
+@@ -4289 +4402 @@
 -    if ($('#partnerPill')) $('#partnerPill').textContent = `${partnerOf(S.pokemon.key).label} 계열`;
 +    if ($('#partnerPill')) $('#partnerPill').textContent = typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':`${partnerOf(S.pokemon.key).label} 계열`;
-@@ -4365 +4474 @@
+@@ -4365 +4478 @@
 -    const d = new Date();
 +    const d = boardNow();
-@@ -4483 +4592 @@
+@@ -4483 +4596 @@
 -       ① 3일 연속 콤보 보너스      ② 부모님 깜짝 보너스 · 주말 특별 미션
 +       부모님 깜짝 보너스 · 주말 특별 미션
-@@ -4491,2 +4600,2 @@
+@@ -4491,2 +4604,2 @@
 -       · 기존 이벤트 보너스는 logs 문서에 남겨 정산(settleUnsettled) 때 합산합니다.
 -       · 공유 도장판의 +3P 는 stats/summary 의 진행 필드와 정산 트랜잭션에서 한 번 확정합니다.
 +       · 기존 이벤트 보너스는 logs 문서에 남겨 즉시 자동 합산합니다.
 +       · 공유 도장판의 +3P 는 기존 기준값과 고유 완료기록에서 한 번 자동 계산합니다.
-@@ -4502 +4610,0 @@
+@@ -4502 +4614,0 @@
 -      combo: { on: true, bonus: 3 },
-@@ -4524 +4631,0 @@
+@@ -4524 +4635,0 @@
 -    const combo = (src.combo && typeof src.combo === 'object') ? src.combo : {};
-@@ -4541 +4647,0 @@
+@@ -4541 +4651,0 @@
 -      combo: { on: combo.on !== false, bonus: clamp(Math.round(+combo.bonus || base.combo.bonus), 1, 10) },
-@@ -4582,14 +4687,0 @@
+@@ -4582,14 +4691,0 @@
 -  /* ---- ① 3일 연속 콤보 — 어제·그제 같은 미션을 끝냈는지 ---- */
 -  function comboPrevOk(mid) {
 -    const d1 = fmtDate(addDays(new Date(), -1));
@@ -553,30 +572,30 @@
 -    return [...mids].filter((mid) => (S.logs || []).some((l) => l.mid === mid && l.date === y && l.kind !== 'bonus')).length;
 -  }
 -
-@@ -4637 +4729 @@
+@@ -4637 +4733 @@
 -    return { combo: e.combo, doubleDays: e.doubleDays, secret: e.secret, stamps: e.stamps, gacha: e.gacha };
 +    return { doubleDays: e.doubleDays, secret: e.secret, stamps: e.stamps, gacha: e.gacha };
-@@ -4647,0 +4740 @@
+@@ -4647,0 +4744 @@
 +      evtSyncTimer = null;
-@@ -4654 +4747 @@
+@@ -4654 +4751 @@
 -      combo: doc.combo, doubleDays: doc.doubleDays, secret: doc.secret, stamps: doc.stamps, gacha: doc.gacha,
 +      doubleDays: doc.doubleDays, secret: doc.secret, stamps: doc.stamps, gacha: doc.gacha,
-@@ -4666 +4759 @@
+@@ -4666 +4763 @@
 -  /* ---- 미션 체크 직후: 🔥 3일 연속 콤보 · 🎂 2배 데이 ----
 +  /* ---- 미션 체크 직후: 🎂 2배 데이 ----
-@@ -4670,5 +4762,0 @@
+@@ -4670,5 +4766,0 @@
 -    const cb = EV().combo;
 -    if (cb && cb.on && comboPrevOk(c.id)) {
 -      const got = awardBonus(cb.bonus, `🔥 ${c.title} 3일 연속!`, `combo_${c.id}_${t}`, { at });
 -      if (got) { confetti(70); beep('up'); toast(`🔥 3일 연속 콤보! +${got}P`, 'mint', 3200); }
 -    }
-@@ -4734 +4822 @@
+@@ -4734 +4826 @@
 -      hint: `${kidLabel()} 님에게 바로 포인트를 선물해요. 로그에도 남아 정산에 함께 들어갑니다.`,
 +      hint: `${kidLabel()} 님에게 바로 포인트를 선물해요. 로그에 남고 자동 반영됩니다.`,
-@@ -4739 +4827 @@
+@@ -4739 +4831 @@
 -      okText: '선물하기',
 +      okText: '칭찬 포인트 지급',
-@@ -4866,9 +4953,0 @@
+@@ -4866,9 +4957,0 @@
 -    if (act === 'ev-combo-toggle') {
 -      await asParent('콤보 보너스는 보호자만 바꿀 수 있어요.', () => {
 -        const c = EV().combo;
@@ -586,12 +605,12 @@
 -      });
 -      return;
 -    }
-@@ -4891,2 +4969,0 @@
+@@ -4891,2 +4973,0 @@
 -    const comboOn = !!EV().combo.on;
 -    const streak = comboStreakToday();
-@@ -4923 +4999,0 @@
+@@ -4923 +5003,0 @@
 -        <span class="ev-chip${comboOn && streak ? ' hot' : ''}">🔥 콤보 ${streak ? streak : 0}</span>
-@@ -4928,9 +5003,0 @@
+@@ -4928,9 +5007,0 @@
 -        <h4>①🔥 3일 연속 콤보 <span class="ev-note">같은 미션 3일 연속이면 +${EV().combo.bonus}P</span></h4>
 -        <div class="ev-row">
 -          <span class="ev-state ${comboOn ? 'on' : 'off'}">${comboOn ? '켜짐' : '꺼짐'}</span>
@@ -601,28 +620,28 @@
 -      </section>
 -
 -      <section class="ev-sec parent-only">
-@@ -4982 +5049 @@
+@@ -4982 +5053 @@
 -    const day = new Date().getDate();
 +    const day = boardNow().getDate();
-@@ -5026 +5093 @@
+@@ -5026 +5097 @@
 -    const now = new Date();
 +    const now = boardNow();
-@@ -5031 +5098 @@
+@@ -5031 +5102 @@
 -    const stage = stagesOf()[stageIndex(S.pokemon.xp)];
 +    const stage = typeEggSecret()?{egg:true,name:'타입 알',id:0}:stagesOf()[stageIndex(S.pokemon.xp)];
-@@ -5077 +5144,4 @@
+@@ -5077 +5148,4 @@
 -  const STANDBY_IDLE_MS = 2 * 60 * 1000;
 +  const STANDBY_PREF_KEY = 'family-dashboard:standby-minutes';
 +  let standbyMinutes;
 +  try { const raw = localStorage.getItem(STANDBY_PREF_KEY); standbyMinutes = ['0','5','10'].includes(raw) ? +raw : (matchMedia('(max-width:600px)').matches ? 0 : 5); } catch (_) { standbyMinutes = matchMedia('(max-width:600px)').matches ? 0 : 5; }
 +  let STANDBY_IDLE_MS = standbyMinutes * 60 * 1000;
-@@ -5092 +5162 @@
+@@ -5092 +5166 @@
 -    return { p, stage: p.stages[stageIndex(S.pokemon.xp)] };
 +    return { p, stage: typeEggSecret()?{egg:true,name:'타입 알',id:0}:p.stages[stageIndex(S.pokemon.xp)] };
-@@ -5113 +5183 @@
+@@ -5113 +5187 @@
 -  function applyStandbyScene(now = new Date()) {
 +  function applyStandbyScene(now = boardNow()) {
-@@ -5116,26 +5186,2 @@
+@@ -5116,26 +5190,2 @@
 -    const code = (W && W.now) ? W.now.weather_code : null;
 -    const wx = wmoKind(code);
 -    const tod = todOf(now.getHours());
@@ -651,12 +670,12 @@
 -    sky.dataset.count = String(sky.children.length);
 +    el.dataset.tod = todOf(now.getHours());
 +    el.dataset.quiet = (now.getHours() >= 21 || now.getHours() < 7) ? '1' : '0';
-@@ -5146 +5192 @@
+@@ -5146 +5196 @@
 -    const now = new Date();
 +    const now = boardNow();
-@@ -5179 +5224,0 @@
+@@ -5179 +5228,0 @@
 -    // 오늘 아이 미션 달성률 · 선물 코인
-@@ -5181,7 +5226,5 @@
+@@ -5181,7 +5230,5 @@
 -    const tg = kidTodayGoal(dow);
 -    const pct = tg.goal ? clamp(Math.round((tg.got / tg.goal) * 100), 0, 100) : 0;
 -    const doneCount = S.missions.filter((m) => m.member === KID_ID && m.doneOn === todayStr() && missionOnDay(m, dow)).length;
@@ -664,12 +683,12 @@
 -    if ($('#sbMission')) {
 -      const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
 -      if (sig === sbMissionSig) return sbSyncPartner();
-+    const missions = S.missions.filter(m => m.member === KID_ID && missionOnDay(m, dow));
-+    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0)||Number(MissionRewards.maximumEarlyBonus(b.due)>0)-Number(MissionRewards.maximumEarlyBonus(a.due)>0)||S.missions.indexOf(a)-S.missions.indexOf(b));
++    const missions = S.missions.filter(m => !m.archived && m.member === KID_ID && missionOnDay(m, dow));
++    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0)||Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(b,todayStr()))>0)-Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(a,todayStr()))>0)||S.missions.indexOf(a)-S.missions.indexOf(b));
 +    const limit = innerWidth <= 600 && innerHeight < 720 ? 2 : 3;
 +    const sig = JSON.stringify([missions.length, remaining.map(m=>[m.id,m.title,m.points]),limit]);
 +    if ($('#sbMission') && sig !== sbMissionSig) {
-@@ -5189,18 +5232,10 @@
+@@ -5189,18 +5236,10 @@
 -      // 진화 경험치는 '다음 진화 목표'를 분모로 보여 줍니다 (최종 단계에서만 200P)
 -      const sbStages = stagesOf();
 -      const sbLv = stageIndex(S.pokemon.xp);
@@ -698,7 +717,7 @@
 +    if ($('#sbPrep')) {
 +      const prep = [...document.querySelectorAll('#outfitSuggestions .outfit-item small')].slice(0,2).map(e=>e.textContent).join(' · ');
 +      if ($('#sbPrep').textContent !== prep) $('#sbPrep').textContent=prep;
-@@ -5225,6 +5260 @@
+@@ -5225,6 +5264 @@
 -    const nxt = p.stages[stageIndex(S.pokemon.xp) + 1];
 -    if ($('#sbSub')) {
 -      $('#sbSub').innerHTML = nxt
@@ -706,27 +725,27 @@
 -        : '최종 진화 완료! 🏆 도감에 저장됐어요';
 -    }
 +    if ($('#sbSub')) $('#sbSub').textContent = '';
-@@ -5246 +5276 @@
+@@ -5246 +5280 @@
 -    if ($('#sbTitle')) $('#sbTitle').textContent = appTitle();
 +    if ($('#sbTitle')) $('#sbTitle').textContent = '수호네';
-@@ -5269 +5299 @@
+@@ -5269 +5303 @@
 -    if (document.hidden || standbyOn) return;
 +    if (document.hidden || standbyOn || !STANDBY_IDLE_MS) return;
-@@ -5320,0 +5351,2 @@
+@@ -5320,0 +5355,2 @@
 +    // A physical touch emits pointerdown and touchstart on modern browsers. Count it once.
 +    if (event.type === 'touchstart' && 'PointerEvent' in window) return;
-@@ -5390 +5422 @@
+@@ -5390 +5426 @@
 -          'ev-gacha', 'ev-gacha-edit', 'ev-dbl-add', 'ev-dbl-del', 'ev-combo-toggle',
 +          'ev-gacha', 'ev-gacha-edit', 'ev-dbl-add', 'ev-dbl-del',
-@@ -5508 +5540 @@
+@@ -5508 +5544 @@
 -    const d = new Date();
 +    const d = boardNow();
-@@ -5538,0 +5571 @@
+@@ -5538,0 +5575 @@
 +    const extra=e.target.closest('[data-infoid]');if(extra){selectDex(Number(extra.dataset.infoid));return;}
-@@ -5561 +5594 @@
+@@ -5561 +5598 @@
 -    const st = stagesOf()[stageIndex(S.pokemon.xp)];
 +    const st = typeEggSecret()?{name:'타입 알'}:stagesOf()[stageIndex(S.pokemon.xp)];
-@@ -5606,0 +5640,11 @@
+@@ -5606,0 +5644,11 @@
 +  if ($('#standbyMinutes')) {
 +    $('#standbyMinutes').value = String(standbyMinutes);
 +    $('#standbyMinutes').addEventListener('change', e => {
@@ -738,38 +757,38 @@
 +    });
 +  }
 +  window.addEventListener('resize',()=>{sbMissionSig='';if(standbyOn)renderStandby();});
-@@ -5716 +5760,3 @@
+@@ -5716 +5764,3 @@
 -    a.href = l.img;
 +    const source = letterImageSource(l.img);
 +    if (!source) { toast('이 편지는 내려받을 수 없어요. 원본 기록은 유지돼요.', 'coral'); return; }
 +    a.href = source;
-@@ -5800 +5846 @@
+@@ -5800 +5850 @@
 -    partnerQuery = e.target.value || '';
 +    partnerQuery = e.target.value || '';partnerPage=0;
-@@ -5803,0 +5850 @@
+@@ -5803,0 +5854 @@
 +  $('#partnerModal').addEventListener('click',e=>{const b=e.target.closest('[data-partnerpage]');if(b){partnerPage=Math.max(0,partnerPage+Number(b.dataset.partnerpage));renderPartnerGrid();$('#partnerGrid').scrollTop=0;}});
-@@ -5805,0 +5853 @@
+@@ -5805,0 +5857 @@
 +    const type=e.target.closest('[data-eggtype]');if(type){adoptTypeEgg(type.dataset.eggtype);return;}
-@@ -5913 +5961 @@
+@@ -5913 +5965 @@
 -     · 정산: 보호자 기기 + 부모 모드가 열렸을 때만 '미정산 기록 정산' 버튼이 보입니다.
 +     · 정산: 획득은 자동 합산. 보호자 기기+PIN으로 사용 내용과 금액만 확인합니다.
-@@ -5923 +5971 @@
+@@ -5923 +5975 @@
 -    summary: null, partner: {}, monthLogs: [], pendingLogs: [], lastStats: null,
 +    praiseGifts: [], summary: null, partner: {}, monthLogs: [], pendingLogs: [], lastStats: null,
-@@ -5926,0 +5975 @@
+@@ -5926,0 +5979 @@
 +    missionOps: new Map(),       // Per-mission writes serialize undo/re-complete and overlay in-flight snapshots.
-@@ -5965 +6014 @@
+@@ -5965 +6018 @@
 -    FB.streak = null; FB.streakSig = ''; FB.streakBusy = false;
 +    FB.streak = null; FB.streakSig = ''; FB.streakBusy = false; FB.missionStars=null; FB.starsSig=''; FB.starsBusy=false;
-@@ -5970 +6019,3 @@
+@@ -5970 +6023,3 @@
 -    FB.deleted.clear();
 +    window.FamilyStampGift?.reset();
 +    FB.praiseGifts = []; window.FamilyPraise?.reset();
 +    FB.deleted.clear();FB.missionOps.clear();
-@@ -6015 +6066 @@
+@@ -6015 +6070 @@
 -        : (FB.role === 'parent' ? `보호자 기기로 연결됨 · 미정산 기록 ${n}건` : `아이 기기로 연결됨 · 정산은 보호자만 할 수 있어요 (미정산 ${n}건)`);
 +        : (FB.role === 'parent' ? '보호자 기기로 연결됨 · 미션·도장 포인트 자동 반영' : '아이 기기로 연결됨 · 미션·도장 포인트 자동 반영 · 사용 정산은 보호자만');
-@@ -6022,33 +6073,5 @@
+@@ -6022,33 +6077,5 @@
 -    const canSettle = FB.on && FB.role === 'parent' && parentUnlocked();
 -    const row = $('#fbSettleRow');
 -    const btn = $('#fbSettleBtn');
@@ -808,41 +827,41 @@
 +    if (row) row.hidden = !canUse;
 +    if (btn) { btn.disabled = !FB.readyData; btn.textContent = '포인트 사용 정산'; }
 +    if (sn) { sn.hidden = !canUse; sn.textContent = '미션·도장 포인트는 자동 반영돼요. 물건이나 보상에 쓸 때만 보호자가 사용 내용과 금액을 확인해요.'; }
-@@ -6057 +6080 @@
+@@ -6057 +6084 @@
 -  parentSynced = fbSyncInfo;              // 부모 모드가 열리고 잠길 때 설정 화면을 다시 그립니다
 +  parentSynced = fbSyncInfo;
-@@ -6060 +6083 @@
+@@ -6060 +6087 @@
 -  if ($('#fbSettleBtn')) $('#fbSettleBtn').addEventListener('click', fbSettleNow);
 +  if ($('#fbSettleBtn')) $('#fbSettleBtn').addEventListener('click', () => asParent('포인트 사용 정산은 보호자만 할 수 있어요.', usePoints));
-@@ -6141 +6164,2 @@
+@@ -6141 +6168,2 @@
 -    return [...FB.monthLogs, ...FB.pendingLogs]
 +    const writing=[...FB.missionOps.values()].filter(op=>op.session===FB.session&&op.kind==='write').map(op=>op.log);
 +    return [...writing,...FB.monthLogs, ...FB.pendingLogs]
-@@ -6164 +6188,2 @@
+@@ -6164 +6192,2 @@
 -    const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
 +    const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 1)) : 0;
 +    window.FamilyStampGift?.observe({ connected, completed, pendingBonus });
-@@ -6170,2 +6195 @@
+@@ -6170,2 +6199 @@
 -      confetti(28);
 -      toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600);
 +      if (!window.FamilyStampGift) { confetti(28); toast(`🎉 도장판 10/10 · +${newBoards * 1}P 자동 적립`, 'mint', 3600); }
-@@ -6187 +6211 @@
+@@ -6187 +6215 @@
 -      ? `🎉 도장판 완성 · 기본 미션 포인트와 별도로 +3P${pendingBonus ? ' 정산 대기' : ' 반영'} · 다음 판 시작`
 +      ? `🎉 도장판 완성 · 기본 미션 포인트와 별도로 +1P 자동 적립 · 다음 판 시작`
-@@ -6189,2 +6213,2 @@
+@@ -6189,2 +6217,2 @@
 -        ? `미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 때만 +3P${pendingBonus ? ` · +${pendingBonus}P 정산 대기` : ''}`
 -        : '미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 완성 시 +3P');
 +        ? `미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 때만 +1P · 보너스 자동 적립`
 +        : '미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 도장판 10/10 완성 시 +1P');
-@@ -6203 +6227 @@
+@@ -6203 +6231 @@
 -        ? `${st.started}부터 확인된 기록만 계산 · 한국 시간 기준 · 매일 처음 기록한 아이·공용 미션 전부 완료=1일 · 일요일은 접속 없이 건너뜀 · 미션 없는 날은 관찰된 날만 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
 +        ? `${st.started}부터 확인된 기록만 계산 · 한국 시간 기준 · 매일 처음 기록한 아이·공용 미션 전부 완료=1일 · 토·일·대한민국 공휴일은 접속 없이 건너뜀 · 미션 없는 날은 관찰된 날만 건너뜀 · 오늘 미완료는 자정까지 유예 · 기록 없는 날은 연결하지 않음 · 당일 미션 편집은 다음 날 기준에 반영 · 점수 추가 없음`
-@@ -6209,0 +6234 @@
+@@ -6209,0 +6238 @@
 +    if (!window.FamilyHolidays || !window.FamilyHolidays.covers(date)) return;
-@@ -6211 +6236 @@
+@@ -6211 +6240 @@
 -    const input = { date, required, skip: dow === 0 || !required.length, logs: fbMergeLogs().filter((l) => l.member === KID_ID && l.kind !== 'bonus').map((l) => ({ date: l.date, mid: l.mid, member: l.member, kind: l.kind || '' })) };
 +    const input = { date, required, skip: window.FamilyHolidays.isRest(date) || !required.length, logs: fbMergeLogs().filter((l) => l.member === KID_ID && l.kind !== 'bonus').map((l) => ({ date: l.date, mid: l.mid, member: l.member, kind: l.kind || '' })) };
-@@ -6220,0 +6246,10 @@
+@@ -6220,0 +6250,10 @@
 +  function missionStarsObserveMaybe(){
 +    if(!FB.on||!FB.readyData||FB.role!=='parent'||!FB.sync?.observeMissionStars||FB.starsBusy)return;
 +    const date=todayStr(),missions=FamilyMissionStars.schedule(S.missions||[]),sig=JSON.stringify({date,missions});
@@ -853,32 +872,33 @@
 +      if(out.ok){FB.starsSig=sig;FB.missionStars=out.data;S.missionStars=out.data;fbRecalc();}
 +    }).finally(()=>{if(session===FB.session)FB.starsBusy=false;});
 +  }
-@@ -6248,0 +6284 @@
+@@ -6248,0 +6288 @@
 +      missionStars:FB.missionStars||{},
-@@ -6252 +6288,2 @@
+@@ -6252 +6292,2 @@
 -    streakObserveMaybe();
 +    window.FamilyPraise?.observe({ connected: true, role: FB.role, kid: kidLabel(), gifts: FB.praiseGifts || [] });
 +    streakObserveMaybe(); missionStarsObserveMaybe();
-@@ -6292,0 +6330,2 @@
+@@ -6292,0 +6334,3 @@
++    else if (key === 'holidayCalendar') { const calendar=docs[0]; if(calendar?.holidayData)window.FamilyHolidays.install(calendar.holidayData); }
 +    else if (key === 'missionStars') { FB.missionStars=docs[0]||null; S.missionStars=FB.missionStars; }
 +    else if (key === 'praiseGifts') { FB.praiseGifts = docs; }
-@@ -6337 +6376 @@
+@@ -6337 +6381 @@
 -    FB.timer = setTimeout(() => { fbPushNow(); }, 500);
 +    FB.timer = setTimeout(() => { FB.timer = null; fbPushNow(); }, 500);
-@@ -6341 +6380 @@
+@@ -6341 +6385 @@
 -    if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
 +    if (FB.busy) { clearTimeout(FB.timer); FB.timer = setTimeout(() => { FB.timer = null; fbPushNow(); }, 500); return { ok: true, written: [], denied: [] }; }
-@@ -6383 +6422 @@
+@@ -6383 +6427 @@
 -    a.download = `family-dashboard-firestore-${fmtDate(new Date())}.json`;
 +    a.download = `family-dashboard-firestore-${fmtDate(boardNow())}.json`;
-@@ -6405 +6444 @@
+@@ -6405 +6449 @@
 -        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school', 'alarms', 'streak',
 +        ...(FB.core.PLAIN_COLLECTIONS || []), 'logs', 'pendingLogs', 'summary', 'partner', 'eventCenter', 'school', 'alarms', 'streak', 'missionStars', 'praiseGifts',
-@@ -6418,0 +6458,30 @@
+@@ -6418,0 +6463,30 @@
 +  const refreshWrites = { pending: 0, failed: new Set() };
 +  function refreshTrackSync(sync) {
 +    const wrapped = { ...sync };
-+    ['adoptPartner','claimPartnerHatch','deleteLog','observeStreak','observeMissionStars','pushPatch','restoreBackup','saveParentPin','writeLog','pushAlarms','pushEventCenter','pushSchool','writeBonusLog','issuePraiseGift','claimPraiseGift'].forEach(name => {
++    ['adoptPartner','claimPartnerHatch','deleteLog','observeStreak','observeMissionStars','pushPatch','restoreBackup','saveParentPin','writeLog','pushAlarms','pushEventCenter','pushSchool','writeBonusLog','issuePraiseGift','claimPraiseGift','migrateMissionDeadlines','pushHolidayCalendar'].forEach(name => {
 +      if (typeof sync[name] !== 'function') return;
 +      wrapped[name] = function (...args) {
 +        refreshWrites.pending++;
@@ -905,10 +925,10 @@
 +    catch (e) { return { ok: false, failed: true }; }
 +  }
 +
-@@ -6421 +6490 @@
+@@ -6421 +6495 @@
 -    FB.sync = boot.sync;
 +    FB.sync = refreshTrackSync(boot.sync);
-@@ -6485,9 +6554,8 @@
+@@ -6485,9 +6559,8 @@
 -    const wasDone = !!(c && c.doneOn === todayStr());
 -    const member = c ? (c.member || KID_ID) : KID_ID;
 -    const completionLog = c && (S.logs || []).find((x) => x.mid === id && x.date === todayStr() && (x.member || KID_ID) === member);
@@ -926,10 +946,10 @@
 +    const completionLog = (S.logs || []).find(x=>fbDocIdOf(x)===logId);
 +    if (wasDone && completionLog && completionLog.settled === true) {
 +      toast('이미 정산된 기록은 취소할 수 없어요', '', 3000);return;
-@@ -6494,0 +6563,2 @@
+@@ -6494,0 +6568,2 @@
 +    if(wasDone) FB.deleted.set(logId,Date.now());
 +    else FB.deleted.delete(logId); // A new completion is not a late echo of the cancelled one.
-@@ -6496,8 +6566,18 @@
+@@ -6496,8 +6571,18 @@
 -    if (!FB.on || !c) return out;
 -    if (!wasDone) {
 -      FB.sync.writeLog(c, { by: FB.uid, member }).then((r) => {
@@ -956,7 +976,7 @@
 +          const accepted={...(r.payload||localLog),id:logId};
 +          FB.monthLogs.push(accepted);
 +          if(accepted.settled!==true)FB.pendingLogs.push(accepted);
-@@ -6505,9 +6585,12 @@
+@@ -6505,9 +6590,12 @@
 -      });
 -    } else {
 -      FB.sync.deleteLog({ date: todayStr(), mid: c.id, member, settled: !!(completionLog && completionLog.settled) }).then((r) => {
@@ -978,13 +998,13 @@
 +      FB.missionOps.delete(logId);fbRecalc();fbRetryCard(FB.core.classifyFirestoreError(error));
 +    });
 +    fbPushNow();return out;
-@@ -6554 +6637 @@
+@@ -6554 +6642 @@
 -          ? `Firestore 백업 ${data.docCount || '?'}건(${(data.chunks || []).length}조각)을 그대로 덮어씁니다. 지금 기록 중 덮어쓰이지 않은 것은 남지 않아요.`
 +          ? `Firestore 백업 ${data.docCount || '?'}건(${(data.chunks || []).length}조각)을 기존 기록에 합칩니다. 같은 항목은 백업 값으로 덮어쓰고, 백업에 없는 현재 기록은 그대로 남아요. 칭찬 선물과 그 적립 내역은 중복 수령 방지를 위해 현재 상태를 유지합니다.`
-@@ -6569 +6652 @@
+@@ -6569 +6657 @@
 -      if (res.ok) toast(`복원 완료 · ${res.written}건 · 확인 ${res.verified.matched}/${res.written}`, 'mint', 4000);
 +      if (res.ok) toast(`복원 완료 · ${res.written}건 · 확인 ${res.verified.matched}/${res.written}${res.preservedGiftRecords?.length ? ' · 칭찬 선물 현재 상태 유지' : ''}`, 'mint', 4000);
-@@ -6587 +6670,16 @@
+@@ -6587 +6675,16 @@
 -  setInterval(renderClock, 15000);
 +  let renderedDay = todayStr();
 +  function refreshDayView() {
@@ -1002,9 +1022,9 @@
 +  }
 +  setInterval(() => { renderClock(); refreshDayView(); }, 15000);
 +  window.addEventListener('pageshow', refreshDayView);
-@@ -6610,0 +6709 @@
+@@ -6610,0 +6714 @@
 +    refreshDayView();
-@@ -6620,0 +6720,13 @@
+@@ -6620,0 +6725,13 @@
 +  window.addEventListener('family-holidays-ready', () => { renderSchedule(); if(FB.on&&FB.readyData)fbRecalc();else renderMissions(); streakObserveMaybe(); });
 +  window.FamilyPraise?.configure({
 +    getContext: () => ({ connected: FB.on && FB.readyData, role: FB.role, identity: FB.uid, kid: kidLabel(), policy: FamilyPraiseCore.POLICY }),
@@ -1018,11 +1038,11 @@
 +    claim: data => FB.on && FB.readyData && FB.sync?.claimPraiseGift ? FB.sync.claimPraiseGift(data) : Promise.resolve({ ok: false, error: { message: '연결을 확인한 뒤 같은 선물로 다시 시도해 주세요.' } }),
 +    toast: (message, good = false) => toast(message, good ? 'mint' : 'coral', 3400),
 +  });
-@@ -6623,0 +6736 @@
+@@ -6623,0 +6741 @@
 +    refreshStatus, refreshSaveLocal,
-@@ -6637 +6750 @@
+@@ -6637 +6755 @@
 -      label: partnerOf(S.pokemon.key).label,
 +      label: typeEggSecret()?FamilyTypeEgg.type(S.pokemon.growth)+' 타입 알':partnerOf(S.pokemon.key).label,
-@@ -6639 +6752 @@
+@@ -6639 +6757 @@
 -      stage: stagesOf()[stageIndex(S.pokemon.xp)].name,
 +      stage: typeEggSecret()?'타입 알':stagesOf()[stageIndex(S.pokemon.xp)].name,
