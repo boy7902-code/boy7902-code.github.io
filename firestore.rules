@@ -127,7 +127,7 @@ service cloud.firestore {
        문서 ID 규칙: {date}_{mid}_m3 → 같은 날 같은 미션 중복 생성을 원천 차단 */
     match /households/{hh}/logs/{logId} {
       allow read: if isFamily();
-      allow create: if isParent() || (isChild() && childLogCreate(hh, logId));
+      allow create: if isParent() || (isChild() && (('giftId' in request.resource.data && praiseLogCreate(hh, logId)) || childLogCreate(hh, logId)));
       allow update: if isParent();
       allow delete: if isParent()
         || (isChild() && childLogDelete());
@@ -172,10 +172,64 @@ service cloud.firestore {
 
     // 아이는 자기가 만든 · 오늘 · 아직 정산되지 않은 기록만 지울 수 있습니다(체크 취소).
     function childLogDelete() {
-      return resource.data.createdBy == request.auth.uid
+      return !('giftId' in resource.data) && resource.data.createdBy == request.auth.uid
         && resource.data.member == 'm3'
         && resource.data.settled == false
         && isTodayKst(resource.data.date);
+    }
+
+    /* Parent-issued praise gifts. A child may consume one existing gift only as
+       the paired, exact bonus log is created in the same atomic transaction. */
+    match /households/{hh}/praiseGifts/{giftId} {
+      allow read: if isFamily();
+      allow create: if isParent() && praiseGiftCreate(giftId);
+      allow update: if isFamily() && praiseGiftClaim(hh, giftId);
+      allow delete: if false;
+    }
+    function praiseGiftCreate(giftId) {
+      let d = request.resource.data;
+      return giftId.matches('^[a-f0-9]{32}$')
+        && d.keys().hasOnly(['id','member','reason','points','policyVersion','state','createdAt','createdBy'])
+        && d.keys().hasAll(['id','member','reason','points','policyVersion','state','createdAt','createdBy'])
+        && d.id == giftId && d.member == 'm3' && d.state == 'ready'
+        && d.reason is string && d.reason.size() > 0 && d.reason.size() <= 40
+        && d.points is int && d.points in [1,2,3,5,10]
+        && d.policyVersion == 'praise-20261122-v1'
+        && d.createdAt == request.time && d.createdBy == request.auth.uid;
+    }
+    function praiseReceiptMatches(gift, receipt, giftId) {
+      return receipt.keys().hasOnly(['id','date','at','mid','giftId','title','kind','member','base','bonus','earlyBonus','earned','due','goalMet','settled','createdAt','createdBy'])
+        && receipt.keys().hasAll(['id','date','at','mid','giftId','title','kind','member','base','bonus','earlyBonus','earned','due','goalMet','settled','createdAt','createdBy'])
+        && receipt.id == 'praise_' + giftId && receipt.mid == 'praise_' + giftId && receipt.giftId == giftId
+        && receipt.member == 'm3' && receipt.kind == 'bonus'
+        && receipt.title == '🎁 칭찬 선물 · ' + gift.reason
+        && receipt.base == gift.points && receipt.earned == gift.points
+        && receipt.bonus == 0 && receipt.earlyBonus == 0 && receipt.due == '' && receipt.goalMet == false && receipt.settled == false
+        && receipt.createdAt == request.time && receipt.createdBy == request.auth.uid
+        && isTodayKst(receipt.date) && atNearServerTime(receipt.at);
+    }
+    function praiseGiftClaim(hh, giftId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let logPath = /databases/$(database)/documents/households/$(hh)/logs/$('praise_' + giftId);
+      let receipt = getAfter(logPath).data;
+      return before.member == 'm3' && before.state == 'ready' && after.state == 'claimed'
+        && after.diff(before).affectedKeys().hasOnly(['state','openedAt','openedBy','claimDate','claimAt'])
+        && after.openedAt == request.time && after.openedBy == request.auth.uid
+        && after.claimDate == receipt.date && after.claimAt == receipt.at
+        && !exists(logPath) && praiseReceiptMatches(before, receipt, giftId);
+    }
+    function praiseLogCreate(hh, logId) {
+      let d = request.resource.data;
+      let giftId = d.giftId;
+      let giftPath = /databases/$(database)/documents/households/$(hh)/praiseGifts/$(giftId);
+      let before = get(giftPath).data;
+      let after = getAfter(giftPath).data;
+      return giftId is string && giftId.matches('^[a-f0-9]{32}$') && logId == 'praise_' + giftId
+        && before.member == 'm3' && before.state == 'ready' && after.state == 'claimed'
+        && after.openedAt == request.time && after.openedBy == request.auth.uid
+        && after.claimDate == d.date && after.claimAt == d.at
+        && praiseReceiptMatches(before, d, giftId);
     }
 
     /* ───────────────────── 확정 합계(stats/summary) ─────────────────────
