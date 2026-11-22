@@ -68,7 +68,7 @@
     const label = node('label', 'pg-label', '칭찬 한마디'); label.htmlFor = 'pgReason'; body.append(label);
     const input = node('textarea', 'pg-input'); input.id = 'pgReason'; input.maxLength = 40; input.rows = 3; input.placeholder = '예: 스스로 정리를 도와줘서 고마워!'; input.value = draft?.reason || '';
     input.addEventListener('input', () => { draft.reason = input.value; saveDraft(); }); body.append(input);
-    const odds = node('p', 'pg-odds'); odds.textContent = core.POLICY.rewards.map(r => `${r.points}P ${r.weight}%`).join(' · '); body.append(odds);
+    const odds = node('p', 'pg-odds'); odds.textContent = core.POLICY.rewards.map(r => `${r.points}P`).join(' · '); body.append(odds);
     body.append(node('p', 'pg-fine', '꽝 없음 · 선물 하나당 한 번 · 별도 하루/주간 제한 없음'));
     if (notice) { const n = node('p', 'pg-error', notice); n.setAttribute('role', 'status'); body.append(n); }
     body.append(action('부모 확인 후 선물 보내기', send));
@@ -119,7 +119,7 @@
     if (g.state === 'claimed' && !busy) { view = 'result'; return render(); }
     body.append(header('어떤 칭찬 점수가 나올까?', '선물 안의 돌림판'));
     body.append(node('p', 'pg-quiet', '이 선물로 한 번만 돌릴 수 있어.')); body.append(wheelGraphic());
-    const odds = node('div', 'pg-legend'); core.POLICY.rewards.forEach((r, i) => { const e = node('span', `pg-legend-${i}`, `${r.points}P · ${r.weight}%`); odds.append(e); }); body.append(odds);
+    const odds = node('div', 'pg-legend'); core.POLICY.rewards.forEach((r, i) => { const e = node('span', `pg-legend-${i}`, `${r.points}P`); odds.append(e); }); body.append(odds);
     if (notice) { const n = node('p', 'pg-error', notice); n.setAttribute('role', 'status'); body.append(n); }
     const button = action(busy ? '선물을 확인하는 중…' : '한 번 돌리기', spin); button.disabled = busy; body.append(button);
     body.append(node('p', 'pg-fine', busy ? '확인 중에는 다시 누를 수 없어.' : '포인트 차감이나 꽝, 재추첨은 없어.'));
