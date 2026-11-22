@@ -172,3 +172,23 @@ test('자정을 넘어가는 미리 알람은 그날 울리지 않는다', () =>
   assert.deepEqual(targetsAt(items, 3).map((h) => h.slot), ['now']);   // 00:03 정각만
   assert.deepEqual(targetsAt(items, 1439).map((h) => h.slot), []);     // 23:59 에 5분 전은 없음
 });
+
+test('완료한 밥/준비 미션의 기본 맞춤 알람도 조용하고 다른 맞춤 알람은 유지', () => {
+ const date='2026-11-23';
+ const missions=[{id:'ms-bab',title:'밥 다 먹기',member:'m3',due:'07:15',days:[],doneOn:date},{id:'ms-morning-study',title:'준비',member:'m3',due:'08:05',days:[],doneOn:date}];
+ const alarms=[{id:'def-morning-done',title:'밥 먹기 끝',time:'07:15'},{id:'def-ready-done',title:'준비 끝',time:'08:05'},{id:'unrelated',title:'밥 먹기 끝',time:'07:15'}];
+ assert.deepEqual(collectItems({missions,alarms,date}).map(x=>x.key),['custom:unrelated']);
+});
+test('완료 로그가 먼저 도착해도 기본 알람과 미션 알람 모두 제외', () => {
+ const date='2026-11-23';const missions=[{id:'ms-bab',title:'밥',member:'m3',due:'07:15',days:[]}];const alarms=[{id:'def-morning-done',title:'밥 먹기 끝',time:'07:15'}];
+ const logs=[{date,mid:'ms-bab',member:'m3',earned:4}];
+ assert.deepEqual(collectItems({missions,alarms,logs,date}),[]);
+ assert.equal(collectItems({missions,alarms,logs:[{...logs[0],date:'2026-11-22'}],date}).length,2);
+ assert.equal(collectItems({missions,alarms,logs:[{...logs[0],member:'m2'}],date}).length,2);
+ assert.equal(collectItems({missions,alarms,logs:[],date}).length,2);
+});
+test('주말 쌍 미션 완료도 기본 알람 제외하되 무관한 완료는 제외 근거 아님',()=>{
+ const date='2026-11-22', alarms=[{id:'def-morning-done',title:'밥 먹기 끝',time:'07:15'}];
+ assert.equal(collectItems({missions:[{id:'ms-bab-we',doneOn:date}],alarms,date}).length,0);
+ assert.equal(collectItems({missions:[{id:'ms-insa',doneOn:date}],alarms,date}).length,1);
+});

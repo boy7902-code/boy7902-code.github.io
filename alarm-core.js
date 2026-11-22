@@ -80,12 +80,23 @@
   }
 
   /* ─────────────────────────── 오늘의 알람 후보 ─────────────────────────── */
-  function missionItems(missions, { date, dow, includeAdults = false, kidId = 'm3' } = {}) {
+  const DEFAULT_MISSION_LINKS = Object.freeze({
+    'def-morning-done': ['ms-bab', 'ms-bab-we'],
+    'def-ready-done': ['ms-morning-study', 'fnlwnprw'],
+  });
+  function completedToday(mission, {date, logs = [], kidId = 'm3'} = {}) {
+    if (!mission || !date) return false;
+    if (mission.doneOn === date) return true;
+    const member = mission.member || kidId;
+    return logs.some(l => l && l.date === date && l.mid === mission.id && (l.member || kidId) === member && !l.kind);
+  }
+
+  function missionItems(missions, { date, dow, includeAdults = false, kidId = 'm3', logs = [] } = {}) {
     const out = [];
     (Array.isArray(missions) ? missions : []).forEach((m) => {
       if (!m || typeof m !== 'object') return;
       if (!isHhmm(m.due)) return;                    // 마감 시각이 없는 미션은 알람도 없습니다
-      if (date && m.doneOn === date) return;         // 이미 끝낸 미션은 울리지 않습니다
+      if (completedToday(m, {date, logs, kidId})) return;         // 이미 끝낸 미션은 울리지 않습니다
       if (!onDay(m.days, dow)) return;               // 오늘 쉬는 미션
       const member = m.member || '';
       if (!includeAdults && member && member !== kidId) return;   // 성인 미션은 부모가 '보기'를 켰을 때만
@@ -114,10 +125,12 @@
     return out;
   }
 
-  function customItems(alarms, { dow } = {}) {
+  function customItems(alarms, { dow, date, missions = [], logs = [], kidId = 'm3' } = {}) {
     const out = [];
     normalizeAlarms(alarms).forEach((a) => {
       if (!a.on) return;
+      const linked = DEFAULT_MISSION_LINKS[a.id];
+      if (linked && missions.some(m => linked.includes(m.id) && completedToday(m, {date, logs, kidId}))) return;
       if (!onDay(a.days, dow)) return;
       out.push({ key: 'custom:' + a.id, kind: 'custom', title: a.title, time: a.time, leads: LEADS.custom });
     });
@@ -125,12 +138,12 @@
   }
 
   /** 오늘 울릴 수 있는 알람 전부 — 종류별로 모아 시각 순으로 */
-  function collectItems({ missions = [], events = [], alarms = [], date = '', dow = null, includeAdults = false, kidId = 'm3' } = {}) {
+  function collectItems({ missions = [], events = [], alarms = [], logs = [], date = '', dow = null, includeAdults = false, kidId = 'm3' } = {}) {
     const day = dow != null ? dow : dowOf(date);
     const all = [
-      ...missionItems(missions, { date, dow: day, includeAdults, kidId }),
+      ...missionItems(missions, { date, dow: day, includeAdults, kidId, logs }),
       ...eventItems(events, { date }),
-      ...customItems(alarms, { dow: day }),
+      ...customItems(alarms, { dow: day, date, missions, logs, kidId }),
     ];
     return all.sort((a, b) => (toMin(a.time) - toMin(b.time)) || a.title.localeCompare(b.title));
   }
@@ -213,6 +226,7 @@
     cleanTitle,
     normalizeAlarm,
     normalizeAlarms,
+    completedToday,
     missionItems,
     eventItems,
     customItems,
