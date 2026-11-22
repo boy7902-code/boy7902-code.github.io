@@ -53,7 +53,7 @@ test('the event center hides parent setups while the shared mission stamp board 
   assert.doesNotMatch(app, /data-act="ev-stamp(?:-reset)?"/);
   assert.match(html, /class="reading-stamp-board stamp-board mission-stamp-board"[^>]*aria-labelledby="readingBoardTitle"/);
   assert.match(html, /id="readingCells" aria-label="미션 성공 도장 10칸"/);
-  assert.match(html, /id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10\/10 완성 시 \+3P/);
+  assert.match(html, /id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10\/10 완성 시 \+1P/);
   assert.match(app, /성공 1회마다 도장 1개/);
   assert.match(app, /10\/10 때만 \+3P/);
 });
