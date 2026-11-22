@@ -3,27 +3,18 @@
  function install(){
  const $=s=>document.querySelector(s),media=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)'),phone=matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)');
  if(!window.FamilyRefresh||!$('#choreList'))return;
- const top=document.createElement('div');top.className='selected-top';
- const lower=document.createElement('div');lower.className='selected-lower';
- const nodes=[$('#cardOverview'),$('#cardSchool'),$('.mission-stamp-board'),$('#cardWish'),$('.weekly-report'),$('.width-access-tools')];
- const homes=nodes.map(n=>{const anchor=document.createComment('selected-layout-home');n.before(anchor);return anchor;});
- const lead=document.createElement('div');lead.className='selected-outfit';
- const primary=document.createElement('div');primary.className='selected-primary';
- const caption=document.createElement('button');caption.type='button';caption.className='selected-stamp-caption';caption.addEventListener('click',()=>$('#stampBoardOpenBtn').click());
- const chipsHome=document.createComment('weather-chips-home');$('#wChips').before(chipsHome);
+ const top=$('.selected-top'),lower=$('.selected-lower'),lead=$('.selected-outfit'),primary=$('.selected-primary'),caption=$('.selected-stamp-caption');
+ const chipsHome=$('#wChips').parentNode;
+ caption.addEventListener('click',()=>$('#stampBoardOpenBtn').click());
  let active='initial',queued=false;
  function update(){
   queued=false;
-  const mode=document.body.classList.contains('family-information-open')?'':media.matches?'tablet':phone.matches?'phone':'';
-  if(mode!==active){
-   if($('#screenDetail')?.open)$('#screenDetailClose').click();
-   nodes.forEach((n,i)=>homes[i].after(n));chipsHome.after($('#wChips'));
-   top.remove();lower.remove();lead.remove();primary.remove();caption.remove();
-   active=mode;document.body.classList.toggle('selected-dashboard',mode==='tablet');document.body.classList.toggle('selected-phone',mode==='phone');
-   if(mode==='tablet'){$('.topbar').insertBefore(top,$('.top-actions'));top.append(nodes[0],nodes[1]);$('.mission-area').append(lower);lower.append(nodes[2],nodes[3],nodes[4]);$('#cardChores>.card-head').append(nodes[5]);$('#cardOverview').append(lead,primary);$('#outfitSuggestions').append($('#wChips'));nodes[2].append(caption);}
-   if(mode==='phone'){$('#cardChores').before(top);top.append(nodes[0],nodes[1]);$('#cardChores').append(lower);lower.append(nodes[3]);}
-  }
-  top.hidden=$('#mainGrid').hidden;
+  const family=document.body.classList.contains('family-information-open');
+  const mode=phone.matches?'phone':'tablet';
+  document.body.classList.toggle('selected-dashboard',!family&&mode==='tablet');document.body.classList.toggle('selected-phone',!family&&mode==='phone');
+  if(mode!==active){active=mode;if(mode==='tablet')$('#outfitSuggestions').append($('#wChips'));else chipsHome.append($('#wChips'));}
+  top.hidden=$('#mainGrid').hidden||family;
+  lead.hidden=primary.hidden=caption.hidden=family||mode!=='tablet';
   const data=window.FamilyDashboard?.state,missions=data?.missions||[],order=new Map(missions.map((m,i)=>[String(m.id),i]));
   const points=new Map(missions.map(m=>[String(m.id),Number(m.points)||0]));
   const rows=[...$('#choreList').children].filter(n=>n.classList.contains('chore'));
@@ -45,7 +36,7 @@
   $('#weatherDetailsBtn').textContent='날씨 상세';
   const count=Number(($('#readingProgress').textContent.match(/\d+/)||[])[0]||0);
   caption.textContent=count<10?`${10-count}개 더 모으면 +3P`:'도장 완성';
-  nodes[5].querySelector('span').textContent='미완료는 포인트 높은 순 · 완료한 카드는 맨 뒤로';
+  $('.width-access-tools').querySelector('span').textContent='미완료는 포인트 높은 순 · 완료한 카드는 맨 뒤로';
  }
  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
  const obs=new MutationObserver(queue);['#choreList','#wChips','#outfitSuggestions','#readingProgress','#mainGrid'].forEach(s=>obs.observe($(s),{childList:true,subtree:true,characterData:true,attributes:s==='#mainGrid',attributeFilter:s==='#mainGrid'?['hidden']:undefined}));
