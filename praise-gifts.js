@@ -101,15 +101,18 @@
     body.append(action('선물 열어 보기', () => { view = 'wheel'; notice = ''; render(); }));
     body.append(node('p', 'pg-fine', '지금 못 열어도 선물함에 남아 있어.'));
   }
+  function wheelSector(index) {
+    const degrees = 360 / core.POLICY.rewards.length;
+    return { start: -90 + index * degrees, end: -90 + (index + 1) * degrees, target: (360 - (index + 0.5) * degrees + 360) % 360 };
+  }
   function wheelGraphic() {
     const ns = 'http://www.w3.org/2000/svg', box = node('div', 'pg-wheel-box'), wheel = document.createElementNS(ns, 'svg');
     wheel.setAttribute('viewBox', '0 0 400 400'); wheel.classList.add('pg-wheel'); wheel.setAttribute('aria-hidden', 'true');
-    let start = -90; const colors = ['#f3d791', '#dce7cb', '#ebcfb0', '#b9d4c4', '#d6957c'];
+    const colors = ['#f3d791', '#dce7cb', '#ebcfb0', '#b9d4c4', '#d6957c'];
     core.POLICY.rewards.forEach((row, i) => {
-      const end = start + row.weight * 3.6, a = start * Math.PI / 180, b = end * Math.PI / 180;
+      const { start, end } = wheelSector(i), a = start * Math.PI / 180, b = end * Math.PI / 180;
       const p = document.createElementNS(ns, 'path'); p.setAttribute('d', `M200 200L${200 + 184 * Math.cos(a)} ${200 + 184 * Math.sin(a)}A184 184 0 ${end - start > 180 ? 1 : 0} 1 ${200 + 184 * Math.cos(b)} ${200 + 184 * Math.sin(b)}Z`); p.setAttribute('fill', colors[i]); p.setAttribute('stroke', '#fff8e8'); p.setAttribute('stroke-width', '2'); wheel.append(p);
-      if (row.weight >= 9) { const mid = (a + b) / 2, tx = document.createElementNS(ns, 'text'); tx.setAttribute('x', 200 + 133 * Math.cos(mid)); tx.setAttribute('y', 209 + 133 * Math.sin(mid)); tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '27'); tx.setAttribute('font-weight', '800'); tx.setAttribute('fill', '#715333'); tx.textContent = `${row.points}P`; wheel.append(tx); }
-      start = end;
+      const mid = (a + b) / 2, tx = document.createElementNS(ns, 'text'); tx.setAttribute('x', 200 + 133 * Math.cos(mid)); tx.setAttribute('y', 209 + 133 * Math.sin(mid)); tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '27'); tx.setAttribute('font-weight', '800'); tx.setAttribute('fill', '#715333'); tx.textContent = `${row.points}P`; wheel.append(tx);
     });
     wheel.insertAdjacentHTML('beforeend', '<circle cx="200" cy="200" r="185" fill="none" stroke="#c6a16a" stroke-width="10"/><circle cx="200" cy="200" r="34" fill="#fff8e6" stroke="#c6a16a" stroke-width="6"/>');
     box.append(wheel, node('i', 'pg-pointer')); return box;
@@ -132,12 +135,12 @@
     try { response = await adapter.claim({ id: g.id }); } catch (e) { response = { ok: false, error: { message: '저장을 확인하지 못했어. 연결 후 같은 선물로 다시 확인해 줘.' } }; }
     if (token !== epoch) return;
     if (!response?.ok) { busy = false; rotating?.classList.remove('pg-awaiting'); notice = response?.cancelled ? '연결 상태를 확인한 뒤 같은 선물을 열어 줘.' : response?.error?.message || '연결을 확인하고 다시 눌러 줘. 새로 추첨하지 않아.'; render(); return; }
-    let sum = 0, target = 0; core.POLICY.rewards.forEach(r => { if (r.points === response.points) target = (360 - (sum + r.weight / 2) * 3.6 + 360) % 360; sum += r.weight; });
+    let target = 0; core.POLICY.rewards.forEach((r, i) => { if (r.points === response.points) target = wheelSector(i).target; });
     const reduced = root.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     let currentAngle = 0;
     if (rotating) { const m = new DOMMatrixReadOnly(getComputedStyle(rotating).transform); currentAngle = (Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360; rotating.classList.remove('pg-awaiting'); rotating.style.transform = `rotate(${currentAngle}deg)`; }
     const end = currentAngle + 1800 + (target - currentAngle + 360) % 360;
-    if (rotating && !reduced) { rotating.getBoundingClientRect(); rotating.style.transition = 'transform 3.7s cubic-bezier(.15,.7,.15,1)'; rotating.style.transform = `rotate(${end}deg)`; }
+    if (rotating) { if (!reduced && !response.alreadyClaimed) { rotating.getBoundingClientRect(); rotating.style.transition = 'transform 3.7s cubic-bezier(.15,.7,.15,1)'; } rotating.style.transform = `rotate(${end}deg)`; }
     await new Promise(resolve => setTimeout(resolve, reduced || response.alreadyClaimed ? 100 : 3800));
     if (token !== epoch) return;
     // A receipt returned by the transaction is the source, never a guessed local award.
