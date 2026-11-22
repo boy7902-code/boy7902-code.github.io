@@ -155,3 +155,29 @@ body.dashboard-refresh #cardChores .mission-streak-star svg{display:block;width:
 body.dashboard-refresh.selected-dashboard #cardChores #choreList>.chore{padding-top:42px!important;}
 /* Transient notices must not cover the save/cancel row on a short screen. */
 body:has(#modal:not([hidden])) .toast-wrap{visibility:hidden;}
+
+/* Approved partner placement: unboxed XP by the art, evolution/coins below. */
+body.dashboard-refresh #cardChores .partner-art-summary{position:relative;min-height:214px;height:214px;flex:none;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage{height:134px!important;min-height:134px!important;max-height:134px!important;margin:auto!important;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage img{width:134px!important;max-width:134px!important;height:134px!important;max-height:134px!important;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-nameline{margin-top:2px;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-foot{position:absolute;right:0;bottom:0;display:flex!important;}
+body.dashboard-refresh #cardChores .partner-art-summary #charCount{font-size:11px!important;gap:5px;}
+body.dashboard-refresh #cardChores .partner-art-summary #charCount b{font-size:22px!important;}
+body.dashboard-refresh #cardChores .char-info:empty{display:none!important;}
+body.dashboard-refresh.selected-dashboard #cardChores .refresh-partner-info{margin-top:0!important;}
+body.dashboard-refresh #cardChores .partner-bottom-metrics{display:flex;flex-direction:column;gap:8px;margin-top:auto!important;order:10;flex:none;min-width:0;}
+body.dashboard-refresh.selected-dashboard #cardChores .char-panel{gap:8px!important;}
+@media(min-width:768px) and (max-width:1366px) and (max-height:650px){
+body.dashboard-refresh #cardChores .partner-art-summary{height:126px;min-height:126px;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage{height:60px!important;min-height:60px!important;max-height:60px!important;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage img{width:60px!important;max-width:60px!important;height:60px!important;max-height:60px!important;}
+}
+@media(max-width:620px){
+body.dashboard-refresh #cardChores .partner-art-summary{grid-column:1/-1;height:180px;min-height:180px;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage{width:100%!important;height:106px!important;min-height:106px!important;max-height:106px!important;}
+body.dashboard-refresh #cardChores .partner-art-summary .char-stage img{width:106px!important;max-width:106px!important;height:106px!important;max-height:106px!important;}
+body.dashboard-refresh #cardChores .partner-bottom-metrics{grid-column:1/-1;}
+}
+
+@media(max-width:620px){body.dashboard-refresh #cardChores .char-panel{grid-column:1/-1!important;width:100%!important;box-sizing:border-box;}body.dashboard-refresh #cardChores .partner-art-summary .char-nameline{text-align:center;justify-content:center;}}
