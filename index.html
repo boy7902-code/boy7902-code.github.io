@@ -9,6 +9,26 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <title>우리 가족 대시보드</title>
+<!-- Keep the baseline DOM out of the first paint until display adapters finish. -->
+<style>
+html.app-booting .app{visibility:hidden!important}
+#appBootStatus{display:none}
+html.app-booting #appBootStatus{position:fixed;inset:0;z-index:40000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fff7e3;color:#66563e;font:600 16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}
+#appBootStatus button{font:inherit;padding:10px 18px;border:1px solid #d8c5a3;border-radius:12px;background:#fffdf6;color:inherit;cursor:pointer}
+</style>
+<script>
+(()=>{
+ const root=document.documentElement;root.classList.add('app-booting');
+ let done=false;
+ function slow(){if(done)return;const label=document.getElementById('appBootLabel'),retry=document.getElementById('appBootRetry');if(label)label.textContent='화면을 불러오지 못했어요. 다시 시도해 주세요.';if(retry){retry.hidden=false;retry.onclick=()=>location.reload();}}
+ const timer=setTimeout(slow,12000);
+ document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  const tablet=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)').matches,phone=matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches;
+  if(!window.FamilyDashboard||!window.FamilyRefresh||!document.body.classList.contains('dashboard-refresh')||(tablet&&!document.body.classList.contains('selected-dashboard'))||(!tablet&&phone&&!document.body.classList.contains('selected-phone'))){slow();return;}
+  done=true;clearTimeout(timer);root.classList.remove('app-booting');document.getElementById('appBootStatus')?.remove();
+ })));
+})();
+</script>
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -36,6 +56,7 @@
 <style>.cal-holiday{font-size:13px;color:#b13c42;padding:7px 12px;line-height:1.4;overflow-wrap:anywhere}</style>
 </head>
 <body data-parent="off">
+<div id="appBootStatus" role="status" aria-live="polite"><span id="appBootLabel">화면 준비 중…</span><button id="appBootRetry" type="button" hidden>다시 불러오기</button></div>
 <div class="app">
 
   <!-- ======================= 상단 ======================= -->
