@@ -55,7 +55,11 @@
     const id=Number(img.dataset.poke||((img.src.match(/\/(\d+)\.png/)||[])[1]));
     if(id)PokemonEncyclopedia.show(id,{name:img.alt,art:img.src});
   });
-  $('.char-panel').append(info,$('.char-foot'));
+  const panel=$('.char-panel'),hero=document.createElement('div'),metrics=document.createElement('div');
+  hero.className='partner-art-summary';metrics.className='partner-bottom-metrics';
+  panel.prepend(hero);hero.append($('#charStage'),$('.char-nameline'),$('.char-foot'));
+  metrics.append($('#evoMeter'),$('.stat-cards'));
+  panel.append(info,metrics);
   const missionScroll=$('.mission-scroll');
   const widthBar=document.createElement('div');widthBar.className='width-access-tools';
   const left=document.createElement('button'),right=document.createElement('button'),hint=document.createElement('span');
