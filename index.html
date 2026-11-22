@@ -1,830 +1,757 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ko" data-theme="light">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 시계·날씨·가족 일정·포켓몬 미션 포인트·미션 도장판·위시리스트·손글씨 편지." />
-<meta name="theme-color" content="#f4f7ff" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 시계·날씨·가족 일정·포켓몬 미션 포인트·미션 도장판·위시리스트·손글씨 편지."/>
+<meta name="theme-color" content="#f4f7ff"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>우리 가족 대시보드</title>
-<!-- Keep the baseline DOM out of the first paint until display adapters finish. -->
-<style>
-html.app-booting .app{visibility:hidden!important}
-#appBootStatus{display:none}
-html.app-booting #appBootStatus{position:fixed;inset:0;z-index:40000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#fff7e3;color:#66563e;font:600 16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}
-#appBootStatus button{font:inherit;padding:10px 18px;border:1px solid #d8c5a3;border-radius:12px;background:#fffdf6;color:inherit;cursor:pointer}
-</style>
-<script>
-(()=>{
- const root=document.documentElement;root.classList.add('app-booting');
- let done=false;
- function slow(){if(done)return;const label=document.getElementById('appBootLabel'),retry=document.getElementById('appBootRetry');if(label)label.textContent='화면을 불러오지 못했어요. 다시 시도해 주세요.';if(retry){retry.hidden=false;retry.onclick=()=>location.reload();}}
- const timer=setTimeout(slow,12000);
- document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  const tablet=matchMedia('(min-width:768px) and (max-width:1366px) and (min-height:600px)').matches,phone=matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches;
-  if(!window.FamilyDashboard||!window.FamilyRefresh||!document.body.classList.contains('dashboard-refresh')||(tablet&&!document.body.classList.contains('selected-dashboard'))||(!tablet&&phone&&!document.body.classList.contains('selected-phone'))){slow();return;}
-  done=true;clearTimeout(timer);root.classList.remove('app-booting');document.getElementById('appBootStatus')?.remove();
- })));
-})();
-</script>
-<link rel="manifest" href="manifest.webmanifest" />
-<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="style.css?v=59-single-screen" />
+
+
+
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<link rel="stylesheet" href="style.css?v=59-single-screen"/>
 <!-- 🔥 Firebase 공개 설정(공개되어도 되는 식별자만) — 비밀키·가족 이메일 없음 -->
 <script src="firebase-config.js?v=1"></script>
-<link rel="stylesheet" href="single-screen.css?v=1" />
-<link rel="stylesheet" href="quiz-battle.css?v=2" />
-<link rel="stylesheet" href="dashboard-refresh.css?v=family-refresh-20261121-3" />
-<link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1" />
-<link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121" />
-<link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1" />
-<link rel="stylesheet" href="selected-dashboard.css?v=bonus-copy-20261122-2">
-<link rel="stylesheet" href="standby-clock.css?v=20261121-1">
-<link rel="stylesheet" href="stamp-gift.css?v=20261121-1">
+<link rel="stylesheet" href="single-screen.css?v=1"/>
+<link rel="stylesheet" href="quiz-battle.css?v=2"/>
+<link rel="stylesheet" href="dashboard-refresh.css?v=family-refresh-20261121-3"/>
+<link rel="stylesheet" href="pokemon-evolution-effect.css?v=family-refresh-20261121-1"/>
+<link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121"/>
+<link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1"/>
+<link rel="stylesheet" href="selected-dashboard.css?v=current-default-20261122-1"/>
+<link rel="stylesheet" href="standby-clock.css?v=20261121-1"/>
+<link rel="stylesheet" href="stamp-gift.css?v=20261121-1"/>
 <style>.mission-stage-note{font-size:11px;line-height:1.35;color:#626c85;white-space:normal;text-align:center;flex:none;max-width:100%;font-weight:600}.mission-stage-note[hidden]{display:none}</style>
 <style>.safe-refresh{font-size:12px!important;padding:7px 9px!important;min-height:34px}.safe-refresh-note{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:14px 18px;border-radius:14px;background:#3b4260;color:white;z-index:30000;font-size:14px;text-align:center;box-shadow:0 4px 20px #0003}.top-actions{flex-wrap:wrap}</style>
-<link rel="stylesheet" href="mobile-equal.css?v=20261121-1">
-<link rel="stylesheet" href="header-controls.css?v=20261121-1">
+<link rel="stylesheet" href="mobile-equal.css?v=20261121-1"/>
+<link rel="stylesheet" href="header-controls.css?v=20261121-1"/>
 <style>.type-egg-grid{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))!important}.type-egg-card{min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.type-egg-card b{font-size:19px}.type-egg-symbol{font-size:36px}.type-egg-card span:last-child{font-size:13px;color:#665b4a}.type-egg-card:disabled{opacity:.6}</style>
-<link rel="stylesheet" href="tab-parity.css?v=20261121-1">
-<link rel="stylesheet" href="mobile-dashboard.css?v=20261121-1">
-<link rel="stylesheet" href="tablet-safe-layout.css?v=school-unboxed-20261122-1">
-<link rel="stylesheet" href="calendar-only.css?v=20261121-1">
+<link rel="stylesheet" href="tab-parity.css?v=20261121-1"/>
+<link rel="stylesheet" href="mobile-dashboard.css?v=20261121-1"/>
+<link rel="stylesheet" href="tablet-safe-layout.css?v=school-unboxed-20261122-1"/>
+<link rel="stylesheet" href="calendar-only.css?v=20261121-1"/>
 <style>.cal-holiday{font-size:13px;color:#b13c42;padding:7px 12px;line-height:1.4;overflow-wrap:anywhere}</style>
 </head>
-<body data-parent="off">
-<div id="appBootStatus" role="status" aria-live="polite"><span id="appBootLabel">화면 준비 중…</span><button id="appBootRetry" type="button" hidden>다시 불러오기</button></div>
+<body data-parent="off" class="dashboard-refresh"><script>document.body.classList.add(matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches?'selected-phone':'selected-dashboard');</script>
+
 <div class="app">
-
-  <!-- ======================= 상단 ======================= -->
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">🏡</div>
-      <div>
-        <div class="brand-title">우리 가족 대시보드</div>
-        <div class="brand-sub" id="brandSub">오늘도 좋은 하루</div>
-      </div>
-    </div>
-
-    <div class="clock header-clock" aria-label="현재 시각과 날짜">
+<!-- ======================= 상단 ======================= -->
+<header class="topbar">
+<div class="brand">
+<div class="brand-mark" aria-hidden="true">🏡</div>
+<div>
+<div class="brand-title">우리 가족 대시보드</div>
+<div class="brand-sub" id="brandSub">오늘도 좋은 하루</div>
+</div>
+</div>
+<div class="clock header-clock" aria-label="현재 시각과 날짜">
 <button type="button" class="btn safe-refresh" id="safeRefreshBtn" aria-label="새로고침" title="새로고침">↻</button>
-      <div class="clock-time" id="clockTime">--:--</div>
-      <div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
-    </div>
-    <button type="button" class="weather topbar-weather" id="weather" title="탭하면 날씨를 새로 고칩니다" aria-label="현재 날씨 새로고침">
-      <span class="weather-now">
-        <span class="weather-icon" id="wIcon">🌤️</span>
-        <span class="weather-temp" id="wTemp">—<small>°</small></span>
-      </span>
-    </button>
+<div class="clock-time" id="clockTime">--:--</div>
+<div class="clock-date" id="clockDate">날짜를 불러오는 중…</div>
+</div>
+<button type="button" class="weather topbar-weather" id="weather" title="탭하면 날씨를 새로 고칩니다" aria-label="현재 날씨 새로고침">
+<span class="weather-now">
+<span class="weather-icon" id="wIcon">🌤️</span>
+<span class="weather-temp" id="wTemp">—<small>°</small></span>
+</span>
+</button>
+<div class="selected-top"><section class="card weather-overview" id="cardOverview" aria-label="오늘 날씨와 옷차림">
+<div class="card-head">
+<div class="card-ico sky" aria-hidden="true">🌤️</div>
+<div>
+<div class="card-title">오늘 날씨 · 옷차림</div>
+<div class="card-sub" id="weatherTodaySummary">오늘 날씨 정보를 불러오는 중</div>
+</div>
+<div class="weather-place" id="wPlace" aria-live="polite">위치 확인 중…</div>
+</div>
+<div class="weather-meta">
+<div class="weather-current">
+<div class="weather-current-reading" aria-label="현재 기온">
+<span class="weather-icon" id="wIconCard" aria-hidden="true">🌤️</span>
+<span class="weather-temp" id="wTempCard">—<small>°</small></span>
+</div>
+<div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
+</div>
+<div class="weather-chips" id="wChips"></div>
+</div>
+<div class="outfit-suggestions" id="outfitSuggestions" aria-label="오늘 옷차림과 외출 준비" aria-live="polite">
+<div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🧥</span><span><b>옷차림</b><small>날씨를 불러오는 중이에요</small></span></div>
+<div class="outfit-item"><span class="outfit-icon" aria-hidden="true">☂️</span><span><b>우산</b><small>강수 정보를 확인하고 있어요</small></span></div>
+<div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🌿</span><span><b>공기질</b><small>정보를 확인하고 있어요</small></span></div>
+</div>
+<button class="btn sm ghost" id="weatherDetailsBtn">옷차림 상세</button><div class="weather-week" id="weatherWeek" aria-label="주간 날씨 예보" aria-live="polite"><span class="weather-week-empty">주간 예보를 불러오는 중이에요</span></div>
+<div class="selected-outfit"></div><div class="selected-primary"></div></section><section class="card school" id="cardSchool" aria-labelledby="tSchool">
+<div class="card-head">
+<div class="card-ico amber" aria-hidden="true">🏫</div>
+<div>
+<div class="card-title" id="tSchool">오늘 학교</div>
+<div class="card-sub" id="schoolSub">📚 시간표 · 준비물 · 🍚 급식</div>
+</div>
+<div class="card-tools">
+<button class="btn icon sm parent-only" id="schoolEditBtn" title="오늘 시간표·준비물과 급식 적기" aria-label="오늘 시간표·준비물과 급식 적기">✎</button>
+</div>
+</div>
+<div class="card-body" id="schoolBody"></div><button class="btn sm ghost" id="schoolDetailsBtn">학교 상세 보기</button>
+</section></div><div class="top-actions">
 
-    <div class="top-actions">
-      
-      <button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button>
-      <button class="btn icon fs-btn" id="fullscreenBtn" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><span aria-hidden="true">⛶</span></button>
-      <!-- 🔔 알람 소리 — 아이 화면(부모 잠금)에서도 보이고, 첫 터치에서 브라우저 소리를 풀어 줍니다 -->
-      <button class="btn alarm-btn" id="alarmSoundBtn" data-state="locked" title="알람 소리" aria-label="알람 소리" aria-pressed="true"><span aria-hidden="true">🔔</span><span class="alarm-word">알람 소리</span><span class="alarm-tap">1번 터치</span></button>
-      <button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 잠금 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 잠금</span></button>
-      <button class="btn sync-badge parent-only" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button>
-      <button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button>
-      <button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button>
-      <button class="btn icon parent-only" id="settingsBtn" title="설정" aria-label="설정">⚙️</button>
-    </div>
-  </header>
 
-  <!-- ======================= 상단 탭 : 대시보드 · 손글씨 편지 · 포켓몬 놀이방 ======================= -->
-  <nav class="apptabs" id="appTabs" role="tablist" aria-label="화면 이동">
-    <button type="button" role="tab" class="at on" data-apptab="dash" aria-selected="true" aria-controls="mainGrid" tabindex="0">
-      <span class="at-ico" aria-hidden="true">🏠</span><span class="at-txt">대시보드</span>
-    </button>
-    <button type="button" role="tab" class="at" data-apptab="letters" aria-selected="false" aria-controls="tabLetters" tabindex="-1">
-      <span class="at-ico" aria-hidden="true">✏️</span><span class="at-txt">손글씨 편지</span><b class="at-badge" id="tabLettersBadge" hidden aria-label="새로 온 편지"></b>
-    </button>
-    <button type="button" role="tab" class="at" data-apptab="play" aria-selected="false" aria-controls="tabPlay" tabindex="-1">
-      <span class="at-ico" aria-hidden="true">🐾</span><span class="at-txt">포켓몬 놀이방</span>
-    </button>
-    <button type="button" role="tab" class="at" data-apptab="game" aria-selected="false" aria-controls="tabGame" tabindex="-1">
-      <span class="at-ico" aria-hidden="true">🎮</span><span class="at-txt">퀴즈 배틀</span>
-    </button>
-  </nav>
+<!-- 🔔 알람 소리 — 아이 화면(부모 잠금)에서도 보이고, 첫 터치에서 브라우저 소리를 풀어 줍니다 -->
 
-  <main class="grid" id="mainGrid" role="tabpanel" aria-label="대시보드">
+<button class="btn parent-badge" id="parentBtn" data-state="off" title="부모 전용 기능을 쓰려면 눌러서 PIN을 넣으세요" aria-label="부모 잠금 — 눌러서 열기"><span aria-hidden="true">🔒</span><span class="parent-word">부모 잠금</span></button>
 
-    <!-- 왼쪽 열 — 날씨 · 가족 일정/위키 · 학교 · 위시리스트 · 타이머 -->
-    <div class="col col-left">
 
-      <section class="card weather-overview" id="cardOverview" aria-label="오늘 날씨와 옷차림">
-        <div class="card-head">
-          <div class="card-ico sky" aria-hidden="true">🌤️</div>
-          <div>
-            <div class="card-title">오늘 날씨 · 옷차림</div>
-            <div class="card-sub" id="weatherTodaySummary">오늘 날씨 정보를 불러오는 중</div>
-          </div>
-          <div class="weather-place" id="wPlace" aria-live="polite">위치 확인 중…</div>
-        </div>
-        <div class="weather-meta">
-          <div class="weather-current">
-            <div class="weather-current-reading" aria-label="현재 기온">
-              <span class="weather-icon" id="wIconCard" aria-hidden="true">🌤️</span>
-              <span class="weather-temp" id="wTempCard">—<small>°</small></span>
-            </div>
-            <div class="weather-desc" id="wDesc">날씨 불러오는 중</div>
-          </div>
-          <div class="weather-chips" id="wChips"></div>
-        </div>
-        <div class="outfit-suggestions" id="outfitSuggestions" aria-label="오늘 옷차림과 외출 준비" aria-live="polite">
-          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🧥</span><span><b>옷차림</b><small>날씨를 불러오는 중이에요</small></span></div>
-          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">☂️</span><span><b>우산</b><small>강수 정보를 확인하고 있어요</small></span></div>
-          <div class="outfit-item"><span class="outfit-icon" aria-hidden="true">🌿</span><span><b>공기질</b><small>정보를 확인하고 있어요</small></span></div>
-        </div>
-        <button class="btn sm ghost" id="weatherDetailsBtn">옷차림 상세</button><div class="weather-week" id="weatherWeek" aria-label="주간 날씨 예보" aria-live="polite"><span class="weather-week-empty">주간 예보를 불러오는 중이에요</span></div>
-      </section>
 
-      <section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
-        <div class="card-head">
-          <div class="card-ico sky" aria-hidden="true">📅</div>
-          <div>
-            <div class="card-title" id="tSchedule">가족 일정</div>
-            <div class="card-sub" id="scheduleSub">📅 날짜를 톡</div>
-          </div>
-          <div class="card-tools">
-            <button class="btn icon sm parent-only" id="eventAddBtn" title="일정 추가" aria-label="일정 추가">＋</button>
-            <button class="btn icon sm parent-only" id="wikiAddBtn" title="위키 항목 추가" aria-label="위키 항목 추가">📗＋</button>
-          </div>
-        </div>
-        <div class="merge-tabs sched-tabs" role="tablist" aria-label="가족 일정 · 우리 집 위키">
-          <button type="button" role="tab" class="on" data-schedtab="cal" aria-selected="true" title="달력" aria-label="달력"><span class="tab-ico" aria-hidden="true">📅</span></button>
-          <button type="button" role="tab" data-schedtab="wiki" aria-selected="false" title="우리 집 위키" aria-label="우리 집 위키"><span class="tab-ico" aria-hidden="true">📗</span></button>
-        </div>
-        <div class="card-body sched-body merge-pane" id="schedPaneCal">
-          <div class="free-day-banner" id="freeBannerSchedule" hidden role="status">
-            <span class="fd-emoji" aria-hidden="true">🎉</span>
-            <span class="fd-text">
-              <b class="fd-title">오늘은 자유의 날!</b>
-              <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
-            </span>
-          </div>
-          <div class="cal-top">
-            <button class="btn icon sm ghost cal-nav" id="calPrev" title="이전" aria-label="이전 범위">‹</button>
-            <b class="cal-label" id="calLabel">한 달 일정</b>
-            <button class="btn icon sm ghost cal-nav" id="calNext" title="다음" aria-label="다음 범위">›</button>
-            <!-- 1달(기본) ↔ 2주 전환. 2주는 이번 주와 다음 주입니다. -->
-            <div class="cal-mode" id="calMode" role="group" aria-label="달력 범위">
-              <button type="button" class="cmb" data-calmode="2w" aria-pressed="false" title="2주 보기">2주</button>
-              <button type="button" class="cmb on" data-calmode="1m" aria-pressed="true" title="한 달 보기">1달</button>
-            </div>
-            <button class="btn sm ghost cal-today-btn" id="calToday" title="오늘로 돌아가기">오늘</button>
-          </div>
-          <div class="cal-dows" aria-hidden="true">
-            <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
-          </div>
-          <div class="cal-grid" id="calGrid" role="grid" aria-label="한 달 일정 달력"></div>
-          <div class="cal-day" id="calDay"></div><button class="btn sm ghost" id="calDayDetailsBtn">선택일 상세</button>
-          <div class="cal-up" id="upcomingEvents"></div>
-        </div>
-        <!-- 우리 집 위키 — 달력 카드 안의 두 번째 탭 (생신·기념일은 달력에도 표시됩니다) -->
-        <div class="card-body wiki-body merge-pane" id="schedPaneWiki" hidden>
-          <div class="wiki-pane-note">생신·기념일은 달력 날짜에 🎂 로 함께 표시돼요 · 보호자가 고칠 수 있어요</div>
-          <div id="wikiList"></div>
-        </div>
-      </section>
 
-      <div class="support-grid" id="supportCards">
-      <!-- 오늘 학교 — 저장된 시간표·준비물과 급식만 표시합니다 -->
-      <section class="card school" id="cardSchool" aria-labelledby="tSchool">
-        <div class="card-head">
-          <div class="card-ico amber" aria-hidden="true">🏫</div>
-          <div>
-            <div class="card-title" id="tSchool">오늘 학교</div>
-            <div class="card-sub" id="schoolSub">📚 시간표 · 준비물 · 🍚 급식</div>
-          </div>
-          <div class="card-tools">
-            <button class="btn icon sm parent-only" id="schoolEditBtn" title="오늘 시간표·준비물과 급식 적기" aria-label="오늘 시간표·준비물과 급식 적기">✎</button>
-          </div>
-        </div>
-        <div class="card-body" id="schoolBody"></div><button class="btn sm ghost" id="schoolDetailsBtn">학교 상세 보기</button>
-      </section>
+<details class="display-menu"><summary>보기 · 설정</summary><div class="display-menu-controls"><button class="btn standby-btn" id="standbyBtn" title="거실 디지털 액자처럼 큰 시계·날씨·포켓몬을 보여 줍니다" aria-label="대기화면으로 전환"><span aria-hidden="true">🖼️</span><span class="standby-word">대기화면</span></button><button class="btn icon fs-btn" id="fullscreenBtn" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><span aria-hidden="true">⛶</span></button><button class="btn alarm-btn" id="alarmSoundBtn" data-state="locked" title="알람 소리" aria-label="알람 소리" aria-pressed="true"><span aria-hidden="true">🔔</span><span class="alarm-word">알람 소리</span><span class="alarm-tap">1번 터치</span></button><button class="btn sync-badge parent-only" id="syncBadge" data-state="off" title="가족 실시간 동기화" aria-label="가족 실시간 동기화 상태"><span aria-hidden="true">📴</span><span class="sync-word">로컬 전용</span></button><button class="btn icon" id="nightBtn" title="야간 모드" aria-label="야간 모드 전환">🌙</button><button class="btn icon" id="helpBtn" title="사용 안내" aria-label="사용 안내">❓</button><button class="btn icon parent-only" id="settingsBtn" title="설정" aria-label="설정">⚙️</button></div></details></div>
+</header>
+<!-- ======================= 상단 탭 : 대시보드 · 손글씨 편지 · 포켓몬 놀이방 ======================= -->
+<nav class="apptabs" id="appTabs" role="tablist" aria-label="화면 이동">
+<button type="button" role="tab" class="at on" data-apptab="dash" aria-selected="true" aria-controls="mainGrid" tabindex="0">
+<span class="at-ico" aria-hidden="true">🏠</span><span class="at-txt">대시보드</span>
+</button><button type="button" class="family-nav" id="familyNav" aria-pressed="false" aria-controls="familyInformation">달력 · 성장</button>
+<button type="button" role="tab" class="at" data-apptab="letters" aria-selected="false" aria-controls="tabLetters" tabindex="-1">
+<span class="at-ico" aria-hidden="true">✏️</span><span class="at-txt">손글씨 편지</span><b class="at-badge" id="tabLettersBadge" hidden="" aria-label="새로 온 편지"></b>
+</button>
+<button type="button" role="tab" class="at" data-apptab="play" aria-selected="false" aria-controls="tabPlay" tabindex="-1">
+<span class="at-ico" aria-hidden="true">🐾</span><span class="at-txt">포켓몬 놀이방</span>
+</button>
+<button type="button" role="tab" class="at" data-apptab="game" aria-selected="false" aria-controls="tabGame" tabindex="-1">
+<span class="at-ico" aria-hidden="true">🎮</span><span class="at-txt">퀴즈 배틀</span>
+</button>
+<button type="button" class="family-nav" data-records="true" aria-pressed="false" hidden="">성장 기록</button></nav>
+<main class="grid" id="mainGrid" role="tabpanel" aria-label="대시보드">
 
-      <section class="card wish" id="cardWish" aria-labelledby="tWish">
-        <div class="card-head">
-          <div class="card-ico mint" aria-hidden="true">🎁</div>
-          <div>
-            <div class="card-title" id="tWish">사고 싶은 것</div>
-            <div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
-          </div>
-          <div class="card-tools">
-            <button class="mic-btn wish-mic" id="wishMicBtn" type="button" aria-pressed="false" aria-label="말로 적기" title="말로 적기(음성 입력)">🎤</button>
-            <button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
-          </div>
-        </div>
-        <button class="btn sm ghost" id="wishDetailsBtn">선물 전체 보기</button><div class="voice-note" id="wishVoiceNote" hidden></div>
-        <div class="card-body wish-body merge-pane" id="wishPane">
-          <div class="wish-list" id="wishList"></div>
-        </div>
-        <!-- 장보기·냉장고 화면은 숨기되 기존 공유 기록은 그대로 보존합니다. -->
-        <div class="card-body shop-body merge-pane" id="shopPane" hidden>
-          <div class="row parent-only">
-            <input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done" />
-            <button class="mic-btn shop-mic" id="shopMicBtn" type="button" aria-pressed="false" aria-label="말로 쓰기" title="말로 쓰기(음성 입력)">🎤</button>
-            <button class="btn primary" id="shopAddBtn">추가</button>
-          </div>
-          <div id="shopList"></div>
-        </div>
-      </section>
+<div class="col col-left" id="familyInformation">
 
-      </div>
+<section class="card schedule" id="cardSchedule" aria-labelledby="tSchedule">
+<div class="card-head">
+<div class="card-ico sky" aria-hidden="true">📅</div>
+<div>
+<div class="card-title" id="tSchedule">가족 일정</div>
+<div class="card-sub" id="scheduleSub">📅 날짜를 톡</div>
+</div>
+<div class="card-tools">
+<button class="btn icon sm parent-only" id="eventAddBtn" title="일정 추가" aria-label="일정 추가">＋</button>
+<button class="btn icon sm parent-only" id="wikiAddBtn" title="위키 항목 추가" aria-label="위키 항목 추가">📗＋</button>
+</div>
+</div>
+<div class="merge-tabs sched-tabs" role="tablist" aria-label="가족 일정 · 우리 집 위키">
+<button type="button" role="tab" class="on" data-schedtab="cal" aria-selected="true" title="달력" aria-label="달력"><span class="tab-ico" aria-hidden="true">📅</span></button>
+<button type="button" role="tab" data-schedtab="wiki" aria-selected="false" title="우리 집 위키" aria-label="우리 집 위키"><span class="tab-ico" aria-hidden="true">📗</span></button>
+</div>
+<div class="card-body sched-body merge-pane" id="schedPaneCal">
+<div class="free-day-banner" id="freeBannerSchedule" hidden="" role="status">
+<span class="fd-emoji" aria-hidden="true">🎉</span>
+<span class="fd-text">
+<b class="fd-title">오늘은 자유의 날!</b>
+<span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
+</span>
+</div>
+<div class="cal-top">
+<button class="btn icon sm ghost cal-nav" id="calPrev" title="이전" aria-label="이전 범위">‹</button>
+<b class="cal-label" id="calLabel">한 달 일정</b>
+<button class="btn icon sm ghost cal-nav" id="calNext" title="다음" aria-label="다음 범위">›</button>
+<!-- 1달(기본) ↔ 2주 전환. 2주는 이번 주와 다음 주입니다. -->
+<div class="cal-mode" id="calMode" role="group" aria-label="달력 범위">
+<button type="button" class="cmb" data-calmode="2w" aria-pressed="false" title="2주 보기">2주</button>
+<button type="button" class="cmb on" data-calmode="1m" aria-pressed="true" title="한 달 보기">1달</button>
+</div>
+<button class="btn sm ghost cal-today-btn" id="calToday" title="오늘로 돌아가기">오늘</button>
+</div>
+<div class="cal-dows" aria-hidden="true">
+<span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
+</div>
+<div class="cal-grid" id="calGrid" role="grid" aria-label="한 달 일정 달력"></div>
+<div class="cal-day" id="calDay"></div><button class="btn sm ghost" id="calDayDetailsBtn">선택일 상세</button>
+<div class="cal-up" id="upcomingEvents"></div>
+</div>
+<!-- 우리 집 위키 — 달력 카드 안의 두 번째 탭 (생신·기념일은 달력에도 표시됩니다) -->
+<div class="card-body wiki-body merge-pane" id="schedPaneWiki" hidden="">
+<div class="wiki-pane-note">생신·기념일은 달력 날짜에 🎂 로 함께 표시돼요 · 보호자가 고칠 수 있어요</div>
+<div id="wikiList"></div>
+</div>
+</section>
+<div class="support-grid" id="supportCards">
+<!-- 오늘 학교 — 저장된 시간표·준비물과 급식만 표시합니다 -->
 
-    </div>
 
-    <!-- 오른쪽 열 — 아이 미션·미션 도장판·타이머 -->
-    <div class="col col-right">
+</div>
+<section class="card refresh-record-details"><h2>성장 · 미션 기록</h2><div class="member-stats" id="memberStats"></div><div class="mission-badges" id="missionBadges" role="group" aria-label="기록 보기">
+<button class="mbtn stamp-jump" id="stampBoardOpenBtn" type="button" aria-controls="readingBoardTitle" title="미션 목록 아래 도장판 보기"><span aria-hidden="true">🏅</span><span class="mb-txt">도장판 ↓</span></button>
+<button class="mbtn" id="histOpenBtn" type="button" data-act="open-hist" title="월간·연간 달성 현황">
+<span class="mb-ico" aria-hidden="true">📊</span><span class="mb-txt">월간·연간</span><b class="mb-num" id="histBtnPill">0</b>
+</button>
+<button class="mbtn" id="logOpenBtn" type="button" data-act="open-log" title="오늘 완료 이력">
+<span class="mb-ico" aria-hidden="true">🕒</span><span class="mb-txt">오늘</span><b class="mb-num" id="logBadge">0</b>
+</button>
+<button class="mbtn" id="useOpenBtn" type="button" data-act="open-use" title="포인트 사용 내역">
+<span class="mb-ico" aria-hidden="true">🎁</span><span class="mb-txt">사용</span><b class="mb-num" id="useBadge">0</b>
+</button>
+<button class="mbtn ev" id="eventOpenBtn" type="button" data-act="open-event" title="가족 이벤트">
+<span class="mb-ico" aria-hidden="true">🎪</span><span class="mb-txt">이벤트</span><b class="mb-num" id="evBadge" hidden="">0</b>
+</button>
+</div><div class="today-meter" id="todayMeter">
+<div class="today-meter-head">
+<span>🎯 오늘 달성</span>
+<span class="today-meter-pct" id="todayPct">0%</span>
+</div>
+<div class="today-meter-num">
+<span>오늘 모은 <b id="todayGot">0P</b></span>
+<span class="tm-sep">/</span>
+<span>오늘 목표 <b class="goal" id="todayGoal">0P</b></span>
+</div>
+<div class="today-bar" id="todayBarWrap"><i id="todayBar" style="width:0%"></i></div>
+<div class="today-hint" id="todayHint">미션을 끝낼 때마다 채워져요</div>
+</div><div class="char-aside">
+<div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
+<div class="char-actions">
+<button class="btn sm ghost char-partner-btn parent-only" id="partnerBtn" title="파트너 포켓몬 바꾸기" aria-label="파트너 포켓몬 바꾸기"><span aria-hidden="true">🐾</span><span class="ca-word">파트너</span></button>
+<button class="btn sm ghost char-partner-btn parent-only" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다" aria-label="포인트 사용 정산"><span aria-hidden="true">🎁</span><span class="ca-word">사용 정산</span></button>
+</div>
+<button class="btn sm char-adopt parent-only" id="adoptBtn" disabled="" title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
+</div></section><section class="card"><button type="button" class="today-event-preview">가족 일정 · 학교 소식 보기 ›</button></section></div>
+<!-- 오른쪽 열 — 아이 미션·미션 도장판·타이머 -->
+<div class="col col-right">
+<section class="card chores" id="cardChores" aria-labelledby="tChores">
+<div class="card-head">
+<div class="card-ico mint" aria-hidden="true">⭐</div>
+<div>
+<div class="card-title" id="tChores">아이 미션</div>
+<div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
+</div>
+<div class="card-tools"><div class="mission-pager"><button class="btn sm" id="missionPrev" aria-label="이전 미션">‹</button><span id="missionPageLabel"></span><button class="btn sm" id="missionNext" aria-label="다음 미션">›</button><button class="btn sm ghost" id="allMissionsBtn">미션 전체</button></div>
+<button type="button" class="dex-open-btn" id="dexOpenBtn" title="1,025종 도감과 내 포켓몬 도감을 엽니다"><span class="dex-word">도감</span><b class="dex-open-num">1025</b></button>
+<button class="btn icon sm parent-only" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
+</div>
+<div class="width-access-tools"><button type="button" aria-label="왼쪽 미션">◀</button><span>미완료는 포인트 높은 순 · 완료한 카드는 맨 뒤로</span><button type="button" aria-label="오른쪽 미션">▶</button></div></div>
+<div class="card-body">
+<div class="free-day-banner" id="freeBannerMission" hidden="" role="status">
+<span class="fd-emoji" aria-hidden="true">🎉</span>
+<span class="fd-text">
+<b class="fd-title">오늘은 자유의 날!</b>
+<span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
+</span>
+</div>
+<button type="button" class="secret-box" id="secretBox" hidden="" data-act="open-event" title="오늘의 비밀 미션 상자를 엽니다">
+<span class="sk-ico" aria-hidden="true">🎁</span>
+<b class="sk-title">비밀 미션 도착!</b>
+<span class="sk-go" aria-hidden="true">톡 눌러 열기</span>
+</button>
+<div class="chore-wrap">
+<div class="char-panel"><div class="partner-art-summary"><div class="char-stage" id="charStage"></div><div class="char-nameline">
+<div class="char-level" id="charLevel">피츄</div>
+<span class="poke-say" id="charSay" aria-live="polite"></span>
+</div><div class="char-foot">
+<span class="char-count" id="charCount">누적 경험치 <b>0P</b></span>
+<span class="char-today" id="charToday">아이 오늘 +0P</span>
+</div></div>
 
-      <section class="card chores" id="cardChores" aria-labelledby="tChores">
-        <div class="card-head">
-          <div class="card-ico mint" aria-hidden="true">⭐</div>
-          <div>
-            <div class="card-title" id="tChores">아이 미션</div>
-            <div class="card-sub" id="choreSub">미션을 끝내면 포인트가 쌓여요</div>
-          </div>
-          <div class="card-tools">
-            <button type="button" class="dex-open-btn" id="dexOpenBtn" title="1,025종 도감과 내 포켓몬 도감을 엽니다"><span class="dex-word">도감</span><b class="dex-open-num">1025</b></button>
-            <button class="btn icon sm parent-only" id="choreAddBtn" title="미션 추가" aria-label="미션 추가">＋</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="free-day-banner" id="freeBannerMission" hidden role="status">
-            <span class="fd-emoji" aria-hidden="true">🎉</span>
-            <span class="fd-text">
-              <b class="fd-title">오늘은 자유의 날!</b>
-              <span class="fd-sub">숙제가 없어요 — 마음껏 놀아요 🎈</span>
-            </span>
-          </div>
-          <button type="button" class="secret-box" id="secretBox" hidden data-act="open-event" title="오늘의 비밀 미션 상자를 엽니다">
-            <span class="sk-ico" aria-hidden="true">🎁</span>
-            <b class="sk-title">비밀 미션 도착!</b>
-            <span class="sk-go" aria-hidden="true">톡 눌러 열기</span>
-          </button>
-          <div class="chore-wrap">
-            <div class="char-panel">
-              <div class="char-stage" id="charStage"></div>
-              <div class="char-info" id="charInfo">
-                <!-- 이름과 말풍선은 포켓몬 그림을 가리지 않도록 그림 오른쪽(옆)에 나란히 놓습니다 -->
-                <div class="char-nameline">
-                  <div class="char-level" id="charLevel">피츄</div>
-                  <span class="poke-say" id="charSay" aria-live="polite"></span>
-                </div>
 
-                <!-- ① 진화 게이지 — 굵은 바 + 퍼센트 + '다음 진화까지 딱 N P' -->
-                <div class="evo-meter" id="evoMeter">
-                  <div class="evo-meter-head">
-                    <span class="evo-meter-label">다음 진화까지</span>
-                    <b class="evo-meter-pct" id="evoPct">0%</b>
-                  </div>
-                  <div class="evo-bar" id="evoBar" role="progressbar" aria-label="다음 진화까지 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                    <i id="charBar" style="width:0%"></i>
-                  </div>
-                  <div class="evo-next" id="charNext">다음 진화 <b>피카츄</b>까지 딱 <b>30P</b> 남음!</div>
-                </div>
 
-                <!-- ② 진화 경험치 vs 선물 코인 — 색이 다른 두 스탯 카드 -->
-                <div class="stat-cards" aria-label="진화 경험치와 선물 코인">
-                  <div class="stat-card xp" id="statXpCard">
-                    <span class="stat-ico" aria-hidden="true">⚡</span>
-                    <span class="stat-label">진화 경험치</span>
-                    <span class="stat-value"><b id="statXp">0</b><em id="statXpMax">/200P</em></span>
-                  </div>
-                  <div class="stat-card coin" id="statCoinCard">
-                    <span class="stat-ico" aria-hidden="true">🪙</span>
-                    <span class="stat-label">선물 코인</span>
-                    <span class="stat-value"><b id="statCoin">0</b><em>P</em></span>
-                  </div>
-                </div>
 
-                <!-- ③ 오늘 달성 바 — 오늘 모은 N P / 오늘 목표 합계 N P -->
-                <div class="today-meter" id="todayMeter">
-                  <div class="today-meter-head">
-                    <span>🎯 오늘 달성</span>
-                    <span class="today-meter-pct" id="todayPct">0%</span>
-                  </div>
-                  <div class="today-meter-num">
-                    <span>오늘 모은 <b id="todayGot">0P</b></span>
-                    <span class="tm-sep">/</span>
-                    <span>오늘 목표 <b class="goal" id="todayGoal">0P</b></span>
-                  </div>
-                  <div class="today-bar" id="todayBarWrap"><i id="todayBar" style="width:0%"></i></div>
-                  <div class="today-hint" id="todayHint">미션을 끝낼 때마다 채워져요</div>
-                </div>
+<button type="button" class="btn refresh-partner-info">파트너 도감 정보</button><div class="partner-bottom-metrics"><div class="evo-meter" id="evoMeter">
+<div class="evo-meter-head">
+<span class="evo-meter-label">다음 진화까지</span>
+<b class="evo-meter-pct" id="evoPct">0%</b>
+</div>
+<div class="evo-bar" id="evoBar" role="progressbar" aria-label="다음 진화까지 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+<i id="charBar" style="width:0%"></i>
+</div>
+<div class="evo-next" id="charNext">다음 진화 <b>피카츄</b>까지 딱 <b>30P</b> 남음!</div>
+</div><div class="stat-cards" aria-label="진화 경험치와 선물 코인">
+<div class="stat-card xp" id="statXpCard">
+<span class="stat-ico" aria-hidden="true">⚡</span>
+<span class="stat-label">진화 경험치</span>
+<span class="stat-value"><b id="statXp">0</b><em id="statXpMax">/200P</em></span>
+</div>
+<div class="stat-card coin" id="statCoinCard">
+<span class="stat-ico" aria-hidden="true">🪙</span>
+<span class="stat-label">선물 코인</span>
+<span class="stat-value"><b id="statCoin">0</b><em>P</em></span>
+</div>
+</div></div></div>
+<div class="mission-area">
 
-                <div class="char-foot">
-                  <span class="char-count" id="charCount">누적 경험치 <b>0P</b></span>
-                  <span class="char-today" id="charToday">아이 오늘 +0P</span>
-                </div>
-              </div>
-              <!-- 진화 단계 · 파트너/포인트 사용 · 입양 : 세로 화면에서는 그대로, 태블릿 가로에서는 오른쪽 한 묶음으로 -->
-              <div class="char-aside">
-                <div class="char-evo" id="charEvo" aria-label="진화 단계"></div>
-                <div class="char-actions">
-                  <button class="btn sm ghost char-partner-btn parent-only" id="partnerBtn" title="파트너 포켓몬 바꾸기" aria-label="파트너 포켓몬 바꾸기"><span aria-hidden="true">🐾</span><span class="ca-word">파트너</span></button>
-                  <button class="btn sm ghost char-partner-btn parent-only" id="pointUseBtn" title="부모가 아이 포인트로 물건·보상을 사줄 때 사용합니다" aria-label="포인트 사용 정산"><span aria-hidden="true">🎁</span><span class="ca-word">사용 정산</span></button>
-                </div>
-                <button class="btn sm char-adopt parent-only" id="adoptBtn" disabled title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
-              </div>
-            </div>
-            <div class="mission-area">
-              <div class="member-stats" id="memberStats"></div><div class="mission-pager"><button class="btn sm" id="missionPrev" aria-label="이전 미션">‹</button><span id="missionPageLabel"></span><button class="btn sm" id="missionNext" aria-label="다음 미션">›</button><button class="btn sm ghost" id="allMissionsBtn">미션 전체</button></div>
-              <div class="mission-scroll" id="missionScroll" tabindex="0" aria-label="미션 목록">
-              <div class="chore-list" id="choreList"></div>
-          <div class="row" style="margin-top:2px">
-            <div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
-            <button class="btn sm ghost parent-only" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">↺</button>
-          </div>
-          <section class="reading-stamp-board stamp-board mission-stamp-board" aria-labelledby="readingBoardTitle" tabindex="-1">
-            <div class="stamp-board-title">
-              <h3 id="readingBoardTitle">미션 도장판</h3>
-              <b id="readingProgress">0/10</b>
-            </div>
-            <ol class="stamp-cells" id="readingCells" aria-label="미션 성공 도장 10칸">
-              <li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li><li>9</li><li>10</li>
-            </ol>
-            <div class="stamp-board-meta">
-              <span id="readingBadges">🏅 완주 0회</span>
-              <span id="readingReward">누적 +0P</span>
-            </div>
-            <details class="stamp-help"><summary>도장 안내</summary>
-            <p class="stamp-board-note" id="readingPoints">총 미션 성공 횟수는 가족 동기화 후 표시돼요</p>
-            <p class="stamp-board-note" id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10/10 완성 시 +3P</p>
-            </details>
-          </section>
-              </div>
-              <section class="weekly-report" aria-labelledby="weeklyReportTitle"><div class="weekly-head"><b id="weeklyReportTitle">이번 주 성장 리포트</b><button class="btn sm ghost" id="weeklyDetailsBtn">리포트 상세</button></div><div id="weeklyReportContent"><div id="weeklyBars" class="weekly-bars"></div><p id="weeklySummary"></p><p class="weekly-footnote">저장된 아이·공용 기록 기준 · 누락된 날은 추정하지 않아요</p></div></section>
-              <!-- 기록 보기 — 긴 글 대신 아이콘 배지 한 줄 (누르면 기록 창이 열립니다) -->
-              <div class="mission-badges" id="missionBadges" role="group" aria-label="기록 보기">
-                <button class="mbtn stamp-jump" id="stampBoardOpenBtn" type="button" aria-controls="readingBoardTitle" title="미션 목록 아래 도장판 보기"><span aria-hidden="true">🏅</span><span class="mb-txt">도장판 ↓</span></button>
-                <button class="mbtn" id="histOpenBtn" type="button" data-act="open-hist" title="월간·연간 달성 현황">
-                  <span class="mb-ico" aria-hidden="true">📊</span><span class="mb-txt">월간·연간</span><b class="mb-num" id="histBtnPill">0</b>
-                </button>
-                <button class="mbtn" id="logOpenBtn" type="button" data-act="open-log" title="오늘 완료 이력">
-                  <span class="mb-ico" aria-hidden="true">🕒</span><span class="mb-txt">오늘</span><b class="mb-num" id="logBadge">0</b>
-                </button>
-                <button class="mbtn" id="useOpenBtn" type="button" data-act="open-use" title="포인트 사용 내역">
-                  <span class="mb-ico" aria-hidden="true">🎁</span><span class="mb-txt">사용</span><b class="mb-num" id="useBadge">0</b>
-                </button>
-                <button class="mbtn ev" id="eventOpenBtn" type="button" data-act="open-event" title="가족 이벤트">
-                  <span class="mb-ico" aria-hidden="true">🎪</span><span class="mb-txt">이벤트</span><b class="mb-num" id="evBadge" hidden>0</b>
-                </button>
-              </div>
-            </div>
-          </div>
+<div class="mission-scroll" id="missionScroll" tabindex="0" aria-label="미션 목록">
+<div class="chore-list" id="choreList"></div>
+<div class="row" style="margin-top:2px">
+<div class="sticker-row grow" id="stickerRow" aria-hidden="true"></div>
+<button class="btn sm ghost parent-only" id="stickerResetBtn" title="누적 포인트를 0으로 되돌립니다">↺</button>
+</div>
 
-        </div>
-      </section>
+</div>
 
-      <section class="card timer" id="cardTimer" aria-labelledby="tTimer">
-        <div class="card-head">
-          <div class="card-ico coral" aria-hidden="true">⏳</div>
-          <div>
-            <div class="card-title" id="tTimer">타이머</div>
-            <div class="card-sub">🎵 🎧</div>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="timer-shell">
-            <div class="timer-ring" id="timerRing" style="--p:0">
-              <div class="timer-face">
-                <div class="timer-digits" id="timerDigits">15:00</div>
-                <div class="timer-state" id="timerState">준비</div>
-              </div>
-            </div>
-            <div class="timer-side">
-              <div class="presets" id="presets"></div>
-              <div class="row">
-                <button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
-                <button class="btn" id="timerResetBtn" title="초기화">↺</button>
-              </div>
-            </div>
-          </div>
-          <div class="link-row">
-            <div class="links" id="linkList"></div>
-            <button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
-          </div>
-        </div>
-      </section>
+<!-- 기록 보기 — 긴 글 대신 아이콘 배지 한 줄 (누르면 기록 창이 열립니다) -->
 
-    </div>
-
-  </main>
-
-  <div class="app-version" id="appVersion" aria-label="앱 버전">v 3.1.0</div>
-
-  <!-- ======================= 탭 화면 : 손글씨 편지 ======================= -->
-  <section class="tabview" id="tabLetters" role="tabpanel" aria-label="손글씨 편지" hidden>
-    <section class="card letters" id="cardLetters" aria-labelledby="tLetters">
-      <div class="card-head">
-        <div class="card-ico lilac" aria-hidden="true">✏️</div>
-        <div>
-          <div class="card-title" id="tLetters">손글씨 편지</div>
-          <div class="card-sub">✍️ 그려서 보내요</div>
-        </div>
-        <div class="card-tools">
-          <button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="한 단계 되돌리기">↶ 뒤로</button>
-          <button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="편지 전체 초기화">초기화</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="canvas-shell">
-          <canvas id="letterCanvas" width="1000" height="580" aria-label="손글씨 편지 캔버스"></canvas>
-          <div class="canvas-hint" id="canvasHint">손가락으로 크게 편지를 써 보세요 ✍️</div>
-        </div>
-        <div class="tools">
-          <div class="swatches" id="swatches" aria-label="펜 색"></div>
-          <div class="widths" id="widths" aria-label="펜 굵기"></div>
-          <button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
-          <div class="emojis" id="emojiBar" aria-label="스티커"></div>
-        </div>
-        <div class="row wrap">
-          <select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
-          <button class="btn primary" id="letterSendBtn"><span aria-hidden="true">💌</span> 보내기</button>
-          <span class="pill" id="letterCount">저장된 편지 0장</span>
-        </div>
-        <div class="gallery" id="gallery"></div>
-      </div>
-    </section>
-  </section>
-
-  <!-- ======================= 탭 화면 : 포켓몬 놀이방 ======================= -->
-  <section class="tabview" id="tabPlay" role="tabpanel" aria-label="포켓몬 놀이방" hidden>
-    <div class="card playcard" id="cardPlay" aria-labelledby="tPlay">
-      <div class="card-head">
-        <div class="card-ico mint" aria-hidden="true">🏡</div>
-        <div>
-          <div class="card-title" id="tPlay">내 포켓몬 놀이방</div>
-          <div class="card-sub">친구를 콕 누르면 좋아해요 ❤️</div>
-        </div>
-        <div class="card-tools">
-          <span class="pill" id="playTabCount">0마리</span>
-          <button type="button" class="btn sm ghost" id="playDexBtn" title="1,025종 도감 열기">📖 1,025 도감</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <!-- 미션·포인트가 바뀌면 친구 구성도 함께 바뀝니다 (도감 모달의 놀이방과 같은 목록) -->
-        <div class="dex-play play-big" id="tabPlayPanel">
-          <div class="dp-head">
-            <b class="dp-title">🌱 풀밭</b>
-            <span class="dp-hint">콕 누르면 점프하며 좋아해요 ❤️</span>
-          </div>
-          <div class="dp-yard" id="tabPlayYard" role="group" aria-label="놀이방 풀밭"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======================= 탭 화면 : 퀴즈 배틀 (시험 모듈) ======================= -->
-  <!-- 🎮 퀴즈 배틀 B·D 시험 모듈 — 플레이스홀더 몬스터, 저장은 localStorage quizBattle.* 뿐, 미션 포인트·진화 경험치와 무관 -->
-  <section class="tabview" id="tabGame" role="tabpanel" aria-label="퀴즈 배틀" hidden>
-    <div class="card" id="cardQuizBattle" aria-labelledby="tQuizBattle">
-      <div class="card-head">
-        <div class="card-ico mint" aria-hidden="true">🎮</div>
-        <div>
-          <div class="card-title" id="tQuizBattle">퀴즈 배틀 (시험판)</div>
-          <div class="card-sub">수학·영어 퀴즈로 놀아요 · 미션 포인트와는 별개</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div id="quizBattleMount"></div>
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer">
-    <span class="grow">
+<div class="selected-lower"><section class="reading-stamp-board stamp-board mission-stamp-board" aria-labelledby="readingBoardTitle" tabindex="-1">
+<div class="stamp-board-title">
+<h3 id="readingBoardTitle">미션 도장판</h3>
+<b id="readingProgress">0/10</b>
+</div>
+<ol class="stamp-cells" id="readingCells" aria-label="미션 성공 도장 10칸">
+<li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li><li>9</li><li>10</li>
+</ol>
+<div class="stamp-board-meta">
+<span id="readingBadges">🏅 완주 0회</span>
+<span id="readingReward">누적 +0P</span>
+</div>
+<details class="stamp-help"><summary>도장 안내</summary>
+<p class="stamp-board-note" id="readingPoints">총 미션 성공 횟수는 가족 동기화 후 표시돼요</p>
+<p class="stamp-board-note" id="readingNote">미션 성공 1회마다 도장 1개 · 기본 미션 포인트와 별도 · 10/10 완성 시 +3P</p>
+</details>
+<button type="button" class="selected-stamp-caption">10개 더 모으면 +3P</button></section><section class="card wish" id="cardWish" aria-labelledby="tWish">
+<div class="card-head">
+<div class="card-ico mint" aria-hidden="true">🎁</div>
+<div>
+<div class="card-title" id="tWish">사고 싶은 것</div>
+<div class="card-sub" id="wishSub">🪙 얼마나 더 모을까?</div>
+</div>
+<div class="card-tools">
+<button class="mic-btn wish-mic" id="wishMicBtn" type="button" aria-pressed="false" aria-label="말로 적기" title="말로 적기(음성 입력)">🎤</button>
+<button class="btn icon sm" id="wishAddBtn" title="사고 싶은 것 적기" aria-label="사고 싶은 것 적기">＋</button>
+</div>
+</div>
+<button class="btn sm ghost" id="wishDetailsBtn">선물 전체 보기</button><div class="voice-note" id="wishVoiceNote" hidden=""></div>
+<div class="card-body wish-body merge-pane" id="wishPane">
+<div class="wish-list" id="wishList"></div>
+</div>
+<!-- 장보기·냉장고 화면은 숨기되 기존 공유 기록은 그대로 보존합니다. -->
+<div class="card-body shop-body merge-pane" id="shopPane" hidden="">
+<div class="row parent-only">
+<input type="text" id="shopInput" class="grow" placeholder="예: 우유, 계란, 사과" enterkeyhint="done"/>
+<button class="mic-btn shop-mic" id="shopMicBtn" type="button" aria-pressed="false" aria-label="말로 쓰기" title="말로 쓰기(음성 입력)">🎤</button>
+<button class="btn primary" id="shopAddBtn">추가</button>
+</div>
+<div id="shopList"></div>
+</div>
+</section><section class="weekly-report" aria-labelledby="weeklyReportTitle"><div class="weekly-head"><b id="weeklyReportTitle">이번 주 성장 리포트</b><button class="btn sm ghost" id="weeklyDetailsBtn">리포트 상세</button></div><div id="weeklyReportContent"><div id="weeklyBars" class="weekly-bars"></div><p id="weeklySummary"></p><p class="weekly-footnote">저장된 아이·공용 기록 기준 · 누락된 날은 추정하지 않아요</p></div></section></div></div>
+</div>
+</div>
+<div class="refresh-summary-row"></div></section>
+<section class="card timer" id="cardTimer" aria-labelledby="tTimer">
+<div class="card-head">
+<div class="card-ico coral" aria-hidden="true">⏳</div>
+<div>
+<div class="card-title" id="tTimer">타이머</div>
+<div class="card-sub">🎵 🎧</div>
+</div>
+</div>
+<div class="card-body">
+<div class="timer-shell">
+<div class="timer-ring" id="timerRing" style="--p:0">
+<div class="timer-face">
+<div class="timer-digits" id="timerDigits">15:00</div>
+<div class="timer-state" id="timerState">준비</div>
+</div>
+</div>
+<div class="timer-side">
+<div class="presets" id="presets"></div>
+<div class="row">
+<button class="btn primary grow" id="timerStartBtn">▶ 시작</button>
+<button class="btn" id="timerResetBtn" title="초기화">↺</button>
+</div>
+</div>
+</div>
+<div class="link-row">
+<div class="links" id="linkList"></div>
+<button class="btn sm ghost" id="linkAddBtn" aria-label="가족 플레이리스트 · 유튜브 링크 추가" title="가족 플레이리스트 · 유튜브 링크 추가"><span class="la-plus" aria-hidden="true">＋</span><span class="la-word">링크</span></button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<div class="app-version" id="appVersion" aria-label="앱 버전">v 3.1.0</div>
+<!-- ======================= 탭 화면 : 손글씨 편지 ======================= -->
+<section class="tabview" id="tabLetters" role="tabpanel" aria-label="손글씨 편지" hidden="">
+<section class="card letters" id="cardLetters" aria-labelledby="tLetters">
+<div class="card-head">
+<div class="card-ico lilac" aria-hidden="true">✏️</div>
+<div>
+<div class="card-title" id="tLetters">손글씨 편지</div>
+<div class="card-sub">✍️ 그려서 보내요</div>
+</div>
+<div class="card-tools">
+<button class="btn icon sm" id="letterUndoBtn" title="되돌리기" aria-label="한 단계 되돌리기">↶ 뒤로</button>
+<button class="btn icon sm" id="letterClearBtn" title="전부 지우기" aria-label="편지 전체 초기화">초기화</button>
+</div>
+</div>
+<div class="card-body">
+<div class="canvas-shell">
+<canvas id="letterCanvas" width="1000" height="580" aria-label="손글씨 편지 캔버스"></canvas>
+<div class="canvas-hint" id="canvasHint">손가락으로 크게 편지를 써 보세요 ✍️</div>
+</div>
+<div class="tools">
+<div class="swatches" id="swatches" aria-label="펜 색"></div>
+<div class="widths" id="widths" aria-label="펜 굵기"></div>
+<button class="btn sm" id="eraserBtn" title="지우개">🩹 지우개</button>
+<div class="emojis" id="emojiBar" aria-label="스티커"></div>
+</div>
+<div class="row wrap">
+<select id="letterAuthor" class="grow" style="max-width:200px" aria-label="작성자"></select>
+<button class="btn primary" id="letterSendBtn"><span aria-hidden="true">💌</span> 보내기</button>
+<span class="pill" id="letterCount">저장된 편지 0장</span>
+</div>
+<div class="gallery" id="gallery"></div>
+</div>
+</section>
+</section>
+<!-- ======================= 탭 화면 : 포켓몬 놀이방 ======================= -->
+<section class="tabview" id="tabPlay" role="tabpanel" aria-label="포켓몬 놀이방" hidden="">
+<div class="card playcard" id="cardPlay" aria-labelledby="tPlay">
+<div class="card-head">
+<div class="card-ico mint" aria-hidden="true">🏡</div>
+<div>
+<div class="card-title" id="tPlay">내 포켓몬 놀이방</div>
+<div class="card-sub">친구를 콕 누르면 좋아해요 ❤️</div>
+</div>
+<div class="card-tools">
+<span class="pill" id="playTabCount">0마리</span>
+<button type="button" class="btn sm ghost" id="playDexBtn" title="1,025종 도감 열기">📖 1,025 도감</button>
+</div>
+</div>
+<div class="card-body">
+<!-- 미션·포인트가 바뀌면 친구 구성도 함께 바뀝니다 (도감 모달의 놀이방과 같은 목록) -->
+<div class="dex-play play-big" id="tabPlayPanel">
+<div class="dp-head">
+<b class="dp-title">🌱 풀밭</b>
+<span class="dp-hint">콕 누르면 점프하며 좋아해요 ❤️</span>
+</div>
+<div class="dp-yard" id="tabPlayYard" role="group" aria-label="놀이방 풀밭"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- ======================= 탭 화면 : 퀴즈 배틀 (시험 모듈) ======================= -->
+<!-- 🎮 퀴즈 배틀 B·D 시험 모듈 — 플레이스홀더 몬스터, 저장은 localStorage quizBattle.* 뿐, 미션 포인트·진화 경험치와 무관 -->
+<section class="tabview" id="tabGame" role="tabpanel" aria-label="퀴즈 배틀" hidden="">
+<div class="card" id="cardQuizBattle" aria-labelledby="tQuizBattle">
+<div class="card-head">
+<div class="card-ico mint" aria-hidden="true">🎮</div>
+<div>
+<div class="card-title" id="tQuizBattle">퀴즈 배틀 (시험판)</div>
+<div class="card-sub">수학·영어 퀴즈로 놀아요 · 미션 포인트와는 별개</div>
+</div>
+</div>
+<div class="card-body">
+<div id="quizBattleMount"></div>
+</div>
+</div>
+</section>
+<footer class="footer">
+<span class="grow">
       로그아웃 상태의 기록은 이 기기 브라우저에 저장됩니다. Google 계정으로 로그인하면 권한이 있는 가족 기록만 Firestore와 동기화됩니다.
       날씨는 Open-Meteo에서, 포켓몬 그림은 PokeAPI 이미지 저장소에서 받아옵니다.
     </span>
-    <button class="btn sm" id="exportBtn">⬇︎ 백업 내보내기</button>
-    <button class="btn sm" id="importBtn">⬆︎ 백업 불러오기</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden />
-  </footer>
+<button class="btn sm" id="exportBtn">⬇︎ 백업 내보내기</button>
+<button class="btn sm" id="importBtn">⬆︎ 백업 불러오기</button>
+<input type="file" id="importFile" accept="application/json,.json" hidden=""/>
+</footer>
 </div>
-
 <!-- ======================= 대기화면 (거실 디지털 액자) ======================= -->
-<section class="standby clock-standby" id="standby" hidden aria-label="가족 시계 대기화면">
- <div class="sb-top"><div class="sb-brand"><b id="sbTitle">우리 가족 시계</b></div><button class="btn sb-exit" id="standbyExit">🏠 홈으로</button></div>
- <div class="sb-grid"><div class="sb-left"><div class="sb-clock"><span id="sbTime">--:--</span></div><div class="sb-date" id="sbDate"></div><div class="sb-weather" id="sbWeather"></div><div id="sbPrep" class="sb-prep"></div><section class="sb-mission" id="sbMission" aria-label="오늘 남은 미션, 보기 전용"></section><section class="sb-next" id="sbNext"></section></div>
- <div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden alt="가족 사진"><div id="familyPhotoEmpty" hidden></div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section><div class="sb-poke" id="sbPoke"><div class="sb-stage" id="sbStage"></div><div class="sb-say" id="sbSay" aria-live="polite"></div></div><div class="sb-name" id="sbName"></div><div class="sb-sub" id="sbSub"></div></div></div>
- <div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
+<section class="standby clock-standby" id="standby" hidden="" aria-label="가족 시계 대기화면">
+<div class="sb-top"><div class="sb-brand"><b id="sbTitle">우리 가족 시계</b></div><button class="btn sb-exit" id="standbyExit">🏠 홈으로</button></div>
+<div class="sb-grid"><div class="sb-left"><div class="sb-clock"><span id="sbTime">--:--</span></div><div class="sb-date" id="sbDate"></div><div class="sb-weather" id="sbWeather"></div><div id="sbPrep" class="sb-prep"></div><section class="sb-mission" id="sbMission" aria-label="오늘 남은 미션, 보기 전용"></section><section class="sb-next" id="sbNext"></section></div>
+<div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden="" alt="가족 사진"/><div id="familyPhotoEmpty" hidden=""></div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section><div class="sb-poke" id="sbPoke"><div class="sb-stage" id="sbStage"></div><div class="sb-say" id="sbSay" aria-live="polite"></div></div><div class="sb-name" id="sbName"></div><div class="sb-sub" id="sbSub"></div></div></div>
+<div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
 </section>
-
 <dialog id="screenDetail" aria-labelledby="screenDetailTitle"><div class="detail-head"><h2 id="screenDetailTitle"></h2><button class="btn" id="screenDetailClose">닫기</button></div><div id="screenDetailBody"></div></dialog>
 <!-- ======================= 모달: 공통 입력 ======================= -->
-<div class="modal" id="modal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <h3 id="modalTitle">입력</h3>
-    <p class="hint" id="modalHint"></p>
-    <form class="modal-fields" id="modalFields"></form>
-    <div class="modal-actions">
-      <button class="btn" type="button" data-modal-cancel>취소</button>
-      <button class="btn primary" type="button" data-modal-ok>확인</button>
-    </div>
-  </div>
+<div class="modal" id="modal" hidden="">
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+<h3 id="modalTitle">입력</h3>
+<p class="hint" id="modalHint"></p>
+<form class="modal-fields" id="modalFields"></form>
+<div class="modal-actions">
+<button class="btn" type="button" data-modal-cancel="">취소</button>
+<button class="btn primary" type="button" data-modal-ok="">확인</button>
 </div>
-
+</div>
+</div>
 <!-- ======================= 모달: 편지 보기 ======================= -->
-<div class="modal" id="letterModal" hidden>
-  <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="letterModalTitle">
-    <h3 id="letterModalTitle">편지</h3>
-    <p class="hint" id="letterModalMeta"></p>
-    <div class="letter-view"><img id="letterModalImg" alt="손글씨 편지" /></div>
-    <div class="modal-actions">
-      <button class="btn" type="button" id="letterModalDelete">삭제</button>
-      <button class="btn" type="button" id="letterModalDownload">이미지로 저장</button>
-      <button class="btn primary" type="button" id="letterModalClose">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="letterModal" hidden="">
+<div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="letterModalTitle">
+<h3 id="letterModalTitle">편지</h3>
+<p class="hint" id="letterModalMeta"></p>
+<div class="letter-view"><img id="letterModalImg" alt="손글씨 편지"/></div>
+<div class="modal-actions">
+<button class="btn" type="button" id="letterModalDelete">삭제</button>
+<button class="btn" type="button" id="letterModalDownload">이미지로 저장</button>
+<button class="btn primary" type="button" id="letterModalClose">닫기</button>
 </div>
-
+</div>
+</div>
 <!-- ======================= 모달: 설정 ======================= -->
-<div class="modal" id="settingsModal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <h3 id="settingsTitle">⚙️ 설정</h3>
-    <p class="hint">날씨·화면 설정은 이 기기에 저장되고, 가족 기록은 Google 로그인 시 Firestore와 동기화됩니다.</p>
-
-    <div class="settings-section parent-only"><h4>가족 시계 대기화면</h4><label for="standbyMinutes">자동 전환</label> <select id="standbyMinutes"><option value="0">끔</option><option value="5">5분 뒤</option><option value="10">10분 뒤</option></select><p class="hint">이 기기에만 저장합니다. 폰은 기본 끔, 태블릿은 5분입니다. 밤 9시부터 아침 7시까지 차분하게 표시하고 사진 자동 넘김을 멈춥니다. 홈으로 또는 연속 3번 터치하면 돌아가요.</p></div>
-    <div class="settings-section parent-only"><h4>🖼️ 가족 사진 액자</h4><p class="hint">선택한 사진은 이 브라우저에만 저장돼요. 부모 잠금은 이 화면에서의 실수 방지용이며 기기에 접근한 사람에 대한 보안 경계는 아닙니다. 가족 동기화나 외부 업로드는 하지 않습니다. 대기화면에서 누구나 볼 수 있으니 민감한 사진은 고르지 마세요. 최대 12장, JPG·PNG·WebP, 10초마다 바뀝니다. 새로 선택하면 기존 사진 전체를 대체하며 개별 삭제는 지원하지 않습니다. 로그아웃해도 이 기기에 남으며, 브라우저 데이터를 지우면 사라져요.</p><button type="button" class="btn" id="familyPhotoSelect">사진 선택 · 기존 사진 대체</button><input type="file" id="familyPhotoInput" accept="image/jpeg,image/png,image/webp" multiple hidden /><button type="button" class="btn" id="familyPhotoClear">액자 사진 모두 지우기</button><p id="photoSettingsStatus" role="status"></p></div>
-      <div class="settings-section">
-      <h4>📍 날씨 위치</h4>
-      <div class="row">
-        <button class="btn sm primary" id="geoBtn">현재 위치 사용</button>
-        <span class="pill" id="locPill">—</span>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input type="search" id="cityInput" class="grow" placeholder="동네·도시 이름 (예: 강남, 수원, 부산)" />
-        <button class="btn" id="citySearchBtn">검색</button>
-      </div>
-      <div class="search-results" id="cityResults"></div>
-      <details style="margin-top:10px">
-        <summary style="font-size:12px;color:var(--text-3);font-weight:700;cursor:pointer">위도·경도 직접 입력</summary>
-        <div class="row" style="margin-top:8px">
-          <input type="number" id="latInput" step="0.0001" placeholder="위도 37.5665" />
-          <input type="number" id="lonInput" step="0.0001" placeholder="경도 126.9780" />
-          <button class="btn sm" id="coordBtn">적용</button>
-        </div>
-      </details>
-      <p class="settings-note">위치를 찾을 수 없으면 서울 기준으로 표시됩니다. 위치 정보는 날씨 조회에만 쓰이고 저장되지 않는 서비스로 전송됩니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🐾 파트너 포켓몬</h4>
-      <div class="row wrap">
-        <button class="btn sm" id="partnerBtn2">파트너 바꾸기</button>
-        <span class="pill" id="partnerPill">피카츄 계열</span>
-      </div>
-      <p class="settings-note">포켓몬은 <b>'아이' 구성원(m3)</b>의 포인트로만 자랍니다. 아이 이름은 아래 구성원에서 바꿔도 됩니다. 최종 진화(200P) 후에는 대시보드의 <b>✨ 새 포켓몬 입양</b>으로 다른 계열을 0P부터 키울 수 있어요.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>👨‍👩‍👧 가족 구성원</h4>
-      <div class="row wrap" id="memberList"></div>
-      <button class="btn sm ghost" id="memberAddBtn" style="margin-top:8px">＋ 구성원 추가</button>
-      <p class="settings-note">일정에 표시될 이름입니다. 여기 적은 이름도 이 기기에만 저장됩니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🏡 대시보드 이름</h4>
-      <div class="row">
-        <input type="text" id="titleInput" class="grow" maxlength="40" placeholder="우리 가족 대시보드" autocomplete="off" />
-        <button class="btn sm primary" id="titleSaveBtn">저장</button>
-      </div>
-      <p class="settings-note">위쪽 큰 제목과 브라우저 탭 이름에 함께 쓰입니다. 비우면 기본 이름으로 돌아가요.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🏫 학교 급식 · 시간표</h4>
-      <div class="row" style="margin-top:8px">
-        <input type="text" id="schoolNameInput" class="grow" placeholder="학교 이름 (예: ○○초등학교)" autocomplete="off" />
-        <input type="text" id="schoolClassInput" style="max-width:132px" placeholder="반 (예: 2학년 3반)" autocomplete="off" />
-        <button class="btn sm primary" id="schoolSaveBtn">저장</button>
-      </div>
-      <div class="row wrap" style="margin-top:8px">
-        <button class="btn sm" id="schoolMealBtn">🍚 오늘 급식 적기</button>
-        <button class="btn sm" id="schoolTimeBtn">📚 오늘 시간표 적기</button>
-        <button class="btn sm ghost" id="schoolClearBtn">오늘 기록 지우기</button>
-      </div>
-      <p class="settings-note">학교 이름과 반은 이 기기 설정에만 저장되고, 왼쪽 <b>오늘 학교</b> 카드에 나옵니다. 급식·시간표는 쉼표나 줄바꿈으로 나눠 적으면 알약 모양으로 보여요. 날짜가 바뀌면 그 날 몫을 따로 적을 수 있습니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🧒 미션 화면</h4>
-      <label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
-        <input type="checkbox" id="adultToggle" style="width:18px;height:18px;min-height:0" /> 어른 미션도 같이 보기
+<div class="modal" id="settingsModal" hidden="">
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+<h3 id="settingsTitle">⚙️ 설정</h3>
+<p class="hint">날씨·화면 설정은 이 기기에 저장되고, 가족 기록은 Google 로그인 시 Firestore와 동기화됩니다.</p>
+<div class="settings-section parent-only"><h4>가족 시계 대기화면</h4><label for="standbyMinutes">자동 전환</label> <select id="standbyMinutes"><option value="0">끔</option><option value="5">5분 뒤</option><option value="10">10분 뒤</option></select><p class="hint">이 기기에만 저장합니다. 폰은 기본 끔, 태블릿은 5분입니다. 밤 9시부터 아침 7시까지 차분하게 표시하고 사진 자동 넘김을 멈춥니다. 홈으로 또는 연속 3번 터치하면 돌아가요.</p></div>
+<div class="settings-section parent-only"><h4>🖼️ 가족 사진 액자</h4><p class="hint">선택한 사진은 이 브라우저에만 저장돼요. 부모 잠금은 이 화면에서의 실수 방지용이며 기기에 접근한 사람에 대한 보안 경계는 아닙니다. 가족 동기화나 외부 업로드는 하지 않습니다. 대기화면에서 누구나 볼 수 있으니 민감한 사진은 고르지 마세요. 최대 12장, JPG·PNG·WebP, 10초마다 바뀝니다. 새로 선택하면 기존 사진 전체를 대체하며 개별 삭제는 지원하지 않습니다. 로그아웃해도 이 기기에 남으며, 브라우저 데이터를 지우면 사라져요.</p><button type="button" class="btn" id="familyPhotoSelect">사진 선택 · 기존 사진 대체</button><input type="file" id="familyPhotoInput" accept="image/jpeg,image/png,image/webp" multiple="" hidden=""/><button type="button" class="btn" id="familyPhotoClear">액자 사진 모두 지우기</button><p id="photoSettingsStatus" role="status"></p></div>
+<div class="settings-section">
+<h4>📍 날씨 위치</h4>
+<div class="row">
+<button class="btn sm primary" id="geoBtn">현재 위치 사용</button>
+<span class="pill" id="locPill">—</span>
+</div>
+<div class="row" style="margin-top:8px">
+<input type="search" id="cityInput" class="grow" placeholder="동네·도시 이름 (예: 강남, 수원, 부산)"/>
+<button class="btn" id="citySearchBtn">검색</button>
+</div>
+<div class="search-results" id="cityResults"></div>
+<details style="margin-top:10px">
+<summary style="font-size:12px;color:var(--text-3);font-weight:700;cursor:pointer">위도·경도 직접 입력</summary>
+<div class="row" style="margin-top:8px">
+<input type="number" id="latInput" step="0.0001" placeholder="위도 37.5665"/>
+<input type="number" id="lonInput" step="0.0001" placeholder="경도 126.9780"/>
+<button class="btn sm" id="coordBtn">적용</button>
+</div>
+</details>
+<p class="settings-note">위치를 찾을 수 없으면 서울 기준으로 표시됩니다. 위치 정보는 날씨 조회에만 쓰이고 저장되지 않는 서비스로 전송됩니다.</p>
+</div>
+<div class="settings-section">
+<h4>🐾 파트너 포켓몬</h4>
+<div class="row wrap">
+<button class="btn sm" id="partnerBtn2">파트너 바꾸기</button>
+<span class="pill" id="partnerPill">피카츄 계열</span>
+</div>
+<p class="settings-note">포켓몬은 <b>'아이' 구성원(m3)</b>의 포인트로만 자랍니다. 아이 이름은 아래 구성원에서 바꿔도 됩니다. 최종 진화(200P) 후에는 대시보드의 <b>✨ 새 포켓몬 입양</b>으로 다른 계열을 0P부터 키울 수 있어요.</p>
+</div>
+<div class="settings-section">
+<h4>👨‍👩‍👧 가족 구성원</h4>
+<div class="row wrap" id="memberList"></div>
+<button class="btn sm ghost" id="memberAddBtn" style="margin-top:8px">＋ 구성원 추가</button>
+<p class="settings-note">일정에 표시될 이름입니다. 여기 적은 이름도 이 기기에만 저장됩니다.</p>
+</div>
+<div class="settings-section">
+<h4>🏡 대시보드 이름</h4>
+<div class="row">
+<input type="text" id="titleInput" class="grow" maxlength="40" placeholder="우리 가족 대시보드" autocomplete="off"/>
+<button class="btn sm primary" id="titleSaveBtn">저장</button>
+</div>
+<p class="settings-note">위쪽 큰 제목과 브라우저 탭 이름에 함께 쓰입니다. 비우면 기본 이름으로 돌아가요.</p>
+</div>
+<div class="settings-section">
+<h4>🏫 학교 급식 · 시간표</h4>
+<div class="row" style="margin-top:8px">
+<input type="text" id="schoolNameInput" class="grow" placeholder="학교 이름 (예: ○○초등학교)" autocomplete="off"/>
+<input type="text" id="schoolClassInput" style="max-width:132px" placeholder="반 (예: 2학년 3반)" autocomplete="off"/>
+<button class="btn sm primary" id="schoolSaveBtn">저장</button>
+</div>
+<div class="row wrap" style="margin-top:8px">
+<button class="btn sm" id="schoolMealBtn">🍚 오늘 급식 적기</button>
+<button class="btn sm" id="schoolTimeBtn">📚 오늘 시간표 적기</button>
+<button class="btn sm ghost" id="schoolClearBtn">오늘 기록 지우기</button>
+</div>
+<p class="settings-note">학교 이름과 반은 이 기기 설정에만 저장되고, 왼쪽 <b>오늘 학교</b> 카드에 나옵니다. 급식·시간표는 쉼표나 줄바꿈으로 나눠 적으면 알약 모양으로 보여요. 날짜가 바뀌면 그 날 몫을 따로 적을 수 있습니다.</p>
+</div>
+<div class="settings-section">
+<h4>🧒 미션 화면</h4>
+<label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
+<input type="checkbox" id="adultToggle" style="width:18px;height:18px;min-height:0"/> 어른 미션도 같이 보기
       </label>
-      <p class="settings-note">끄면 미션 목록과 통계에서 아이 미션만 보입니다. 어른 미션과 포인트는 지우지 않고 그대로 보관해, 다시 켜면 바로 나타납니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🔒 부모 모드 PIN</h4>
-      <div class="row">
-        <input type="password" id="pinInput" class="grow" inputmode="numeric" maxlength="4" placeholder="새 PIN 숫자 4자리" autocomplete="off" />
-        <button class="btn sm" id="pinSaveBtn">변경</button>
-      </div>
-      <p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 열림</b>을 다시 누르면 바로 잠깁니다. 로그인 상태에서 바꾼 PIN은 부모 기기끼리 비공개 Firebase 문서로 동기화됩니다. 로그아웃 상태에서는 이 기기에만 저장됩니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>🎨 화면</h4>
-      <div class="row wrap">
-        <button class="btn sm" id="themeLight">☀️ 밝게</button>
-        <button class="btn sm" id="themeDark">🌙 어둡게</button>
-        <label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
-          <input type="checkbox" id="quietToggle" style="width:18px;height:18px;min-height:0" /> 절전 모드(애니메이션 끄기)
+<p class="settings-note">끄면 미션 목록과 통계에서 아이 미션만 보입니다. 어른 미션과 포인트는 지우지 않고 그대로 보관해, 다시 켜면 바로 나타납니다.</p>
+</div>
+<div class="settings-section">
+<h4>🔒 부모 모드 PIN</h4>
+<div class="row">
+<input type="password" id="pinInput" class="grow" inputmode="numeric" maxlength="4" placeholder="새 PIN 숫자 4자리" autocomplete="off"/>
+<button class="btn sm" id="pinSaveBtn">변경</button>
+</div>
+<p class="settings-note">부모 모드를 열면 5분 뒤 자동으로 잠기고, 상단 <b>🔓 부모 열림</b>을 다시 누르면 바로 잠깁니다. 로그인 상태에서 바꾼 PIN은 부모 기기끼리 비공개 Firebase 문서로 동기화됩니다. 로그아웃 상태에서는 이 기기에만 저장됩니다.</p>
+</div>
+<div class="settings-section">
+<h4>🎨 화면</h4>
+<div class="row wrap">
+<button class="btn sm" id="themeLight">☀️ 밝게</button>
+<button class="btn sm" id="themeDark">🌙 어둡게</button>
+<label class="row" style="font-size:12.5px;font-weight:700;color:var(--text-2);gap:6px">
+<input type="checkbox" id="quietToggle" style="width:18px;height:18px;min-height:0"/> 절전 모드(애니메이션 끄기)
         </label>
-      </div>
-    </div>
-
-    <div class="settings-section" id="syncSection">
-      <h4>☁️ 가족 실시간 동기화 (Firebase)</h4>
-      <p class="settings-note">태블릿과 폰이 <b>같은 기록</b>을 함께 봅니다. Google 계정으로 한 번만 로그인하면 그 기기에서는 계속 자동으로 맞춰져요. 보호자 계정은 모든 기록을 다루고, 아이 계정은 오늘의 미션·장보기·편지만 다룹니다.</p>
-      <p class="settings-note" id="fbSyncNote">로그인 상태를 확인하는 중이에요…</p>
-      <div class="row wrap" style="margin-top:10px">
-        <button class="btn sm primary" id="fbSignInBtn">Google 계정으로 로그인</button>
-        <button class="btn sm ghost" id="fbSignOutBtn">로그아웃</button>
-      </div>
-      <div class="row wrap" id="fbSettleRow" style="margin-top:12px" hidden>
-        <button class="btn sm" id="fbSettleBtn">포인트 사용 정산</button>
-      </div>
-      <p class="settings-note" id="fbSettleNote" hidden></p>
-      <div class="settings-section" id="gcalSection">
-        <h4>📅 구글 캘린더</h4>
-        <p class="settings-note" id="gcalNote">로그인한 Google 계정의 일정을 ‘가족 일정’ 달력에 함께 보여 줍니다. 읽기만 하며, 일정을 고치거나 지우지 않습니다.</p>
-        <div class="row wrap" style="margin-top:10px">
-          <button class="btn sm" id="gcalConnectBtn">📅 구글 캘린더 연결</button>
-          <button class="btn sm ghost" id="gcalOffBtn" hidden>연결 해제</button>
-        </div>
-        <p class="settings-note">처음 한 번만 ‘일정 읽기’를 허용하면 이 탭을 열어 둔 동안에는 자동으로 새로 고칩니다. 토큰은 이 탭에만 두고 Firestore·백업에는 저장하지 않아요.</p>
-      </div>
-      <div class="settings-section" id="legacySyncControl">
-        <h4>🧹 예전 Apps Script 연결 정보</h4>
-        <p class="settings-note" id="legacySyncNote">예전 Apps Script 자동 연결은 꺼져 있어요.</p>
-        <button class="btn sm ghost" id="legacySyncOffBtn" hidden>이 기기의 저장 정보 지우기</button>
-      </div>
-    </div>
-
-    <div class="settings-section" id="alarmSection">
-      <h4>🔔 알람</h4>
-      <p class="settings-note">
+</div>
+</div>
+<div class="settings-section" id="syncSection">
+<h4>☁️ 가족 실시간 동기화 (Firebase)</h4>
+<p class="settings-note">태블릿과 폰이 <b>같은 기록</b>을 함께 봅니다. Google 계정으로 한 번만 로그인하면 그 기기에서는 계속 자동으로 맞춰져요. 보호자 계정은 모든 기록을 다루고, 아이 계정은 오늘의 미션·장보기·편지만 다룹니다.</p>
+<p class="settings-note" id="fbSyncNote">로그인 상태를 확인하는 중이에요…</p>
+<div class="row wrap" style="margin-top:10px">
+<button class="btn sm primary" id="fbSignInBtn">Google 계정으로 로그인</button>
+<button class="btn sm ghost" id="fbSignOutBtn">로그아웃</button>
+</div>
+<div class="row wrap" id="fbSettleRow" style="margin-top:12px" hidden="">
+<button class="btn sm" id="fbSettleBtn">포인트 사용 정산</button>
+</div>
+<p class="settings-note" id="fbSettleNote" hidden=""></p>
+<div class="settings-section" id="gcalSection">
+<h4>📅 구글 캘린더</h4>
+<p class="settings-note" id="gcalNote">로그인한 Google 계정의 일정을 ‘가족 일정’ 달력에 함께 보여 줍니다. 읽기만 하며, 일정을 고치거나 지우지 않습니다.</p>
+<div class="row wrap" style="margin-top:10px">
+<button class="btn sm" id="gcalConnectBtn">📅 구글 캘린더 연결</button>
+<button class="btn sm ghost" id="gcalOffBtn" hidden="">연결 해제</button>
+</div>
+<p class="settings-note">처음 한 번만 ‘일정 읽기’를 허용하면 이 탭을 열어 둔 동안에는 자동으로 새로 고칩니다. 토큰은 이 탭에만 두고 Firestore·백업에는 저장하지 않아요.</p>
+</div>
+<div class="settings-section" id="legacySyncControl">
+<h4>🧹 예전 Apps Script 연결 정보</h4>
+<p class="settings-note" id="legacySyncNote">예전 Apps Script 자동 연결은 꺼져 있어요.</p>
+<button class="btn sm ghost" id="legacySyncOffBtn" hidden="">이 기기의 저장 정보 지우기</button>
+</div>
+</div>
+<div class="settings-section" id="alarmSection">
+<h4>🔔 알람</h4>
+<p class="settings-note">
         오늘 할 미션은 <b>마감 5분 전</b>과 <b>정각</b>, 가족 일정·구글 캘린더 일정(시각이 있는 것)은 <b>10분 전</b>과 <b>정각</b>에
         화면 알람과 차임벨이 울려요. 이미 끝낸 미션·일정은 울리지 않고, 같은 시각에 겹치면 한 알람 창에 나란히 보여 줍니다.
         아래 <b>맞춤 알람</b>은 보호자가 정한 고정 알람으로, 정한 시각(정각)에 울립니다. 처음에는 <b>밥 먹기 끝(07:15)</b>·<b>준비 끝(08:05)</b> 두 알람이 월~금으로 들어 있어요.
       </p>
-      <div class="row wrap">
-        <button class="btn sm" id="alarmSoundBtn2" data-state="on" type="button">🔔 알람 소리 켜짐</button>
-        <button class="btn sm ghost" id="alarmPreviewBtn" type="button">🎵 미리 듣기</button>
-      </div>
-      <p class="settings-note" id="alarmSoundNote"></p>
-      <div class="alarm-today" id="alarmToday" aria-live="polite"></div>
-      <div class="alarm-list" id="alarmList"></div>
-      <button class="btn sm" id="alarmAddBtn" type="button">＋ 맞춤 알람 추가</button>
-      <p class="settings-note">알람은 이 화면이 켜져 있는 동안에 울려요. 구글 캘린더 일정 알람은 이 탭에서 캘린더를 연결해 둔 동안 함께 울립니다.</p>
-    </div>
-
-    <div class="settings-section">
-      <h4>💾 데이터</h4>
-      <div class="row wrap">
-        <button class="btn sm" id="exportBtn2">⬇︎ 백업 내보내기</button>
-        <button class="btn sm" id="importBtn2">⬆︎ 백업 불러오기</button>
-        <button class="btn sm" id="resetAllBtn" style="color:var(--coral)">모두 지우기</button>
-      </div>
-      <p class="settings-note" id="storageNote"></p>
-    </div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="settingsClose">닫기</button>
-    </div>
-  </div>
+<div class="row wrap">
+<button class="btn sm" id="alarmSoundBtn2" data-state="on" type="button">🔔 알람 소리 켜짐</button>
+<button class="btn sm ghost" id="alarmPreviewBtn" type="button">🎵 미리 듣기</button>
 </div>
-
+<p class="settings-note" id="alarmSoundNote"></p>
+<div class="alarm-today" id="alarmToday" aria-live="polite"></div>
+<div class="alarm-list" id="alarmList"></div>
+<button class="btn sm" id="alarmAddBtn" type="button">＋ 맞춤 알람 추가</button>
+<p class="settings-note">알람은 이 화면이 켜져 있는 동안에 울려요. 구글 캘린더 일정 알람은 이 탭에서 캘린더를 연결해 둔 동안 함께 울립니다.</p>
+</div>
+<div class="settings-section">
+<h4>💾 데이터</h4>
+<div class="row wrap">
+<button class="btn sm" id="exportBtn2">⬇︎ 백업 내보내기</button>
+<button class="btn sm" id="importBtn2">⬆︎ 백업 불러오기</button>
+<button class="btn sm" id="resetAllBtn" style="color:var(--coral)">모두 지우기</button>
+</div>
+<p class="settings-note" id="storageNote"></p>
+</div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="settingsClose">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 파트너 포켓몬 ======================= -->
-<div class="modal" id="partnerModal" hidden>
-  <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="partnerTitle">
-    <h3 id="partnerTitle">🐾 파트너 포켓몬 고르기</h3>
-    <p class="hint" id="partnerHint">1세대 151종 어느 계열이든 고를 수 있어요. 아이 포인트로만 자라고, 200P에 닿으면 이로치가 되어 도감에 남습니다.</p>
-    <div class="partner-tools">
-      <input type="search" id="partnerSearch" class="grow" placeholder="이름으로 찾기 (예: 라프라스, 피카츄, 25)" autocomplete="off" />
-      <span class="pill" id="partnerCount">81계열</span>
-    </div>
-    <div class="partner-grid" id="partnerGrid"></div>
-    <div class="modal-actions">
-      <button class="btn" type="button" id="partnerClose">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="partnerModal" hidden="">
+<div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="partnerTitle">
+<h3 id="partnerTitle">🐾 파트너 포켓몬 고르기</h3>
+<p class="hint" id="partnerHint">1세대 151종 어느 계열이든 고를 수 있어요. 아이 포인트로만 자라고, 200P에 닿으면 이로치가 되어 도감에 남습니다.</p>
+<div class="partner-tools">
+<input type="search" id="partnerSearch" class="grow" placeholder="이름으로 찾기 (예: 라프라스, 피카츄, 25)" autocomplete="off"/>
+<span class="pill" id="partnerCount">81계열</span>
 </div>
-
+<div class="partner-grid" id="partnerGrid"></div>
+<div class="modal-actions">
+<button class="btn" type="button" id="partnerClose">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 포켓몬 도감 (1세대 151종) ======================= -->
-<div class="modal" id="dexModal" hidden>
-  <div class="modal-card wide dex-modal" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
-    <div class="dex-modal-head">
-      <div>
-        <h3 id="dexTitle"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="M12 5c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M12 5v15"/></svg>포켓몬 도감</h3>
-        <p class="hint" id="dexMeta">1세대 151종</p>
-      </div>
-      <button class="btn icon sm ghost" type="button" id="dexClose" aria-label="닫기">✕</button>
-    </div>
-    <!-- 🏡 내 포켓몬 놀이방 — 모은 친구들이 풀밭에서 좌우로 걸어 다니고, 콕 누르면 점프하며 하트·말풍선이 떠요 -->
-    <div class="dex-play" id="dexPlay" aria-label="내 포켓몬 놀이방">
-      <div class="dp-head">
-        <b class="dp-title"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg>내 포켓몬 놀이방</b>
-        <span class="pill dp-count" id="dexPlayCount">0마리</span>
-        <span class="dp-hint">친구를 콕 누르면 좋아해요 ❤️</span>
-      </div>
-      <div class="dp-yard" id="dexPlayYard" role="group" aria-label="놀이방 풀밭"></div>
-    </div>
-    <div class="dex-tools"><button type="button" class="btn sm ghost" id="dexExtrasToggle" aria-expanded="false">놀이방·컬렉션 보기</button>
-      <input type="search" id="dexSearch" class="grow" placeholder="이름·번호로 찾기 (예: 피카츄, 25)" autocomplete="off" />
-      <div class="dex-filter" id="dexFilter" role="group" aria-label="도감 필터"></div>
-    </div>
-    <!-- 내 포켓몬 도감 — 미션 카드 아래에서 이 도감 페이지 안으로 옳겼습니다 -->
-    <div class="dex-mine" id="dexMine">
-      <div class="dex-mine-head">
-        <b>🏆 내 포켓몬 도감</b>
-        <span class="pill" id="dexCount">0/151</span>
-        <span class="pill ghost" id="dexTrophyCount">아직 없어요</span>
-        <span class="dex-mine-hint">획득 · 미획득 도감은 위 필터로 골라 볼 수 있어요</span>
-      </div>
-      <div class="dex-row" id="dexRow"></div>
-    </div>
-    <div class="dex-panes">
-      <div class="dex-grid" id="dexGrid" aria-label="포켓몬 도감, 전체 세대 수집과 정보"></div>
-      <aside class="dex-side" id="dexSide" aria-live="polite"></aside>
-    </div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="dexCloseBtn">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="dexModal" hidden="">
+<div class="modal-card wide dex-modal" role="dialog" aria-modal="true" aria-labelledby="dexTitle">
+<div class="dex-modal-head">
+<div>
+<h3 id="dexTitle"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="M12 5c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"></path><path d="M12 5v15"></path></svg>포켓몬 도감</h3>
+<p class="hint" id="dexMeta">1세대 151종</p>
 </div>
-
+<button class="btn icon sm ghost" type="button" id="dexClose" aria-label="닫기">✕</button>
+</div>
+<!-- 🏡 내 포켓몬 놀이방 — 모은 친구들이 풀밭에서 좌우로 걸어 다니고, 콕 누르면 점프하며 하트·말풍선이 떠요 -->
+<div class="dex-play" id="dexPlay" aria-label="내 포켓몬 놀이방">
+<div class="dp-head">
+<b class="dp-title"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-right:4px"><path d="m3 10 9-7 9 7v10H3Z"></path><path d="M9 20v-7h6v7"></path></svg>내 포켓몬 놀이방</b>
+<span class="pill dp-count" id="dexPlayCount">0마리</span>
+<span class="dp-hint">친구를 콕 누르면 좋아해요 ❤️</span>
+</div>
+<div class="dp-yard" id="dexPlayYard" role="group" aria-label="놀이방 풀밭"></div>
+</div>
+<div class="dex-tools"><button type="button" class="btn sm ghost" id="dexExtrasToggle" aria-expanded="false">놀이방·컬렉션 보기</button>
+<input type="search" id="dexSearch" class="grow" placeholder="이름·번호로 찾기 (예: 피카츄, 25)" autocomplete="off"/>
+<div class="dex-filter" id="dexFilter" role="group" aria-label="도감 필터"></div>
+</div>
+<!-- 내 포켓몬 도감 — 미션 카드 아래에서 이 도감 페이지 안으로 옳겼습니다 -->
+<div class="dex-mine" id="dexMine">
+<div class="dex-mine-head">
+<b>🏆 내 포켓몬 도감</b>
+<span class="pill" id="dexCount">0/151</span>
+<span class="pill ghost" id="dexTrophyCount">아직 없어요</span>
+<span class="dex-mine-hint">획득 · 미획득 도감은 위 필터로 골라 볼 수 있어요</span>
+</div>
+<div class="dex-row" id="dexRow"></div>
+</div>
+<div class="dex-panes">
+<div class="dex-grid" id="dexGrid" aria-label="포켓몬 도감, 전체 세대 수집과 정보"></div>
+<aside class="dex-side" id="dexSide" aria-live="polite"></aside>
+</div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="dexCloseBtn">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 월간·연간 달성 현황 ======================= -->
-<div class="modal" id="historyModal" hidden>
-  <div class="modal-card wide hist-card" role="dialog" aria-modal="true" aria-labelledby="histTitle">
-    <div class="hist-top">
-      <div>
-        <h3 id="histTitle">📅 월간·연간 달성 현황</h3>
-        <p class="hist-sub" id="histSubText">월간 달력으로 하루하루, 연간 카드로 1년 흐름을 봅니다.</p>
-      </div>
-      <button class="btn icon sm ghost" type="button" id="histClose" aria-label="닫기">✕</button>
-    </div>
-    <div class="hist-tabs" role="tablist" aria-label="보기 단위">
-      <button class="hist-tab on" type="button" data-histview="month" role="tab" aria-selected="true">월간</button>
-      <button class="hist-tab" type="button" data-histview="year" role="tab" aria-selected="false">연간</button>
-    </div>
-    <div class="hist-toolbar">
-      <div class="hist-nav">
-        <button class="btn icon sm" type="button" id="histPrev" aria-label="이전">‹</button>
-        <b id="histTitleText">2026년 11월</b>
-        <button class="btn icon sm" type="button" id="histNext" aria-label="다음">›</button>
-        <button class="btn sm ghost" type="button" id="histToday">오늘</button>
-      </div>
-      <div class="hist-filter" id="histFilter" role="group" aria-label="구성원 필터"></div>
-    </div>
-    <div class="hist-body" id="histBody"></div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="histCloseBtn">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="historyModal" hidden="">
+<div class="modal-card wide hist-card" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+<div class="hist-top">
+<div>
+<h3 id="histTitle">📅 월간·연간 달성 현황</h3>
+<p class="hist-sub" id="histSubText">월간 달력으로 하루하루, 연간 카드로 1년 흐름을 봅니다.</p>
 </div>
-
+<button class="btn icon sm ghost" type="button" id="histClose" aria-label="닫기">✕</button>
+</div>
+<div class="hist-tabs" role="tablist" aria-label="보기 단위">
+<button class="hist-tab on" type="button" data-histview="month" role="tab" aria-selected="true">월간</button>
+<button class="hist-tab" type="button" data-histview="year" role="tab" aria-selected="false">연간</button>
+</div>
+<div class="hist-toolbar">
+<div class="hist-nav">
+<button class="btn icon sm" type="button" id="histPrev" aria-label="이전">‹</button>
+<b id="histTitleText">2026년 11월</b>
+<button class="btn icon sm" type="button" id="histNext" aria-label="다음">›</button>
+<button class="btn sm ghost" type="button" id="histToday">오늘</button>
+</div>
+<div class="hist-filter" id="histFilter" role="group" aria-label="구성원 필터"></div>
+</div>
+<div class="hist-body" id="histBody"></div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="histCloseBtn">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 사용 안내 ======================= -->
-<div class="modal" id="helpModal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-    <h3 id="helpTitle">📖 이렇게 쓰세요</h3>
-    <div class="settings-section">
-      <h4>1. 태블릿 홈 화면에 앱처럼 놓기</h4>
-      <p class="settings-note">
+<div class="modal" id="helpModal" hidden="">
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+<h3 id="helpTitle">📖 이렇게 쓰세요</h3>
+<div class="settings-section">
+<h4>1. 태블릿 홈 화면에 앱처럼 놓기</h4>
+<p class="settings-note">
         크롬에서 이 페이지를 연 뒤 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>(또는 '앱 설치')를 누르면
-        주소창 없는 전체 화면 앱으로 열립니다. 태블릿을 가로·세로 어느 쪽으로 돌려도 화면이 맞춰집니다.<br />
+        주소창 없는 전체 화면 앱으로 열립니다. 태블릿을 가로·세로 어느 쪽으로 돌려도 화면이 맞춰집니다.<br/>
         홈 화면에 놓지 않고 지금 화면에서 바로 크게 보고 싶으면 상단의 <b>⛶</b>를 누르세요.
         브라우저 주소창과 작업 표시줄이 사라지고, 다시 누르면 원래대로 돌아옵니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>2. 날씨 위치 한 번만 정하기</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>2. 날씨 위치 한 번만 정하기</h4>
+<p class="settings-note">
         처음 열면 위치 사용을 물어봅니다. <b>허용</b>을 누르면 우리 동네 날씨가 나옵니다.
         나중에 바꾸려면 <b>⚙️ 설정 → 날씨 위치</b>에서 동네 이름으로 검색하세요.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>3. 로그아웃 상태는 이 기기, 로그인하면 가족 동기화</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>3. 로그아웃 상태는 이 기기, 로그인하면 가족 동기화</h4>
+<p class="settings-note">
         로그아웃 상태에서는 일정·미션·포인트·편지·장보기·위키 기록이 브라우저 저장소에 저장됩니다.
         설정에서 Google 계정으로 로그인하면 가족 권한이 있는 계정끼리 Firestore를 통해 기록을 함께 씁니다.
         예전 Apps Script 동기화 주소/PIN은 더 이상 사용하지 않으며 기존 기록을 자동으로 옮기지 않습니다.
         기록을 옮기려면 보호자 계정의 <b>백업 내보내기</b>를 사용하세요.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>4. 미션 &amp; 포인트</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>4. 미션 & 포인트</h4>
+<p class="settings-note">
         가족 구성원마다 미션을 두고, 끝낼 때마다 정해진 기본 포인트(+P)가 그 사람 몫으로 쌓입니다.
         미션마다 <b>요일</b>(매일 / 평일(월~금) / 주말(토·일) / 요일별)을 정할 수 있어, 그 요일에만 오늘 미션 목록에 나옵니다.
         오늘 쉬는 미션은 목록 아래 <b>😴 오늘은 ○요일이라 쉬는 미션</b>에 접혀 있습니다.
@@ -833,173 +760,167 @@ html.app-booting #appBootStatus{position:fixed;inset:0;z-index:40000;display:fle
         미션마다 <b>마감 시간</b>(예: 08:00)을 정할 수 있습니다. 마감 5~9분 전에 끝내면 <b>+1P</b>, 10분 이상 일찍 끝내면 <b>+2P</b>(총 +2P) 조기 보너스를 받고,
         마감 4분 전부터 마감 시각·마감 후 완료까지는 기본 포인트만 쌓입니다. 예전의 미션별 마감 보너스 설정은 더 이상 적용되지 않습니다.
         완료 시각과 조기 보너스는 미션 카드와 완료 이력에 따로 표시됩니다.
-        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.<br />
-        <b>📅 월간·연간 달성</b>을 누르면 이번 달 달력과 1년 12개월 요약이 열려, 날짜별 완료·목표 달성·획득 포인트를 되돌아볼 수 있습니다.<br />
-        <b>🎉 토요일은 <span data-freeday-kid>아이</span>의 자유의 날</b>입니다. 숙제를 쉬는 날이라 토요일이 되면
+        아래 <b>오늘 완료 이력</b>에서 몇 시에 끝냈는지 한눈에 볼 수 있습니다.<br/>
+<b>📅 월간·연간 달성</b>을 누르면 이번 달 달력과 1년 12개월 요약이 열려, 날짜별 완료·목표 달성·획득 포인트를 되돌아볼 수 있습니다.<br/>
+<b>🎉 토요일은 <span data-freeday-kid="">아이</span>의 자유의 날</b>입니다. 숙제를 쉬는 날이라 토요일이 되면
         <b>오늘 미션</b> 카드에 <b>“오늘은 ○○ 자유의 날! 숙제가 없어요”</b> 배너가 자동으로 뜨고,
         일요일이 되면 저절로 사라집니다. 미션이나 완료 기록을 자동으로 지우지는 않습니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>5. 포켓몬 · 포인트 사용 · 도감</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>5. 포켓몬 · 포인트 사용 · 도감</h4>
+<p class="settings-note">
         포켓몬은 <b>'아이' 구성원의 포인트</b>로만 자랍니다. 아이가 미션을 끝내면
         <b>현재 파트너 경험치</b>·<b>누적 경험치</b>·<b>사용 가능 포인트</b>가 함께 오르고(취소하면 함께 돌아감),
-        성인 미션은 성인 통계에만 쌓입니다.<br />
-        <b>1세대 포켓몬 151종 전체</b>를 파트너로 기를 수 있습니다. <b>🐾 파트너</b>를 누르면 이름으로 찾아 고를 수 있고,
+        성인 미션은 성인 통계에만 쌓입니다.<br/>
+<b>1세대 포켓몬 151종 전체</b>를 파트너로 기를 수 있습니다. <b>🐾 파트너</b>를 누르면 이름으로 찾아 고를 수 있고,
         진화 계열(이상해씨 → 이상해풀 → 이상해꽃, 이브이 → 샤미드 · 쥬피썬더 · 부스터 …)과 진화하지 않는 친구
         (라프라스 · 잠만보 · 프리져 · 썬더 · 파이어 · 뮤츠 · 뮤 …) 모두 들어 있습니다.
-        파트너는 미션을 끝낼 때마다 <b>둥실둥실 움직이고</b>, <b>톡톡 누르면 점프하며 하트·반짝이와 함께 대답해요</b>.<br />
-        <b>📖 1,025 도감</b>을 누르면 151종 전체를 번호순으로 볼 수 있고, 아직 만나지 못한 친구는 <b>실루엣</b>으로 보입니다.
-        칸을 누르면 진화 단계와 기준 포인트, 언제 만났는지가 나오고 그 자리에서 그 계열을 기를 수도 있어요.<br />
-        <b>🎁 포인트 사용</b>을 누르면 부모가 무엇을 사줬는지와 사용 포인트를 적어 잔액을 줄일 수 있습니다.
-        <b>사용해도 경험치와 진화 단계는 절대로 풀리지 않아요.</b> 내역은 <b>포인트 사용 내역</b>에 남습니다.<br />
+        파트너는 미션을 끝낼 때마다 <b>둥실둥실 움직이고</b>, <b>톡톡 누르면 점프하며 하트·반짝이와 함께 대답해요</b>.<br/>
+<b>📖 1,025 도감</b>을 누르면 151종 전체를 번호순으로 볼 수 있고, 아직 만나지 못한 친구는 <b>실루엣</b>으로 보입니다.
+        칸을 누르면 진화 단계와 기준 포인트, 언제 만났는지가 나오고 그 자리에서 그 계열을 기를 수도 있어요.<br/>
+<b>🎁 포인트 사용</b>을 누르면 부모가 무엇을 사줬는지와 사용 포인트를 적어 잔액을 줄일 수 있습니다.
+        <b>사용해도 경험치와 진화 단계는 절대로 풀리지 않아요.</b> 내역은 <b>포인트 사용 내역</b>에 남습니다.<br/>
         현재 파트너가 <b>200P</b>에 도달하면 마지막 모습의 <b>이로치</b>가 되어 <b>🏆 내 포켓몬 도감</b>에 영구히 저장되고,
         <b>✨ 새 포켓몬 입양하기</b>로 다른 포켓몬을 <b>0P부터</b> 새로 키울 수 있습니다.
         이때도 누적 경험치와 사용 가능 포인트는 그대로 유지됩니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>6. ✏️ 손글씨 편지 탭</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>6. ✏️ 손글씨 편지 탭</h4>
+<p class="settings-note">
         화면 위 <b>✏️ 손글씨 편지</b> 탭을 누르면 편지 화면이 크게 열립니다.
         캔버스에 손가락으로 쓰고 색·굵기·이모지 스티커를 골라 꾸민 뒤
         <b>💌 보내기</b>를 누르면 아래 편지함에 그림으로 저장되고, 저장된 편지는 탭 위 <b>숫자 배지</b>로 새 편지를 알려 줍니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>6-1. 🐾 포켓몬 놀이방 탭</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>6-1. 🐾 포켓몬 놀이방 탭</h4>
+<p class="settings-note">
         화면 위 <b>🐾 포켓몬 놀이방</b> 탭을 누르면 모은 친구들이 풀밭에서 좌우로 걸어 다닙니다.
         친구를 콕 누르면 두 번 점프하며 하트와 말풍선이 떠요. <b>📖 1,025 도감</b> 버튼으로 도감도 바로 열 수 있습니다.
         도감 안의 놀이방과 같은 친구들이라, 미션을 끝내 새 친구를 만나면 이 탭에도 함께 늘어납니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>7. 🎁 사고 싶은 것 &amp; 🔒 부모 모드</h4>
-      <p class="settings-note">
-        <b>사고 싶은 것</b> 카드에 갖고 싶은 물건을 적으면, 지금 선물 코인으로 <b>✅ 지금 살 수 있어요!</b> 인지
+</div>
+<div class="settings-section">
+<h4>7. 🎁 사고 싶은 것 & 🔒 부모 모드</h4>
+<p class="settings-note">
+<b>사고 싶은 것</b> 카드에 갖고 싶은 물건을 적으면, 지금 선물 코인으로 <b>✅ 지금 살 수 있어요!</b> 인지
         <b>🪙 몇 P 더 모아야 하는지</b> 바로 보여 줍니다. 적을 때 <b>장난감 · 준비물 · 책 · 기타</b> 중에서 분류를 고르면
-        카드 위에 알록달록한 <b>태그 배지</b>로 붙고, 부모 모드에서 나중에 바꿀 수도 있어요. 적는 것은 아이도 자유롭게 할 수 있어요.<br />
+        카드 위에 알록달록한 <b>태그 배지</b>로 붙고, 부모 모드에서 나중에 바꿀 수도 있어요. 적는 것은 아이도 자유롭게 할 수 있어요.<br/>
         상단 <b>🔒 부모 잠금</b>은 기본이 잠금입니다. 잠긴 동안 아이는 <b>미션 체크·포켓몬 도감·편지 쓰기·사고 싶은 것 적기·타이머·월간 달성 보기</b>를 그대로 쓸 수 있고,
         <b>미션 추가·수정·삭제, 포인트 사용(선물 사주기), 일정·장보기·위키 편집, 편지 삭제, 설정</b>처럼 보호자가 해야 하는 일은 4자리 PIN을 넣어야 열립니다.
         부모 모드는 5분 뒤 자동으로 잠기고, <b>🔓 부모 열림</b>을 누르면 바로 잠급니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>8. 🖼️ 대기화면 (거실 디지털 액자)</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>8. 🖼️ 대기화면 (거실 디지털 액자)</h4>
+<p class="settings-note">
         상단의 <b>🖼️ 대기화면</b>을 누르면 화면 전체가 거실 액자 모드로 바뀝니다.
         큰 <b>실시간 시계·날짜</b>, <b>오늘 날씨와 미세먼지</b>, <b>오늘 아이 미션 달성률·선물 코인</b>,
-        그리고 화면 가득 <b>살아 움직이는 파트너 포켓몬</b>이 나옵니다. 2분 동안 조작이 없으면 자동으로 전환되고, 화면을 연속 3번 터치하거나 오른쪽 위 <b>🏠 홈으로</b>를 누르면 대시보드로 돌아옵니다.<br />
+        그리고 화면 가득 <b>살아 움직이는 파트너 포켓몬</b>이 나옵니다. 2분 동안 조작이 없으면 자동으로 전환되고, 화면을 연속 3번 터치하거나 오른쪽 위 <b>🏠 홈으로</b>를 누르면 대시보드로 돌아옵니다.<br/>
         지원되는 브라우저에서는 대시보드가 앞에 열려 있는 동안 화면이 자동으로 꺼지지 않도록 유지합니다. 탭을 숨기거나 다른 앱으로 전환하면 브라우저 정책에 따라 화면 깨움 잠금이 해제됩니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>9. 🎪 가족 이벤트 · 📅 월간 달력</h4>
-      <p class="settings-note">
-        미션 카드 아래 <b>🎪 이벤트</b>를 누르면 여섯 가지 이벤트가 한 곳에 모여 있어요.<br />
-        <b>①🔥 3일 연속 콤보</b> 같은 미션을 사흘 내리 끝내면 보너스 포인트가 따라붙고,
-        <b>②⚡ 깜짝 칭찬</b>은 버튼 한 번으로 바로 +P를 선물합니다(로그에 남아 자동 반영돼요).<br />
-        <b>③🎂 2배 데이</b>는 생신·명절을 지정하면 그 날 미션 포인트가 2배로 더해지고(위키 생신일은 자동),
-        <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br />
-        <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
-        <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br />
-        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 정산 없이 자동 적립됩니다.<br />
-        <b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
+</div>
+<div class="settings-section">
+<h4>9. 🎪 가족 이벤트 · 📅 월간 달력</h4>
+<p class="settings-note">
+        미션 카드 아래 <b>🎪 이벤트</b>를 누르면 여섯 가지 이벤트가 한 곳에 모여 있어요.<br/>
+<b>①🔥 3일 연속 콤보</b> 같은 미션을 사흘 내리 끝내면 보너스 포인트가 따라붙고,
+        <b>②⚡ 깜짝 칭찬</b>은 버튼 한 번으로 바로 +P를 선물합니다(로그에 남아 자동 반영돼요).<br/>
+<b>③🎂 2배 데이</b>는 생신·명절을 지정하면 그 날 미션 포인트가 2배로 더해지고(위키 생신일은 자동),
+        <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br/>
+<b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
+        <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br/>
+        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +3P</b>가 정산 없이 자동 적립됩니다.<br/>
+<b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>10. 🏠 화면 구성 (탭 · 2열)</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>10. 🏠 화면 구성 (탭 · 2열)</h4>
+<p class="settings-note">
         화면 위쪽에 <b>🏠 대시보드 · ✏️ 손글씨 편지 · 🐾 포켓몬 놀이방</b> 세 탭이 있습니다. 태블릿을 옆으로 눕히면
         <b>한 줄 상단바</b>에 제목·시계·날짜·현재 기온·기능 버튼이 모이고, 왼쪽에는 <b>오늘 날씨·옷차림 · 월간 달력/위키 · 학교 · 사고 싶은 것 · 타이머</b>, 오른쪽에는 <b>아이 미션 · 미션 도장판</b>이 놓이는 <b>2열</b> 화면으로 펼쳐집니다.
         좁은 화면에서는 카드가 위에서 아래로 쌓이며, 앱 버전은 오른쪽 아래에 표시됩니다.
       </p>
-    </div>
-    <div class="settings-section">
-      <h4>11. 🔔 알람</h4>
-      <p class="settings-note">
+</div>
+<div class="settings-section">
+<h4>11. 🔔 알람</h4>
+<p class="settings-note">
         오늘 아직 안 끝낸 미션은 <b>마감 5분 전</b>과 <b>정각</b>, 오늘 가족 일정·구글 캘린더 일정(시각이 있는 것)은 <b>10분 전</b>과 <b>정각</b>에
-        화면 가운데 알람 창과 차임벨이 나옵니다. 이미 끝낸 미션·일정은 울리지 않고, 같은 시각에 겹치면 한 창에 나란히 보여 주며 소리는 한 번만 울립니다.<br />
+        화면 가운데 알람 창과 차임벨이 나옵니다. 이미 끝낸 미션·일정은 울리지 않고, 같은 시각에 겹치면 한 창에 나란히 보여 주며 소리는 한 번만 울립니다.<br/>
         상단 <b>🔔 알람 소리</b>는 아이 잠금 화면에서도 보이고, 누르면 켜고 끌 수 있습니다. 브라우저가 소리를 허락하려면 첫 한 번의 터치가 필요해서,
-        그 전에는 버튼에 <b>1번 터치</b> 배지가 보입니다(화면 아무 곳이나 한 번 눌러도 풀립니다).<br />
-        <b>맞춤 알람</b>(예: 밥 먹기 끝 07:15, 준비 끝 08:05)은 ⚙️ 설정 → <b>🔔 알람</b>에서 보호자가 추가·수정·삭제하고 요일을 바꿀 수 있으며, 정한 시각(정각)에 울립니다.
+        그 전에는 버튼에 <b>1번 터치</b> 배지가 보입니다(화면 아무 곳이나 한 번 눌러도 풀립니다).<br/>
+<b>맞춤 알람</b>(예: 밥 먹기 끝 07:15, 준비 끝 08:05)은 ⚙️ 설정 → <b>🔔 알람</b>에서 보호자가 추가·수정·삭제하고 요일을 바꿀 수 있으며, 정한 시각(정각)에 울립니다.
         대기화면에서도 알람 창은 그대로 뜨고, <b>확인</b>을 눌러도 대기화면이 닫히지 않습니다.
       </p>
-    </div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="helpClose">알겠어요</button>
-    </div>
-  </div>
 </div>
-
+<div class="modal-actions">
+<button class="btn primary" type="button" id="helpClose">알겠어요</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 기록 보기 (오늘 완료 · 포인트 사용) ======================= -->
-<div class="modal" id="listModal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="listTitle">
-    <div class="list-modal-head">
-      <h3 id="listTitle">🕒 오늘 완료 이력</h3>
-      <span class="pill" id="logCount">아직 없어요</span>
-      <span class="pill" id="useCount" hidden>아직 없어요</span>
-      <button class="btn icon sm ghost" type="button" id="listClose" aria-label="닫기">✕</button>
-    </div>
-    <div class="log-list tall" id="todayLog"></div>
-    <div class="log-list tall" id="useList" hidden></div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="listCloseBtn">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="listModal" hidden="">
+<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="listTitle">
+<div class="list-modal-head">
+<h3 id="listTitle">🕒 오늘 완료 이력</h3>
+<span class="pill" id="logCount">아직 없어요</span>
+<span class="pill" id="useCount" hidden="">아직 없어요</span>
+<button class="btn icon sm ghost" type="button" id="listClose" aria-label="닫기">✕</button>
 </div>
-
+<div class="log-list tall" id="todayLog"></div>
+<div class="log-list tall" id="useList" hidden=""></div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="listCloseBtn">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 🎪 가족 이벤트 센터 (6종) ======================= -->
-<div class="modal" id="eventModal" hidden>
-  <div class="modal-card wide ev-modal" role="dialog" aria-modal="true" aria-labelledby="evTitle">
-    <div class="ev-modal-head">
-      <div>
-          <h3 id="evTitle">🎪 가족 이벤트</h3>
-          <p class="hint">콤보 · 깜짝 보너스 · 2배 데이 · 비밀 상자 · 상장 · 뽑기</p>
-        </div>
-        <button class="btn icon sm ghost" type="button" id="evClose" aria-label="닫기">✕</button>
-    </div>
-    <div class="ev-body" id="eventBody"></div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="evCloseBtn">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="eventModal" hidden="">
+<div class="modal-card wide ev-modal" role="dialog" aria-modal="true" aria-labelledby="evTitle">
+<div class="ev-modal-head">
+<div>
+<h3 id="evTitle">🎪 가족 이벤트</h3>
+<p class="hint">콤보 · 깜짝 보너스 · 2배 데이 · 비밀 상자 · 상장 · 뽑기</p>
 </div>
-
+<button class="btn icon sm ghost" type="button" id="evClose" aria-label="닫기">✕</button>
+</div>
+<div class="ev-body" id="eventBody"></div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="evCloseBtn">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= 모달: 🏆 월말 MVP 상장 ======================= -->
-<div class="modal" id="mvpModal" hidden>
-  <div class="modal-card wide mvp-modal" role="dialog" aria-modal="true" aria-labelledby="mvpTitle">
-    <div class="ev-modal-head">
-      <h3 id="mvpTitle">🏆 이번 달 상장</h3>
-      <button class="btn icon sm ghost" type="button" id="mvpClose" aria-label="닫기">✕</button>
-    </div>
-    <div class="mvp-body" id="mvpBody"></div>
-    <div class="modal-actions">
-      <button class="btn primary" type="button" id="mvpCloseBtn">닫기</button>
-    </div>
-  </div>
+<div class="modal" id="mvpModal" hidden="">
+<div class="modal-card wide mvp-modal" role="dialog" aria-modal="true" aria-labelledby="mvpTitle">
+<div class="ev-modal-head">
+<h3 id="mvpTitle">🏆 이번 달 상장</h3>
+<button class="btn icon sm ghost" type="button" id="mvpClose" aria-label="닫기">✕</button>
 </div>
-
+<div class="mvp-body" id="mvpBody"></div>
+<div class="modal-actions">
+<button class="btn primary" type="button" id="mvpCloseBtn">닫기</button>
+</div>
+</div>
+</div>
 <!-- ======================= ⏰ 알람 창 (대기화면 위에도 뜨는 알림) ======================= -->
-<div class="alarm-pop" id="alarmPop" hidden role="alertdialog" aria-modal="false" aria-live="assertive" aria-labelledby="alarmPopTitle">
-  <div class="alarm-card">
-    <div class="alarm-head">
-      <span class="alarm-ring" aria-hidden="true">⏰</span>
-      <b id="alarmPopTitle">알람</b>
-      <span class="alarm-at" id="alarmPopTime"></span>
-    </div>
-    <ul class="alarm-msgs" id="alarmPopMsgs"></ul>
-    <p class="alarm-hint" id="alarmPopHint" hidden></p>
-    <button class="btn primary alarm-ok" id="alarmPopOk" type="button">확인</button>
-  </div>
+<div class="alarm-pop" id="alarmPop" hidden="" role="alertdialog" aria-modal="false" aria-live="assertive" aria-labelledby="alarmPopTitle">
+<div class="alarm-card">
+<div class="alarm-head">
+<span class="alarm-ring" aria-hidden="true">⏰</span>
+<b id="alarmPopTitle">알람</b>
+<span class="alarm-at" id="alarmPopTime"></span>
 </div>
-
+<ul class="alarm-msgs" id="alarmPopMsgs"></ul>
+<p class="alarm-hint" id="alarmPopHint" hidden=""></p>
+<button class="btn primary alarm-ok" id="alarmPopOk" type="button">확인</button>
+</div>
+</div>
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 <div id="confetti" aria-hidden="true"></div>
-<div class="levelup" id="levelup" hidden></div>
-
+<div class="levelup" id="levelup" hidden=""></div>
 <script src="legacy-sync-guard.js?v=1"></script>
 <script src="parent-session-guard.js?v=1"></script>
 <script src="standby-guard.js?v=2"></script>
@@ -1021,12 +942,12 @@ html.app-booting #appBootStatus{position:fixed;inset:0;z-index:40000;display:fle
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
 <script src="stamp-gift.js?v=auto-earned-20261122-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
-<script src="app-dex-integrated.js?v=bonus-copy-20261122-1"></script>
+<script src="app-dex-integrated.js?v=current-default-20261122-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
 <script type="module" src="firebase-boot.js?v=stars-board-clock-20261122-1"></script>
-<script src="single-screen.js?v=stars-board-clock-20261122-1"></script>
-<script src="dashboard-refresh.js?v=partner-placement-20261122-1"></script>
+<script src="single-screen.js?v=current-default-20261122-1"></script>
+<script src="dashboard-refresh.js?v=current-default-20261122-1"></script>
 <script src="quiz-battle.js?v=5"></script>
 <script>
   // 퀴즈 배틀 모듈 초기화 — 퀴즈 배틀 탭의 마운트에 한 번만
@@ -1048,14 +969,12 @@ html.app-booting #appBootStatus{position:fixed;inset:0;z-index:40000;display:fle
     update();
   })();
 </script>
-<script src="pokemon-expansion.js?v=integrated-20261121" defer></script>
-<script src="dex-wide.js?v=20261121-1" defer></script>
-<script src="mission-card-interaction.js?v=stars-board-clock-20261122-1" defer></script>
-<script src="selected-dashboard.js?v=points-desc-20261122-1" defer></script>
-<script src="mission-point-art.js?v=20261121-3" defer></script>
-<script src="safe-refresh.js?v=20261121-1" defer></script>
-<script src="dashboard-icons.js?v=20261121-1" defer></script>
+<script src="pokemon-expansion.js?v=integrated-20261121" defer=""></script>
+<script src="dex-wide.js?v=20261121-1" defer=""></script>
+<script src="mission-card-interaction.js?v=stars-board-clock-20261122-1" defer=""></script>
+<script src="selected-dashboard.js?v=current-default-20261122-1" defer=""></script>
+<script src="mission-point-art.js?v=20261121-3" defer=""></script>
+<script src="safe-refresh.js?v=20261121-1" defer=""></script>
+<script src="dashboard-icons.js?v=20261121-1" defer=""></script>
 </body>
 </html>
-
-                                                                        
