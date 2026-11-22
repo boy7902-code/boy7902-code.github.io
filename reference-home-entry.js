@@ -19,6 +19,14 @@
   const calendar=document.createElement('button');calendar.type='button';calendar.id='referenceCalendarEntry';calendar.textContent='가족 달력 · 위키 열기 ↗';
   agenda.append(title,text,calendar);grid.before(agenda);
   const growth=document.createElement('button');growth.type='button';growth.id='referenceGrowthEntry';growth.textContent='성장 기록 전체 ↗';head.append(growth);document.body.classList.add('reference-home-ready');
+  const choreHead=document.querySelector('#cardChores>.card-head'),missionTitle=document.querySelector('#tChores'),missionAll=document.querySelector('#allMissionsBtn'),missionArea=document.querySelector('#cardChores .mission-area'),partner=document.querySelector('#cardChores .char-panel'),dex=document.querySelector('#dexOpenBtn'),pager=document.querySelector('#cardChores .width-access-tools');
+  if(choreHead&&missionTitle&&missionAll&&missionArea&&partner&&dex&&pager){
+   const titleBlock=missionTitle.parentElement,headline=document.createElement('div'),titleRow=document.createElement('div');
+   headline.className='reference-mission-headline';titleRow.className='reference-mission-heading';
+   missionTitle.before(titleRow);titleRow.append(missionTitle,missionAll);headline.append(titleBlock,pager);choreHead.prepend(headline);partner.prepend(dex);
+   const alignMissionColumn=()=>{const width=missionArea.getBoundingClientRect().width;if(width>0)choreHead.style.setProperty('--reference-mission-column',width+'px');};
+   new ResizeObserver(alignMissionColumn).observe(missionArea);requestAnimationFrame(alignMissionColumn);
+  }
   function render(){
    const d=window.FamilyBoardClock?.now?.()||new Date(),today=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
    const events=(FamilyDashboard.state.events||[]).filter(e=>e.date===today&&!e.done).slice().sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
