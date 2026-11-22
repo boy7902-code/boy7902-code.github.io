@@ -65,3 +65,11 @@ test('standby no-photo rest copy is absent and standby household title is Suho',
  assert.match(source,/if \(\$\('#sbSub'\)\) \$\('#sbSub'\)\.textContent = '';/);
  assert.match(source,/if \(\$\('#sbTitle'\)\) \$\('#sbTitle'\)\.textContent = '수호네';/);
 });
+
+test('standby incomplete missions match dashboard priority and preserve completed count',()=>{
+ const missions=[{id:'low',points:1},{id:'tie',points:2},{id:'early',points:2,due:'08:00'},{id:'early2',points:2,due:'08:05'},{id:'high',points:3},{id:'done',points:9,doneOn:'2026-11-23'}];
+ const c={missions,S:{missions},todayStr:()=> '2026-11-23',MissionRewards:{maximumEarlyBonus:d=>d?2:0},Number};vm.createContext(c);
+ const expression=source.match(/const remaining = ([^;]+);/)[1];const before=JSON.stringify(missions);
+ assert.deepEqual(Array.from(vm.runInContext(expression,c),m=>m.id),['high','early','early2','tie','low']);
+ assert.equal(JSON.stringify(missions),before);
+});

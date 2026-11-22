@@ -665,7 +665,7 @@
 -      const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
 -      if (sig === sbMissionSig) return sbSyncPartner();
 +    const missions = S.missions.filter(m => m.member === KID_ID && missionOnDay(m, dow));
-+    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0));
++    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0)||Number(MissionRewards.maximumEarlyBonus(b.due)>0)-Number(MissionRewards.maximumEarlyBonus(a.due)>0)||S.missions.indexOf(a)-S.missions.indexOf(b));
 +    const limit = innerWidth <= 600 && innerHeight < 720 ? 2 : 3;
 +    const sig = JSON.stringify([missions.length, remaining.map(m=>[m.id,m.title,m.points]),limit]);
 +    if ($('#sbMission') && sig !== sbMissionSig) {
