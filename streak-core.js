@@ -129,6 +129,7 @@
      if(!rest&&(!m.days.length||m.days.includes(dow))&&day!==today){row.progress=0;row.cycleEarned=0;}
      continue;
     }
+    if(m.id==='ms-gyeonggo' && Number.isInteger(log.warningCount) && log.warningCount>0){row.progress=0;row.cycleEarned=0;continue;}
     if(row.progress===5){row.progress=0;row.cycleEarned=0;}
     row.progress++;row.cycleEarned+=Math.round(Number(log.earned));
     if(row.progress===5){const earnedSum=row.cycleEarned,amount=Math.round(earnedSum*0.3);row.completed++;row.lastAwardDate=day;row.total+=amount;row.progress=0;row.cycleEarned=0;bonuses.push({id:'mission-star_'+m.id+'_'+day,mid:m.id,date:day,amount,earnedSum});}
