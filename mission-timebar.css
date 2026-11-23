@@ -30,3 +30,5 @@
 .mission-card-timebar.soon .timebar-bonus-time{color:#b96c1b}
 #choreList>.chore.has-timebar .chore-main{padding-bottom:66px!important}
 @media(min-width:768px){.mission-card-timebar .timebar-bonus-time{font-size:16px;line-height:20px}}
+
+#choreList>.chore.has-timebar .chore-main{overflow:visible!important}
