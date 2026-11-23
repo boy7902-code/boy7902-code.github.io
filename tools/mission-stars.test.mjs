@@ -52,3 +52,11 @@ test('rest-day achievements count while rest-day misses preserve progress, inclu
  const missingRequired=C.compute(p,{logs:[sunday],today:'2026-11-24',holidays});assert.equal(missingRequired.byMission.a.progress,0);
  const dedup=C.compute(p,{logs:[...records,...records],today:'2026-11-26',holidays});assert.deepEqual(dedup,fifth);
 });
+
+test('warning partial points retain earnings but only zero warnings count toward stars; old records unchanged',()=>{
+ const p=C.observe({}, {date:'2026-11-22',missions:[{id:'ms-gyeonggo',member:'m3',days:[]}]});
+ const ls=['2026-11-23','2026-11-24','2026-11-26','2026-11-27','2026-11-30'].map((date,i)=>({...log(date),mid:'ms-gyeonggo',id:date+'warning',warningCount:i===2?1:0,earned:i===2?2:3}));
+ const r=C.compute(p,{logs:ls,today:'2026-11-30',holidays});assert.equal(r.total,0);assert.equal(r.byMission['ms-gyeonggo'].progress,2);
+ for(const n of [1,2,3]){const z=C.compute(p,{logs:[{...ls[0],warningCount:n,earned:3-n}],today:'2026-11-23',holidays});assert.equal(z.byMission['ms-gyeonggo'].progress,0);}
+ const historical=ls.map(({warningCount,...v})=>v);assert.equal(C.compute(p,{logs:historical,today:'2026-11-30',holidays}).total,4);
+});
