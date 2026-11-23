@@ -24,3 +24,9 @@
 #choreList>.chore.has-timebar .mission-card-timebar.soon .timebar-fill{background:linear-gradient(90deg,#d39839,#edb75d)}
 #choreList>.chore.has-timebar .chore-main{padding-bottom:46px!important}
 @media(prefers-reduced-motion:reduce){.mission-card-timebar .timebar-fill{transition:none}}
+
+/* Keep only the bonus-window countdown, in the former large-number slot. */
+.mission-card-timebar .timebar-bonus-time{font-size:20px;line-height:1.3;font-weight:900;font-variant-numeric:tabular-nums;color:#238460;white-space:nowrap}
+.mission-card-timebar.soon .timebar-bonus-time{color:#b96c1b}
+#choreList>.chore.has-timebar .chore-main{padding-bottom:66px!important}
+@media(min-width:768px){.mission-card-timebar .timebar-bonus-time{font-size:16px;line-height:20px}}

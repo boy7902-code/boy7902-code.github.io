@@ -23,10 +23,12 @@
     let bar=card.querySelector('.mission-card-timebar');
     const r=view([mission],date,seconds,d.getDay());
     if(!r){if(bar)bar.remove();card.classList.remove('has-timebar');continue;}
-    if(!bar){bar=document.createElement('section');bar.className='mission-card-timebar';bar.setAttribute('aria-label','미션 목표시간');bar.innerHTML='<div class="timebar-track" role="progressbar" aria-label="목표 전 30분 경과" aria-valuemin="0" aria-valuemax="100"><i class="timebar-fill"></i><i class="timebar-mark two"></i><i class="timebar-mark one"></i></div><div class="timebar-tier"></div>';card.querySelector('.chore-main').append(bar);}
+    if(!bar){bar=document.createElement('section');bar.className='mission-card-timebar';bar.setAttribute('aria-label','미션 목표시간');bar.innerHTML='<div class="timebar-bonus-time"></div><div class="timebar-track" role="progressbar" aria-label="목표 전 30분 경과" aria-valuemin="0" aria-valuemax="100"><i class="timebar-fill"></i><i class="timebar-mark two"></i><i class="timebar-mark one"></i></div><div class="timebar-tier"></div>';card.querySelector('.chore-main').append(bar);}
     bar.classList.toggle('soon',r.remaining<=300);
     bar.querySelector('.timebar-track').setAttribute('aria-valuetext',fmt(r.remaining)+' 남음');
-    bar.querySelector('.timebar-tier').textContent=r.early?'조기 +'+r.early+'P · '+fmt(r.tierRemaining):'기본 포인트 적립';
+    bar.querySelector('.timebar-bonus-time').textContent=r.early?fmt(r.tierRemaining):'';
+    bar.querySelector('.timebar-bonus-time').hidden=!r.early;
+    bar.querySelector('.timebar-tier').textContent=r.early?'조기 +'+r.early+'P 남은 시간':'기본 포인트 적립';
     bar.querySelector('.timebar-fill').style.width=r.progress+'%';bar.querySelector('.timebar-track').setAttribute('aria-valuenow',String(Math.round(r.progress)));
     card.classList.add('has-timebar');
    }
