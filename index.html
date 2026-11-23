@@ -52,7 +52,8 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .sele
 body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower #wishList:has(>.wish-item:nth-child(3)):not(:has(>.wish-item:nth-child(4)))::after{content:'';display:block;min-height:48px;border:1px dashed #d9ccb5;border-radius:8px;opacity:.65}
 }
 </style>
-</head>
+<style> .warning-score-dialog{border:0;border-radius:24px;padding:28px;background:#fffaf0;color:#493f33;max-width:680px;width:calc(100% - 64px);box-sizing:border-box}.warning-score-dialog::backdrop{background:#151b2a99}.warning-score-dialog h2{font-size:24px;margin:0 30px 10px 0}.warning-score-dialog p{line-height:1.6}.warning-close{float:right;border:0;background:none;font-size:27px}.warning-score-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:24px 0}.warning-choice{border:2px solid #e7dcc5;background:white;border-radius:16px;padding:18px 4px;display:flex;flex-direction:column;gap:12px;align-items:center;color:inherit;font:inherit}.warning-choice b{font-size:27px}.warning-choice[aria-pressed=true]{background:#fff0ba;border-color:#bf9a4c}.warning-save{background:#937047;color:white;border:0;border-radius:12px;padding:14px 22px;font:inherit;font-weight:700}.warning-save:disabled{opacity:.4}.warning-cancel{border:0;background:none;padding:14px;font:inherit;color:inherit}.warning-result{font-size:24px;font-weight:700}.warning-star-note{font-size:14px;color:#857052}@media(max-width:500px){.warning-score-options{grid-template-columns:repeat(2,minmax(0,1fr))}.warning-score-dialog{padding:22px;width:calc(100% - 28px)}}
+</style></head>
 <body data-parent="off" class="dashboard-refresh"><script>document.body.classList.add(matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches?'selected-phone':'selected-dashboard');</script>
 
 <div class="app">
@@ -943,7 +944,7 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .sele
 <script src="fullscreen-guard.js?v=1"></script>
 <script src="mission-rewards.js?v=deadlines-current-20261123-1"></script>
 <script src="holiday-core.js?v=official-20261122-1"></script>
-<script src="streak-core.js?v=deadlines-current-20261123-1"></script>
+<script src="streak-core.js?v=warning-partial-20261124-1&old=deadlines-current-20261123-1"></script>
 <script src="dashboard-insights.js?v=1"></script>
 <script src="pokemon-evolution-effect.js?v=family-refresh-20261121-1"></script>
 <script src="pokemon-encyclopedia-data.js?v=integrated-20261121"></script>
@@ -957,13 +958,13 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .sele
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
 <script src="praise-core.js?v=praise-20261122-1"></script>
 <script src="praise-gifts.js?v=family-final-20261122-1"></script>
-<script src="stamp-gift.js?v=retire-stamp-20261123-1"></script>
+<script src="stamp-gift.js?v=warning-partial-20261124-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
 <script src="mission-deadline-migration.js?v=deadlines-current-20261123-1"></script>
-<script src="app-dex-integrated.js?v=retire-stamp-20261123-1"></script>
+<script src="app-dex-integrated.js?v=warning-partial-20261124-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=retire-stamp-20261123-1"></script>
+<script type="module" src="firebase-boot.js?v=warning-partial-20261124-1"></script>
 <script src="single-screen.js?v=current-default-20261122-1"></script>
 <script src="dashboard-refresh.js?v=current-default-20261122-1"></script>
 <script src="quiz-battle.js?v=5"></script>
