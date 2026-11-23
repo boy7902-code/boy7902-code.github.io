@@ -596,3 +596,11 @@ test('stamp reward boundary preserves old 3P, progress and future 1P without dup
  const twenty=advanceStampBoard({logs:[...logs,...logs]});assert.equal(twenty.progress,0);assert.equal(twenty.completed,2);assert.equal(twenty.bonusPoints,4);assert.equal(twenty.bonusByDate['2026-11-23'],4);
  assert.deepEqual(advanceStampBoard({logs}),twenty);
 });
+
+ test('retired stamp board freezes seven fragments and past earnings without changing completion records',()=>{
+ const before=new Date('2026-11-23T09:17:12+09:00'),after=new Date('2026-11-23T09:17:13+09:00');
+ const logs=Array.from({length:17},(_,i)=>({id:'keep'+i,date:'2026-11-23',at:'08:'+String(i).padStart(2,'0'),mid:'keep'+i,member:'m3',settled:false,createdAt:before,earned:1}));
+ const a=advanceStampBoard({logs});assert.equal(a.progress,7);assert.equal(a.bonusPoints,1);
+ const all=[...logs,...Array.from({length:13},(_,i)=>({id:'future'+i,date:'2026-11-24',at:'08:00',mid:'future'+i,member:'m3',settled:false,createdAt:after,earned:1}))];
+ const raw=JSON.stringify(all);assert.deepEqual(advanceStampBoard({logs:all}),a);assert.equal(JSON.stringify(all),raw);
+ });
