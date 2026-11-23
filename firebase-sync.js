@@ -29,6 +29,7 @@ export const FINAL_P = 200;              // 최종 진화 기준 경험치 (앱�
 export const STAMP_START_AT = '2026-11-19T08:22:29+09:00';
 export const STAMPS_PER_BOARD = 10;
 export const STAMP_BONUS_POINTS = 1;
+export const STAMP_RETIRED_AT = '2026-11-23T09:17:13+09:00';
 export const STAMP_REWARD_CHANGED_AT = '2026-11-23T07:30:33+09:00';
 export const FAMILY_ROOT = 'households/main';
 export const SUMMARY_PATH = `${FAMILY_ROOT}/stats/summary`;
@@ -97,7 +98,7 @@ function timestampMillis(value) {
   return typeof value === 'string' ? Date.parse(value) : NaN;
 }
 
-/** Pending successful mission logs only; stamps count completions, not their point values. */
+/** Historical pending successes only. Retirement freezes new stamps without rewriting logs or earned rewards. */
 export function advanceStampBoard({ progress = 0, completed = 0, logs = [], startAt = STAMP_START_AT } = {}) {
   let nextProgress = Math.min(STAMPS_PER_BOARD - 1, intOf(progress));
   let nextCompleted = intOf(completed);
@@ -107,7 +108,7 @@ export function advanceStampBoard({ progress = 0, completed = 0, logs = [], star
     .filter((log) => {
       if (!log || log.settled !== false || log.kind === 'bonus') return false;
       const createdAt = timestampMillis(log.createdAt);
-      if (!Number.isFinite(createdAt) || createdAt < cutoff) return false;
+      if (!Number.isFinite(createdAt) || createdAt < cutoff || createdAt >= Date.parse(STAMP_RETIRED_AT)) return false;
       const source = String(log.mid || log.id || '');
       return !/^(?:bonus|combo|dbl|surprise|secret|stamp)_/i.test(source);
     })
@@ -1597,4 +1598,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-     }
+}
