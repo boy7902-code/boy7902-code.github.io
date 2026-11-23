@@ -309,12 +309,14 @@ export function reconcileMissionCompletions(missions, logs, date, kidId = KID_ID
     if (log) {
       mission.doneOn = date;
       mission.doneAt = log.at;
+      if(Number.isInteger(log.warningCount)) mission.warningCount=log.warningCount; else delete mission.warningCount;
       mission.earned = Math.max(0, Math.round(+log.earned || 0));
       mission.goalMet = !!log.goalMet;
       mission.earlyBonusEarned = Math.max(0, Math.round(+log.earlyBonus || 0));
     } else if (mission.doneOn === date) {
       mission.doneOn = null;
       mission.doneAt = '';
+      delete mission.warningCount;
       mission.earned = 0;
       mission.goalMet = false;
       mission.earlyBonusEarned = 0;
@@ -337,6 +339,7 @@ export function logDocOf(l, { uid, stamp }) {
     bonus: intOf(l.bonus),
     earlyBonus: intOf(l.earlyBonus),
     earned: intOf(l.earned),
+    ...(Number.isInteger(l.warningCount) ? {warningCount:l.warningCount} : {}),
     due: isHhmm(l.due) ? l.due : '',
     goalMet: !!l.goalMet,
     settled: true,                 // 이관 시점에 이미 화면 합계에 반영된 기록
@@ -836,10 +839,12 @@ export function createFamilySync(deps = {}) {
   }
 
   /* ---- 로그 payload (아이 기기) ---- */
-  function buildLogPayload(mission, { at, date, by, member } = {}) {
+  function buildLogPayload(mission, { at, date, by, member, warningCount } = {}) {
     const when = at || kstHhmm(nowFn());
     const day = date || kstTodayStr(nowFn());
-    const base = intOf(mission.points);
+    const warning = mission.id === "ms-gyeonggo";
+    if(warning && (!Number.isInteger(warningCount)||warningCount<0||warningCount>3)) throw new Error("경고 횟수를 골라 주세요.");
+    const base = warning ? 3-warningCount : intOf(mission.points);
     if (mission.weekendDue && !globalThis.FamilyHolidays?.covers(day)) throw new Error('공휴일 자료를 확인한 뒤 다시 완료해 주세요.');
     const due = globalThis.MissionRewards.deadlineOf(mission, day);
     const reward = globalThis.MissionRewards.calculateMissionReward({ points: base, due }, when);
@@ -851,6 +856,7 @@ export function createFamilySync(deps = {}) {
       id: `${day}_${mission.id}_${who}`,
       date: day, at: when, mid: mission.id, title: String(mission.title || ''),
       member: who, base, bonus, earlyBonus, earned: base + earlyBonus, due, goalMet,
+      ...(warning ? {warningCount} : {}),
       settled: false,
       createdAt: sdk.serverTimestamp(),
       createdBy: by || '',
@@ -858,14 +864,14 @@ export function createFamilySync(deps = {}) {
   }
 
   /** 아이 체크 → 로그 쓰기. 자정/지연 거절이면 안내용 분류를 돌려주고, 재시도로 살아납니다. */
-  async function writeLog(mission, { at, date, by, member, retries = 1 } = {}) {
+  async function writeLog(mission, { at, date, by, member, warningCount, retries = 1 } = {}) {
     const session = activeSession({ by, r: role });
     if (!session || (session.role !== 'child' && session.role !== 'parent')) return { ok: false, cancelled: true, error: sessionChanged() };
     const today = kstTodayStr(nowFn());
     let attempt = 0;
     let lastErr = null;
     while (attempt <= retries) {
-      const payload = buildLogPayload(mission, { at: attempt === 0 ? at : undefined, date, by, member });
+      const payload = buildLogPayload(mission, { at: attempt === 0 ? at : undefined, date, by, member, warningCount });
       try {
         if (!sessionIsCurrent(session.generation, session.role, session.uid)) return { ok: false, cancelled: true, error: sessionChanged(), payload, attempts: attempt + 1 };
         await sdk.setDoc(docRef(pathOf(`logs/${logDocId(payload)}`)), payload);
