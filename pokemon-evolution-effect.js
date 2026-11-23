@@ -3,7 +3,7 @@
   'use strict';
   const ART = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
   let dialog, timers = [], previousFocus;
-  const VIDEO = {전기:'1-evolution-electric.mp4',물:'2-evolution-water.mp4'};
+  const VIDEO = {전기:'electric',물:'water'};
   function mediaType(data){
     if(data.hatch || data.from.egg || Number(data.from.id)===Number(data.to.id))return '';
     const info=root.PokemonEncyclopediaData?.species||{};
@@ -63,7 +63,7 @@
     let movie;
     if(cinematic){
       dialog.classList.add('pe-cinematic');
-      movie=node('video','pe-type-video');movie.src=VIDEO[type];movie.muted=true;movie.autoplay=true;movie.playsInline=true;movie.preload='auto';movie.setAttribute('aria-hidden','true');
+      movie=node('video','pe-type-video');movie.src=root.TypeEvolutionMedia?.[VIDEO[type]]||'';movie.muted=true;movie.autoplay=true;movie.playsInline=true;movie.preload='auto';movie.setAttribute('aria-hidden','true');
       art.prepend(movie);
       const mute=node('button','pe-audio','소리 켜기');mute.type='button';mute.addEventListener('click',()=>{movie.muted=!movie.muted;mute.textContent=movie.muted?'소리 켜기':'소리 끄기';});
       const skip=node('button','pe-skip','건너뛰기');skip.type='button';skip.addEventListener('click',()=>{reveal();movie.pause();skip.hidden=true;});
