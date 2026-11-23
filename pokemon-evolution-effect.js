@@ -3,11 +3,19 @@
   'use strict';
   const ART = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
   let dialog, timers = [], previousFocus;
+  const VIDEO = {전기:'electric',물:'water'};
+  function mediaType(data){
+    if(data.hatch || data.from.egg || Number(data.from.id)===Number(data.to.id))return '';
+    const info=root.PokemonEncyclopediaData?.species||{};
+    const to=data.to.types||info[data.to.id]?.types||[];
+    const from=data.from.types||info[data.from.id]?.types||[];
+    return [...to,...from].find(t=>VIDEO[t])||'';
+  }
   const later = (fn, delay) => { timers.push(setTimeout(fn, delay)); };
   function clearTimers() { timers.forEach(clearTimeout); timers = []; }
   function close() {
     clearTimers();
-    if (dialog) { dialog.remove(); dialog = null; }
+    if (dialog) { const v=dialog.querySelector('video');if(v){v.pause();v.removeAttribute('src');v.load();} dialog.remove(); dialog = null; }
     if (previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
   }
   function node(tag, cls, text) {
@@ -29,6 +37,7 @@
     if (!data || !data.from || !data.to || !(Number(data.to.id) > 0)) return;
     close(); previousFocus = document.activeElement;
     const reduced = root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const type=mediaType(data), cinematic=!!type&&!reduced;
     dialog = node('dialog', 'pe-dialog');
     dialog.setAttribute('aria-labelledby', 'pe-title');
     dialog.setAttribute('aria-describedby', 'pe-description');
@@ -51,13 +60,25 @@
     surface.append(rays, card); dialog.append(surface);
     dialog.addEventListener('cancel', e => { e.preventDefault(); close(); });
     const current = dialog;
+    let movie;
+    if(cinematic){
+      dialog.classList.add('pe-cinematic');
+      movie=node('video','pe-type-video');movie.src=root.TypeEvolutionMedia?.[VIDEO[type]]||'';movie.muted=true;movie.autoplay=true;movie.playsInline=true;movie.preload='auto';movie.setAttribute('aria-hidden','true');
+      art.prepend(movie);
+      const mute=node('button','pe-audio','소리 켜기');mute.type='button';mute.addEventListener('click',()=>{movie.muted=!movie.muted;mute.textContent=movie.muted?'소리 켜기':'소리 끄기';});
+      const skip=node('button','pe-skip','건너뛰기');skip.type='button';skip.addEventListener('click',()=>{reveal();movie.pause();skip.hidden=true;});
+      button.textContent='닫기';card.append(mute,skip);
+      movie.addEventListener('timeupdate',()=>{if(dialog!==current)return;const at=movie.currentTime;dialog.classList.toggle('pe-charging',at>=2.4&&at<3.25);if(at>=3.25)reveal();});
+      movie.addEventListener('ended',reveal,{once:true});movie.addEventListener('error',()=>{reveal();movie.hidden=true;},{once:true});
+      movie.play().catch(()=>{reveal();movie.hidden=true;});
+    }
     dialog.addEventListener('click', e => { if (e.target === current || e.target === surface) close(); });
     document.body.append(dialog); dialog.showModal(); button.focus();
     function reveal() {
-      if (dialog !== current) return;
+      if (dialog !== current || dialog.classList.contains('pe-revealed')) return;
       dialog.classList.add('pe-revealed');
       title.textContent = `${data.to.name} ${data.hatch ? '부화했어요!' : data.final ? '완성!' : '진화 완료!'}`;
-      if (!reduced) {
+      if (!reduced && !cinematic) {
         const confetti = node('div', 'pe-confetti'); confetti.setAttribute('aria-hidden', 'true');
         for (let i = 0; i < 24; i++) {
           const bit = node('i'); bit.style.setProperty('--x', `${(i * 43) % 100}%`);
@@ -66,9 +87,9 @@
         surface.append(confetti);
       }
     }
-    if (reduced) reveal(); else later(reveal, 1500);
+    if (reduced) reveal(); else if(cinematic)later(reveal,7000);else later(reveal,1500);
     // Auto-return is bounded, with an always-available keyboard/touch exit.
-    later(close, reduced ? 4500 : 6000);
+    later(close, reduced ? 4500 : cinematic ? 12000 : 6000);
   }
-  root.PokemonEvolutionEffect = Object.freeze({show, close});
+  root.PokemonEvolutionEffect = Object.freeze({show, close, mediaType});
 })(window);

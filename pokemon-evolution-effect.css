@@ -26,3 +26,20 @@
 @keyframes pe-fall {0% {transform:translateY(0) rotate(0);opacity:0;}10% {opacity:1;}100% {transform:translateY(600px) rotate(300deg);opacity:0;}}
 @media(max-width:480px) {.pe-surface {padding:18px 12px;min-height:min(550px,85dvh);}.pe-stage-card {padding:18px 15px;}.pe-art,.pe-art img {height:180px;width:180px;}.pe-art {margin:10px auto;}}
 @media(prefers-reduced-motion:reduce) {.pe-dialog * {animation:none!important;transition:none!important;}.pe-rays {display:none;}}
+
+/* Two type movies. Artwork stays dynamic for the actual evolution. */
+.pe-cinematic{width:min(900px,96vw);max-width:96vw;background:#07192a;color:white}
+.pe-cinematic .pe-surface{min-height:0;padding:12px;background:#07192a}
+.pe-cinematic .pe-stage-card{width:100%;padding:0;border:0;background:none;box-shadow:none}
+.pe-cinematic .pe-rays,.pe-cinematic .pe-badge,.pe-cinematic h2,.pe-cinematic .pe-description,.pe-cinematic .pe-note{display:none}
+.pe-cinematic .pe-art{aspect-ratio:848/484;width:100%;height:auto;margin:0 0 12px;overflow:hidden;border-radius:18px;isolation:isolate;background:#061b30}
+.pe-cinematic .pe-type-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.pe-cinematic .pe-art img{width:36%;height:64%;z-index:1;filter:drop-shadow(0 0 12px #90daff80)}
+.pe-cinematic .pe-before{animation:pe-type-float 3.25s ease-in-out both}
+.pe-cinematic.pe-charging .pe-before{filter:brightness(4) drop-shadow(0 0 18px #ffe7a6);transition:filter .7s}
+.pe-cinematic.pe-revealed .pe-after{animation:pe-type-reveal .75s ease-out both}
+.pe-cinematic .pe-close,.pe-cinematic .pe-info,.pe-cinematic .pe-audio,.pe-cinematic .pe-skip{display:inline-block;position:relative;z-index:5;min-height:44px;margin:3px;padding:9px 14px;border:1px solid #82acc1;border-radius:12px;background:#102c43;color:#f3f7ff;font:700 14px/1.4 system-ui;cursor:pointer}
+.pe-cinematic button[hidden]{display:none}
+@keyframes pe-type-float{from{opacity:0;transform:translateY(8px) scale(.86)}25%{opacity:1}70%{transform:translateY(-3px) scale(.96)}to{transform:translateY(-6px) scale(1.02)}}
+@keyframes pe-type-reveal{from{opacity:1;transform:scale(.84);filter:brightness(4) drop-shadow(0 0 18px #ffe7a6)}to{opacity:1;transform:scale(1);filter:drop-shadow(0 0 12px #90daff80)}}
+@media(prefers-reduced-motion:reduce){.pe-type-video{display:none!important}}
