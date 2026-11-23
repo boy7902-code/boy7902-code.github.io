@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="description" content="태블릿용 우리 가족 대시보드 — 시계·날씨·가족 일정·포켓몬 미션 포인트·미션 도장판·위시리스트·손글씨 편지."/>
+<meta name="description" content="태블릿용 우리 가족 대시보드 — 시계·날씨·가족 일정·포켓몬 미션 포인트·위시리스트·손글씨 편지."/>
 <meta name="theme-color" content="#f4f7ff"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
@@ -41,6 +41,17 @@
 <style>.cal-holiday{font-size:13px;color:#b13c42;padding:7px 12px;line-height:1.4;overflow-wrap:anywhere}</style>
 <link rel="stylesheet" href="reference-home-entry.css?v=header-safe-20261123-1">
 <link rel="stylesheet" href="mission-timebar.css?v=deadlines-current-20261123-1">
+<style>/* Approved retirement and four wishlist spaces. Saved items keep their order. */
+body .mission-stamp-board,body .selected-lower>.mission-stamp-board,#stampBoardOpenBtn,.selected-stamp-caption,#stampGift{display:none!important}
+@media(min-width:768px){
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower{grid-template-columns:minmax(0,1fr)!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower>#cardWish{grid-column:1/-1!important;padding-left:0!important;border-left:0!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower #wishList{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower #wishList>.wish-item:nth-child(-n+4){display:flex!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower #wishList>.wish-item:nth-child(n+5){display:none!important}
+body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .selected-lower #wishList:has(>.wish-item:nth-child(3)):not(:has(>.wish-item:nth-child(4)))::after{content:'';display:block;min-height:48px;border:1px dashed #d9ccb5;border-radius:8px;opacity:.65}
+}
+</style>
 </head>
 <body data-parent="off" class="dashboard-refresh"><script>document.body.classList.add(matchMedia('(max-width:767px), (max-height:599px) and (max-width:1023px)').matches?'selected-phone':'selected-dashboard');</script>
 
@@ -221,7 +232,7 @@
 </div>
 <button class="btn sm char-adopt parent-only" id="adoptBtn" disabled="" title="최종 진화(200P)를 마치면 새 포켓몬을 입양할 수 있어요">🔒 새 포켓몬 입양 (200P)</button>
 </div></section><section class="card"><button type="button" class="today-event-preview">가족 일정 · 학교 소식 보기 ›</button></section></div>
-<!-- 오른쪽 열 — 아이 미션·미션 도장판·타이머 -->
+<!-- 오른쪽 열 — 아이 미션·타이머 -->
 <div class="col col-right">
 <section class="card chores" id="cardChores" aria-labelledby="tChores">
 <div class="card-head">
@@ -836,8 +847,8 @@
         <b>④🎁 비밀 미션 상자</b>는 부모가 놓으면 아이 화면에 반짝이는 상자로 나타나 열어서 완료합니다.<br/>
 <b>⑤🏆 상장</b>은 이번 달 총점·달성률·포켓몬을 담고,
         <b>⑥🎰 뽑기</b>는 50P마다 한 장씩 가족 쿠폰을 뽑습니다(후보·확률은 보호자가 편집).<br/>
-        대시보드의 <b>미션 도장판</b>은 가족 공유 미션 성공 1회마다 도장 1개를 모읍니다. 일반 미션 포인트와는 별도이며, <b>10/10 완성 때만 +1P</b>가 정산 없이 자동 적립됩니다.<br/>
-<b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 도장판 보너스는 포인트 합계에 반영됩니다.
+        미션 도장판은 종료되었습니다. 이미 받은 포인트와 종료 전 도장 기록은 그대로 보관합니다.<br/>
+<b>📅 달력</b>은 <b>한 달</b>이 기본이며, 달력 안의 <b>2주</b> 버튼으로 바꿀 수 있습니다. 기존 이벤트 보너스는 <b>🕒 오늘</b> 기록에 남고, 기존에 받은 도장판 보너스는 포인트 합계에 남습니다.
       </p>
 </div>
 <div class="settings-section">
@@ -946,13 +957,13 @@
 <script src="pokemon-growth-paths.js?v=family-fit-20261121-1"></script>
 <script src="praise-core.js?v=praise-20261122-1"></script>
 <script src="praise-gifts.js?v=family-final-20261122-1"></script>
-<script src="stamp-gift.js?v=stamp-one-20261123-1"></script>
+<script src="stamp-gift.js?v=retire-stamp-20261123-1"></script>
 <script src="type-egg-core.js?v=20261121-1"></script>
 <script src="mission-deadline-migration.js?v=deadlines-current-20261123-1"></script>
-<script src="app-dex-integrated.js?v=stamp-copy-20261123-1"></script>
+<script src="app-dex-integrated.js?v=retire-stamp-20261123-1"></script>
 <script src="mission-fit.js?v=2"></script>
 <!-- Firebase Auth + Firestore. localhost에서는 demo 에뮬레이터만 사용합니다. -->
-<script type="module" src="firebase-boot.js?v=deadlines-current-20261123-1"></script>
+<script type="module" src="firebase-boot.js?v=retire-stamp-20261123-1"></script>
 <script src="single-screen.js?v=current-default-20261122-1"></script>
 <script src="dashboard-refresh.js?v=current-default-20261122-1"></script>
 <script src="quiz-battle.js?v=5"></script>
@@ -988,4 +999,4 @@
 <script src="weather-details.js?v=family-final-20261122-1" defer></script>
 <script src="mission-timebar.js?v=deadlines-current-20261123-1" defer></script>
 </body>
-</html>
+      </html>

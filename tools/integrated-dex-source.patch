@@ -840,7 +840,10 @@
 @@ -6164 +6192,2 @@
 -    const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 3)) : 0;
 +    const totalBonus = connected ? Math.max(0, Math.round(+stats.stampBonusPoints || completed * 1)) : 0;
-+    window.FamilyStampGift?.observe({ connected, completed, pendingBonus });
++    // Retired board: preserve calculations/history without new celebrations.
+@@ -6166 +6195 @@
+-    else if (connected && completed > stampCompletedSeen) {
++    else if (false && connected && completed > stampCompletedSeen) {
 @@ -6170,2 +6199 @@
 -      confetti(28);
 -      toast(`🎉 도장판 10/10 · +${newBoards * 3}P${pendingBonus ? ' 정산 대기' : ' 적립'}`, 'mint', 3600);
