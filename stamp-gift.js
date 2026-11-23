@@ -18,13 +18,7 @@
   dialog.querySelector('#stampGiftPoints').textContent='+'+reward+'P';dialog.querySelector('#stampGiftState').textContent='선물 포인트가 쏙 들어왔어! 정산 없이 자동 적립됐어.';
   dialog.querySelector('.stamp-gift-done').textContent=opened?'고마워!':'다음에 볼게';
  }
- function observe({connected,completed,pendingBonus}){
-  if(!connected)return;
-  const count=Math.max(0,Math.round(Number(completed)||0));pending=Math.max(0,Number(pendingBonus)||0);latest=count;
-  // First authoritative snapshot is a baseline, not a new completion. Refresh and another device never award anything here.
-  if(seen===null){seen=count;return;}
-  if(count>seen){const delta=count-seen;seen=count;reward=(dialog?.open?reward:0)+delta*1;opened=false;ensure();paint();if(!dialog.open){returnFocus=document.activeElement;dialog.showModal();}dialog.querySelector('.stamp-gift-box').focus();}
-  else if(dialog?.open)paint();
- }
+ // Retired: history remains in firebase-sync, no new presentation.
+ function observe(){}
  window.FamilyStampGift=Object.freeze({observe,reset});
 })();
