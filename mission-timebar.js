@@ -20,10 +20,10 @@
    const standby=document.getElementById('sbMission');
    if(standby){
     const next=view(FamilyDashboard.state.missions,date,seconds,d.getDay());
-    let timer=standby.querySelector('.sb-countdown');
+    let timer=document.querySelector('#standby .sb-countdown');
     if(!next){if(timer)timer.remove();}
     else{
-     if(!timer){timer=document.createElement('section');timer.className='sb-countdown';timer.setAttribute('aria-label','다음 미션 전체 마감까지 남은 시간');timer.innerHTML='<div class="sb-countdown-heading"><span class="sb-countdown-title"></span><span class="sb-countdown-due"></span></div><b class="sb-countdown-time"></b>';standby.prepend(timer);}
+     if(!timer){timer=document.createElement('section');timer.className='sb-countdown';timer.setAttribute('aria-label','다음 미션 전체 마감까지 남은 시간');timer.innerHTML='<div class="sb-countdown-heading"><span class="sb-countdown-title"></span><span class="sb-countdown-due"></span></div><b class="sb-countdown-time"></b>';standby.before(timer);}
      timer.classList.toggle('soon',next.remaining<=300);
      timer.querySelector('.sb-countdown-title').textContent=next.mission.title;
      timer.querySelector('.sb-countdown-due').textContent=next.due+' 마감';
