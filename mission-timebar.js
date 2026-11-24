@@ -46,7 +46,9 @@
     card.classList.add('has-timebar');
    }
   }
+  const standbyScreen=document.getElementById('standby');
+  if(standbyScreen)new MutationObserver(()=>{if(!standbyScreen.hidden)render();}).observe(standbyScreen,{attributes:true,attributeFilter:['hidden']});
   render();root.setInterval(render,1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
  }
- if(document.readyState==='complete')install();else root.addEventListener('load',install,{once:true});
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })(globalThis);
