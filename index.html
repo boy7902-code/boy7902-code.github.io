@@ -26,7 +26,7 @@
 <link rel="stylesheet" href="pokemon-encyclopedia.css?v=integrated-20261121"/>
 <link rel="stylesheet" href="pokemon-expansion.css?v=family-fit-20261121-1"/>
 <link rel="stylesheet" href="selected-dashboard.css?v=current-default-20261122-1"/>
-<link rel="stylesheet" href="standby-clock.css?v=standby-time-20261125-2"/>
+<link rel="stylesheet" href="standby-clock.css?v=standby-layout-20261125-3"/>
 <link rel="stylesheet" href="praise-gifts.css?v=family-final-20261122-1"/>
 <link rel="stylesheet" href="stamp-gift.css?v=20261121-1"/>
 <style>.mission-stage-note{font-size:11px;line-height:1.35;color:#626c85;white-space:normal;text-align:center;flex:none;max-width:100%;font-weight:600}.mission-stage-note[hidden]{display:none}</style>
@@ -473,7 +473,7 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .sele
 <!-- ======================= 대기화면 (거실 디지털 액자) ======================= -->
 <section class="standby clock-standby" id="standby" hidden="" aria-label="가족 시계 대기화면">
 <div class="sb-top"><div class="sb-brand"><b id="sbTitle">우리 가족 시계</b></div><button class="btn sb-exit" id="standbyExit">🏠 홈으로</button></div>
-<div class="sb-grid"><div class="sb-left"><div class="sb-clock"><span id="sbTime">--:--</span></div><div class="sb-date" id="sbDate"></div><div class="sb-weather" id="sbWeather"></div><div id="sbPrep" class="sb-prep"></div><section class="sb-mission" id="sbMission" aria-label="오늘 남은 미션, 보기 전용"></section><section class="sb-next" id="sbNext"></section></div>
+<div class="sb-grid"><div class="sb-left"><div class="sb-clock-weather"><div class="sb-clock-group"><div class="sb-clock"><span id="sbTime">--:--</span></div><div class="sb-date" id="sbDate"></div></div><div class="sb-weather-group"><div class="sb-weather" id="sbWeather"></div><div id="sbPrep" class="sb-prep"></div></div></div><section class="sb-mission" id="sbMission" aria-label="오늘 남은 미션, 보기 전용"></section><section class="sb-next" id="sbNext"></section></div>
 <div class="sb-right"><section class="family-photo-frame" aria-label="이 기기의 가족 사진"><img id="familyPhoto" hidden="" alt="가족 사진"/><div id="familyPhotoEmpty" hidden=""></div><div class="photo-controls"><span id="familyPhotoCount"></span><button class="btn sm" id="familyPhotoPause" aria-pressed="false">자동 넘김 일시정지</button><button class="btn sm" id="familyPhotoNext">다음 사진</button></div></section><div class="sb-poke" id="sbPoke"><div class="sb-stage" id="sbStage"></div><div class="sb-say" id="sbSay" aria-live="polite"></div></div><div class="sb-name" id="sbName"></div><div class="sb-sub" id="sbSub"></div></div></div>
 <div class="sb-tap" id="sbTap">화면을 연속 3번 터치하면 대시보드로 돌아가요</div>
 </section>
@@ -999,6 +999,6 @@ body.dashboard-refresh.selected-dashboard.reference-home-ready #cardChores .sele
 <script src="reference-home-entry.js?v=home-display-20261123-1" defer></script>
 <link rel="stylesheet" href="weather-details.css?v=family-final-20261122-1">
 <script src="weather-details.js?v=family-final-20261122-1" defer></script>
-<script src="mission-timebar.js?v=standby-time-20261125-2" defer></script>
+<script src="mission-timebar.js?v=standby-time-20261125-3" defer></script>
 </body>
       </html>

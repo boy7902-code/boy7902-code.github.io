@@ -24,3 +24,20 @@
 @media(min-width:901px) and (max-height:650px){.clock-standby .sb-clock{font-size:76px}.clock-standby .sb-date{font-size:16px;margin-top:3px}.clock-standby .sb-weather{margin-top:6px}.clock-standby .sb-wx-now b,.clock-standby .sb-wx-ico{font-size:25px}.clock-standby .sb-prep{margin-top:4px}.clock-standby .sb-mission{margin-top:7px;padding:8px 12px}.clock-standby .sb-remaining{font-size:14px;gap:2px}.clock-standby .sb-rem-label{margin-bottom:4px}.clock-standby .sb-m-head{margin-bottom:5px}.clock-standby .sb-more{margin-top:4px}.clock-standby .sb-next{margin-top:7px;padding-top:6px}.clock-standby .sb-next b{font-size:17px}}
 
 #standby .sb-countdown{flex:0 0 auto;margin:10px 0 -6px;padding:8px 12px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff08}
+
+/* Keep the clock and weather beside each other, with content anchored below the header. */
+#standby.clock-standby .sb-left{justify-content:flex-start;overflow:auto;min-height:0;padding:6px 0 0}
+#standby.clock-standby .sb-clock-weather{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:center;flex:0 0 auto;min-width:0}
+#standby.clock-standby .sb-clock-group,#standby.clock-standby .sb-weather-group{min-width:0}
+#standby.clock-standby .sb-clock{font-size:clamp(62px,9vw,120px);line-height:1.05}
+#standby.clock-standby .sb-date{font-size:clamp(12px,1.5vw,19px);white-space:normal}
+#standby.clock-standby .sb-weather{margin-top:0}
+#standby.clock-standby .sb-prep{font-size:12px;white-space:normal;line-height:1.4}
+#standby.clock-standby .sb-right{display:flex;flex-direction:column;flex-wrap:nowrap;gap:0;justify-content:center}
+#standby.clock-standby .sb-poke{margin:0 0 32px;flex:0 0 auto}
+#standby.clock-standby .sb-name{position:static!important;transform:none!important;line-height:1.4;margin:0!important;padding-top:10px;flex:0 0 auto}
+@media(max-width:900px) and (orientation:landscape){#standby.clock-standby .sb-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:20px}#standby.clock-standby .sb-clock{font-size:64px}#standby.clock-standby .sb-wx-now b,#standby.clock-standby .sb-wx-ico{font-size:23px}#standby.clock-standby .sb-stage{width:100%;height:100%}#standby.clock-standby .sb-poke{width:170px;height:170px;margin-bottom:18px}#standby.clock-standby .sb-name{font-size:20px}}
+@media(max-width:900px) and (orientation:portrait){#standby.clock-standby .sb-grid{grid-template-rows:minmax(0,1fr) 190px}#standby.clock-standby .sb-poke{width:130px;height:130px;margin-bottom:10px}#standby.clock-standby .sb-name{font-size:20px}}
+@media(max-width:600px){#standby.clock-standby .sb-grid{grid-template-rows:minmax(0,1fr) 142px}#standby.clock-standby .sb-clock-weather{gap:12px}#standby.clock-standby .sb-clock{font-size:clamp(48px,14vw,70px)}#standby.clock-standby .sb-date{font-size:12px}#standby.clock-standby .sb-wx-now b,#standby.clock-standby .sb-wx-ico{font-size:23px}#standby.clock-standby .sb-wx-desc{font-size:12px}#standby.clock-standby .sb-prep{font-size:10px}#standby.clock-standby .sb-poke{width:90px;height:90px;margin-bottom:8px}#standby.clock-standby .sb-name{font-size:17px;padding-top:4px}}
+#standby.clock-standby .sb-stage{overflow:hidden;min-height:0!important;min-width:0!important}
+#standby.clock-standby .sb-stage img{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-height:0!important;min-width:0!important;object-fit:contain!important;margin:0!important;padding:0!important;transform:none!important}
