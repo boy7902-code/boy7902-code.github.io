@@ -17,6 +17,19 @@
   const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
   function render(){
    const d=root.FamilyBoardClock.now(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'),seconds=d.getHours()*3600+d.getMinutes()*60+d.getSeconds();
+   const standby=document.getElementById('sbMission');
+   if(standby){
+    const next=view(FamilyDashboard.state.missions,date,seconds,d.getDay());
+    let timer=standby.querySelector('.sb-countdown');
+    if(!next){if(timer)timer.remove();}
+    else{
+     if(!timer){timer=document.createElement('section');timer.className='sb-countdown';timer.setAttribute('aria-label','다음 미션 전체 마감까지 남은 시간');timer.innerHTML='<div class="sb-countdown-heading"><span class="sb-countdown-title"></span><span class="sb-countdown-due"></span></div><b class="sb-countdown-time"></b>';standby.prepend(timer);}
+     timer.classList.toggle('soon',next.remaining<=300);
+     timer.querySelector('.sb-countdown-title').textContent=next.mission.title;
+     timer.querySelector('.sb-countdown-due').textContent=next.due+' 마감';
+     timer.querySelector('.sb-countdown-time').textContent=fmt(next.remaining)+' 남음';
+    }
+   }
    for(const card of document.querySelectorAll('#choreList>.chore')){
     const mission=FamilyDashboard.state.missions.find(m=>m.id===card.dataset.id);
     if(!mission)continue;
