@@ -27,7 +27,7 @@
 @media(max-width:480px) {.pe-surface {padding:18px 12px;min-height:min(550px,85dvh);}.pe-stage-card {padding:18px 15px;}.pe-art,.pe-art img {height:180px;width:180px;}.pe-art {margin:10px auto;}}
 @media(prefers-reduced-motion:reduce) {.pe-dialog * {animation:none!important;transition:none!important;}.pe-rays {display:none;}}
 
-/* Two type movies. Artwork stays dynamic for the actual evolution. */
+/* Type movies. Artwork stays dynamic for the actual evolution. */
 .pe-cinematic{width:min(900px,96vw);max-width:96vw;background:#07192a;color:white}
 .pe-cinematic .pe-surface{min-height:0;padding:12px;background:#07192a}
 .pe-cinematic .pe-stage-card{width:100%;padding:0;border:0;background:none;box-shadow:none}
@@ -43,3 +43,7 @@
 @keyframes pe-type-float{from{opacity:0;transform:translateY(8px) scale(.86)}25%{opacity:1}70%{transform:translateY(-3px) scale(.96)}to{transform:translateY(-6px) scale(1.02)}}
 @keyframes pe-type-reveal{from{opacity:1;transform:scale(.84);filter:brightness(4) drop-shadow(0 0 18px #ffe7a6)}to{opacity:1;transform:scale(1);filter:drop-shadow(0 0 12px #90daff80)}}
 @media(prefers-reduced-motion:reduce){.pe-type-video{display:none!important}}
+
+.pe-fire.pe-charging .pe-before{filter:drop-shadow(0 0 12px #ffad6680);transition:none}
+.pe-fire.pe-revealed .pe-after{animation:pe-fire-reveal .75s ease-out both}
+@keyframes pe-fire-reveal{from{opacity:0;transform:scale(.86);filter:drop-shadow(0 0 12px #ffad6680)}to{opacity:1;transform:scale(1);filter:drop-shadow(0 0 12px #ffad6680)}}
