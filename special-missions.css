@@ -148,15 +148,38 @@
 
 @media(min-width:768px){
 body.dashboard-refresh.selected-dashboard #cardChores #choreList>.chore.special-mission-card {
-  padding: 52px 10px 14px !important;
-  gap: 6px !important;
+  padding: 40px 10px 2px !important;
+  gap: 2px !important;
+}
+body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .mission-card-status {
+  position: absolute !important;
+  top: 10px;
+  right: auto;
+  left: 10px;
+  z-index: 1;
+  max-width: calc(100% - 88px);
+  white-space: nowrap;
+}
+body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .chore-top .pts {
+  position: absolute !important;
+  top: 10px;
+  right: 8px !important;
+  left: auto !important;
+  margin: 0 !important;
+  z-index: 1;
 }
 body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .mission-art {
-  width: 92px !important;
-  height: 84px !important;
+  width: 88px !important;
+  height: 80px !important;
 }
 body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .chore-title { font-size: 18px !important; }
-body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .chore-main { overflow: visible !important; }
+body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .chore-main {
+  overflow: visible !important;
+  gap: 4px;
+  margin-bottom: 0 !important;
+}
+body.dashboard-refresh.selected-dashboard[data-parent="on"] #cardChores .chore.special-mission-card .chore-main { margin-bottom: 0 !important; }
+body.dashboard-refresh.selected-dashboard #cardChores .chore.special-mission-card .chore-top { gap: 4px !important; }
 }
 
 @media(max-width:767px){
