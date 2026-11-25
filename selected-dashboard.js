@@ -16,10 +16,12 @@
   top.hidden=$('#mainGrid').hidden||family;
   lead.hidden=primary.hidden=caption.hidden=family||mode!=='tablet';
   const data=window.FamilyDashboard?.state,missions=data?.missions||[],order=new Map(missions.map((m,i)=>[String(m.id),i]));
+  const today=FamilyStreak.kstDate(FamilyBoardClock.now());
   const points=new Map(missions.map(m=>[String(m.id),Number(m.points)||0]));
-  const early=new Map(missions.map(m=>[String(m.id),Number((window.MissionRewards?.maximumEarlyBonus(MissionRewards.deadlineOf(m,FamilyStreak.kstDate(FamilyBoardClock.now())))||0)>0)]));
+  const early=new Map(missions.map(m=>[String(m.id),Number((window.MissionRewards?.maximumEarlyBonus(MissionRewards.deadlineOf(m,today))||0)>0)]));
+  const special=new Map(missions.map(m=>[String(m.id),m.special===true&&(!m.specialDate||m.specialDate===today)]));
   const rows=[...$('#choreList').children].filter(n=>n.classList.contains('chore'));
-  const sorted=rows.slice().sort((a,b)=>Number(a.classList.contains('done'))-Number(b.classList.contains('done'))||(!a.classList.contains('done')?((points.get(b.dataset.id)||0)-(points.get(a.dataset.id)||0)||(early.get(b.dataset.id)||0)-(early.get(a.dataset.id)||0)):0)||(order.get(a.dataset.id)||0)-(order.get(b.dataset.id)||0));
+  const sorted=rows.slice().sort((a,b)=>Number(a.classList.contains('done'))-Number(b.classList.contains('done'))||(!a.classList.contains('done')?(Number(!special.get(a.dataset.id))-Number(!special.get(b.dataset.id))||(points.get(b.dataset.id)||0)-(points.get(a.dataset.id)||0)||(early.get(b.dataset.id)||0)-(early.get(a.dataset.id)||0)):0)||(order.get(a.dataset.id)||0)-(order.get(b.dataset.id)||0));
   if(rows.some((r,i)=>r!==sorted[i])){sorted.forEach(r=>$('#choreList').append(r));$('#missionScroll').scrollLeft=0;}
   if(mode!=='tablet')return;
   // Weather cache is the same snapshot renderWeather saves before updating #wChips.
