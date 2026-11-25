@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceStampBoard, computeScreenStats, createFamilySync, reconcileMissionCompletions, schoolDocOf, customAlarmDoc, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso, STAMP_START_AT } from '../firebase-sync.js';
+import { advanceStampBoard, computeScreenStats, createFamilySync, missionDocOf, reconcileMissionCompletions, schoolDocOf, customAlarmDoc, gcalEventToApp, gcalEventsToApp, gcalCalendars, gcalWindow, gcalBoundaryIso, STAMP_START_AT } from '../firebase-sync.js';
 
 function fakeSdk() {
   const listeners = [];
@@ -604,3 +604,24 @@ test('stamp reward boundary preserves old 3P, progress and future 1P without dup
  const all=[...logs,...Array.from({length:13},(_,i)=>({id:'future'+i,date:'2026-11-24',at:'08:00',mid:'future'+i,member:'m3',settled:false,createdAt:after,earned:1}))];
  const raw=JSON.stringify(all);assert.deepEqual(advanceStampBoard({logs:all}),a);assert.equal(JSON.stringify(all),raw);
  });
+
+
+test('mission documents preserve approved special-mission fields for family sync', () => {
+  const doc = missionDocOf({
+    id: 'special-1',
+    title: '신발 정리하기',
+    points: 2,
+    member: 'm3',
+    days: [4],
+    special: true,
+    specialDate: '2026-11-26',
+    specialPolicyVersion: 'special-mission-20261126-v1',
+    artSpecies: 133,
+  });
+  assert.equal(doc.special, true);
+  assert.equal(doc.specialDate, '2026-11-26');
+  assert.equal(doc.specialPolicyVersion, 'special-mission-20261126-v1');
+  assert.equal(doc.artSpecies, 133);
+  assert.equal(doc.due, '');
+  assert.equal(doc.weekendDue, '');
+});
