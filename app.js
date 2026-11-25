@@ -8,7 +8,7 @@
   'use strict';
 
   // 앱 버전은 여기 한 곳에서만 정합니다. 화면 표시(#appVersion)와 window.FamilyDashboard.version이 이 값을 읽습니다.
-  const APP_VERSION = '3.1.0';
+  const APP_VERSION = '3.2.0';
   { const vEl = document.getElementById('appVersion'); if (vEl) vEl.textContent = 'v ' + APP_VERSION; }
 
   /* ---------------------------------------------------------------- helpers */
@@ -33,6 +33,8 @@
   }
   const sameDays = (a, b) => a.length === b.length && a.every((n, i) => n === b[i]);
   const missionOnDay = (m, dow) => { const d = daysOf(m); return !d.length || d.indexOf(dow) >= 0; };
+  const missionAvailableToday = (m, date = todayStr()) => !m || m.special !== true || !m.specialDate || m.specialDate === date;
+  const isSpecialMissionToday = (m, date = todayStr()) => !!m && m.special === true && (!m.specialDate || m.specialDate === date);
   function daysLabel(v) {
     const d = normDays(Array.isArray(v) ? v : parseDays(v));
     if (!d.length) return '매일';
@@ -1952,7 +1954,7 @@
   const kidLabel = () => String((kidMember() || {}).name || '').trim() || '아이';
   // 화면에 보여 줄 미션 — '어른 미션도 같이 보기'가 꺼져 있으면 아이(와 공용) 미션만 보입니다. 데이터는 지우지 않아요.
   function visibleMissions() {
-    const all = S.missions.slice();
+    const all = S.missions.filter((m) => missionAvailableToday(m));
     if (S.showAdultMissions) return all;
     return all.filter((m) => !m.member || m.member === KID_ID);
   }
@@ -1970,7 +1972,7 @@
   }
   // 오늘 요일에 해당하는 '아이' 미션으로 모을 수 있는 최대 포인트(기본 + 조기 완료 보너스)
   function kidTodayGoal(dow = new Date().getDay()) {
-    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
+    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionAvailableToday(m) && missionOnDay(m, dow));
     const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(m.due), 0);
     const got = kidTodayPts();
     return { count: list.length, goal, got, left: Math.max(0, goal - got) };
@@ -2301,21 +2303,26 @@
     // Decorative art only. Stable per existing mission ID, no new stored data or reward rules.
     const missionArtIds = [175, 446, 25, 133, 35, 39, 1, 4, 7, 143, 54, 132];
     const artHash = Array.from(String(c.id || c.title)).reduce((h, ch) => (h * 31 + ch.codePointAt(0)) >>> 0, 0);
-    const missionArt = missionArtIds[artHash % missionArtIds.length];
-    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
+    const special = isSpecialMissionToday(c, t);
+    const storedArt = Math.round(Number(c.artSpecies || 0));
+    const missionArt = special && storedArt > 0 ? storedArt : missionArtIds[artHash % missionArtIds.length];
+    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}${special ? ' special-mission-card' : ''}" data-act="chore-toggle" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <img class="mission-art" src="${SPRITE_ROOT}/other/official-artwork/${missionArt}.png" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.hidden=true" />
             <div class="chore-main">
               <div class="chore-top">
+                ${special ? '<span class="special-tag">✦ 특별 미션</span>' : ''}
                 <span class="chore-title">${esc(c.title)}</span>
                 <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && earlyBonus ? ' ⚡' : ''}</span>
               </div>
+              ${special ? '<span class="special-note">부모가 직접 정해요</span>' : ''}
               <div class="chore-meta">
                 <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
                 <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
                 ${chip}
                 ${earlyHint}
               </div>
+              ${special ? '<span class="special-validity">오늘만 · 1회</span>' : ''}
             </div>
             <div class="chore-tools">
               <button class="btn icon sm ghost parent-only" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
@@ -2802,6 +2809,7 @@
     const c = S.missions.find((x) => x.id === id);
     if (!c) return;
     const t = todayStr();
+    if (c.special === true && !isSpecialMissionToday(c, t)) return;
     ptsInit();
     const key = c.member || '';
     const isKid = key === KID_ID;
@@ -3094,6 +3102,177 @@
     toast((r.due ? `미션을 추가했어요 · ${dl} · ${r.due} 마감 · 5~9분 전 +1P / 10분 이상 전 +2P(총)` : `미션을 추가했어요 · ${dl}`), 'mint');
   }
 
+  function specialMissionWheelPath(index, total) {
+    const start = -Math.PI / 2 + (index * Math.PI * 2) / total;
+    const end = -Math.PI / 2 + ((index + 1) * Math.PI * 2) / total;
+    const x1 = 100 + 94 * Math.cos(start), y1 = 100 + 94 * Math.sin(start);
+    const x2 = 100 + 94 * Math.cos(end), y2 = 100 + 94 * Math.sin(end);
+    return `M100 100 L${x1.toFixed(2)} ${y1.toFixed(2)} A94 94 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+  }
+
+  function specialMissionWheelGraphic() {
+    const rewards = window.FamilySpecialMissionCore.POLICY.rewards;
+    const colors = ['#fff2b8', '#f8cf55', '#fff8dc', '#efbd38', '#ffe58a'];
+    const sectors = rewards.map((reward, i) => {
+      const mid = -90 + (i + .5) * (360 / rewards.length);
+      const rad = mid * Math.PI / 180;
+      const x = 100 + 60 * Math.cos(rad);
+      const y = 100 + 60 * Math.sin(rad);
+      return `<path d="${specialMissionWheelPath(i, rewards.length)}" fill="${colors[i % colors.length]}" stroke="#a66a12" stroke-width="1.5"></path><text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${mid + 90} ${x.toFixed(1)} ${y.toFixed(1)})">${reward.points}P</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 200 200" aria-label="1P부터 5P까지 같은 크기로 보이는 특별 미션 돌림판">${sectors}</svg>`;
+  }
+
+  function specialMissionHash(text) {
+    return Array.from(String(text)).reduce((h, ch) => (h * 31 + ch.codePointAt(0)) >>> 0, 0);
+  }
+
+  function specialMissionTargetRotation(points) {
+    const rewards = window.FamilySpecialMissionCore.POLICY.rewards;
+    const index = Math.max(0, rewards.findIndex((reward) => reward.points === points));
+    const segment = 360 / rewards.length;
+    const targetWithinSegment = segment * (.32 + ((specialMissionHash(String(points) + ':' + Date.now()) % 36) / 100));
+    return (360 * 5) + (360 - ((index * segment) + targetWithinSegment));
+  }
+
+  function specialMissionWait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function addSpecialMission() {
+    const core = window.FamilySpecialMissionCore;
+    if (!core || !core.validatePolicy()) {
+      toast('특별 미션 정책을 불러오지 못했어요', 'coral', 2600);
+      return;
+    }
+    const old = $('#specialMissionDialog');
+    if (old) old.remove();
+    const dlg = document.createElement('dialog');
+    dlg.id = 'specialMissionDialog';
+    dlg.className = 'special-mission-dialog';
+    dlg.innerHTML = `
+      <form method="dialog" class="special-dialog-inner">
+        <div class="special-dialog-head">
+          <div>
+            <div class="special-dialog-eyebrow">오늘의 부모 미션</div>
+            <h3>특별 미션 만들기</h3>
+          </div>
+          <button type="button" class="special-dialog-close" aria-label="닫기">×</button>
+        </div>
+        <p class="special-dialog-hint">포인트 돌림판을 한 번 돌린 뒤 미션을 주세요. 포켓몬은 자동으로 골라져요.</p>
+        <div class="special-field">
+          <label for="specialMissionTitle">미션 이름</label>
+          <input id="specialMissionTitle" maxlength="24" autocomplete="off" placeholder="예: 신발 정리하기">
+        </div>
+        <div class="special-wheel-block">
+          <div class="special-wheel-frame" aria-hidden="true">
+            <div class="special-wheel">${specialMissionWheelGraphic()}</div>
+            <div class="special-wheel-hub">?</div>
+          </div>
+          <div class="special-wheel-status" aria-live="polite">돌림판을 돌려 주세요</div>
+        </div>
+        <div class="special-dialog-actions">
+          <button type="button" class="special-spin-btn">돌림판 돌리기</button>
+          <button type="button" class="special-submit-btn" disabled>특별 미션 주기</button>
+        </div>
+        <p class="special-dialog-note">오늘만 1회 · 기본 미션처럼 포인트와 경험치가 쌓여요</p>
+      </form>`;
+    document.body.appendChild(dlg);
+
+    const titleInput = dlg.querySelector('#specialMissionTitle');
+    const spinBtn = dlg.querySelector('.special-spin-btn');
+    const submitBtn = dlg.querySelector('.special-submit-btn');
+    const closeBtn = dlg.querySelector('.special-dialog-close');
+    const wheel = dlg.querySelector('.special-wheel');
+    const hub = dlg.querySelector('.special-wheel-hub');
+    const status = dlg.querySelector('.special-wheel-status');
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let points = 0;
+    let spinning = false;
+    const artSpecies = core.pickPokemon();
+
+    closeBtn.addEventListener('click', () => dlg.close());
+    dlg.addEventListener('cancel', () => { spinning = true; });
+    spinBtn.addEventListener('click', async () => {
+      if (spinning || points) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      spinBtn.textContent = '돌아가는 중…';
+      status.textContent = '두근두근… 포인트를 고르고 있어요';
+      hub.textContent = '…';
+      points = core.pickPoints();
+      if (reduced) wheel.classList.add('no-motion');
+      wheel.style.transform = `rotate(${specialMissionTargetRotation(points)}deg)`;
+      await specialMissionWait(reduced ? 80 : 3350);
+      spinning = false;
+      hub.textContent = points;
+      status.textContent = `+${points}P 특별 미션이에요`;
+      submitBtn.disabled = false;
+      submitBtn.focus();
+    });
+
+    submitBtn.addEventListener('click', () => {
+      if (!points || spinning) return;
+      const title = String(titleInput.value || '').trim();
+      if (!title) {
+        status.textContent = '미션 이름을 적어 주세요';
+        titleInput.focus();
+        return;
+      }
+      const today = todayStr();
+      const mission = {
+        id: uid(),
+        title,
+        points,
+        due: '',
+        weekendDue: '',
+        bonus: 0,
+        member: KID_ID,
+        days: [new Date().getDay()],
+        special: true,
+        specialDate: today,
+        specialPolicyVersion: core.POLICY_VERSION,
+        artSpecies,
+        doneOn: null,
+        doneAt: '',
+        earned: 0,
+        goalMet: false,
+        earlyBonusEarned: 0,
+      };
+      S.missions.push(mission);
+      save(); renderMissions();
+      dlg.close();
+      toast(`특별 미션을 줬어요 · +${points}P · 오늘만 1회`, 'mint', 3200);
+    });
+
+    dlg.addEventListener('close', () => dlg.remove(), { once: true });
+    dlg.showModal();
+    setTimeout(() => titleInput.focus(), 0);
+  }
+
+  async function editSpecialMission(c) {
+    const r = await askModal({
+      title: '특별 미션 수정',
+      hint: `포인트 ${Math.round(+c.points || 0)}P는 돌림판 결과 그대로 유지돼요. 제목만 고칠 수 있어요.`,
+      fields: [{ name: 'title', label: '미션', value: c.title }],
+      okText: '저장',
+      extraAction: { label: '삭제', act: 'del' },
+    });
+    if (r === 'del') {
+      if (c.doneOn === todayStr()) {
+        addPoints(c.member || '', -earnOf(c));
+        if ((c.member || '') === KID_ID) S.pokemon.xp = clamp(S.pokemon.xp - earnOf(c), 0, FINAL_P);
+        dropLog(c.id);
+      }
+      S.missions = S.missions.filter((x) => x.id !== c.id);
+      save(); renderMissions();
+      return;
+    }
+    if (!r || !r.title.trim()) return;
+    c.title = r.title.trim();
+    save(); renderMissions();
+  }
+
   async function confirmStreakDeletion(mission) {
     const journal = window.FamilyStreak;
     if (!FB.on || !FB.readyData || !journal || !mission) return true;
@@ -3112,6 +3291,7 @@
   async function editMission(id) {
     const c = S.missions.find((x) => x.id === id);
     if (!c) return;
+    if (c.special === true) { await editSpecialMission(c); return; }
     const r = await askModal({
       title: '미션 수정',
       hint: '요일을 바꾸면 그 요일에만 오늘 미션으로 나옵니다. 마감 시간에 따른 조기 보너스만 적용되며, 예전 미션별 보너스 값은 무시됩니다.',
@@ -5524,6 +5704,7 @@
     }
   });
   $('#choreAddBtn').addEventListener('click', () => asParent('미션 추가는 보호자만 할 수 있어요.', addMission));
+  if ($('#specialChoreAddBtn')) $('#specialChoreAddBtn').addEventListener('click', () => asParent('특별 미션 추가는 보호자만 할 수 있어요.', addSpecialMission));
   $('#stickerResetBtn').addEventListener('click', () => asParent('포인트 초기화는 보호자만 할 수 있어요.', resetPoints));
   $('#pointUseBtn').addEventListener('click', () => asParent('포인트 사용은 보호자만 할 수 있어요.', usePoints));
   $('#wishAddBtn').addEventListener('click', addWish);      // 사고 싶은 것 적기는 아이도 자유롭게
@@ -6207,7 +6388,7 @@
   function streakObserveMaybe() {
     if (!FB.on || !FB.readyData || FB.role !== 'parent' || !FB.sync || !FB.sync.observeStreak || !window.FamilyStreak || FB.streakBusy) return;
     const date = window.FamilyStreak.kstDate(), dow = new Date(date + 'T12:00:00Z').getUTCDay();
-    const required = (S.missions || []).filter((m) => (m.member === KID_ID || !m.member) && missionOnDay(m, dow)).map((m) => m.id);
+    const required = (S.missions || []).filter((m) => m.special !== true && (m.member === KID_ID || !m.member) && missionOnDay(m, dow)).map((m) => m.id);
     const input = { date, required, skip: dow === 0 || !required.length, logs: fbMergeLogs().filter((l) => l.member === KID_ID && l.kind !== 'bonus').map((l) => ({ date: l.date, mid: l.mid, member: l.member, kind: l.kind || '' })) };
     const sig = JSON.stringify(input);
     if (sig === FB.streakSig) return;

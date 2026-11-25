@@ -45,7 +45,8 @@ test('mission display is descending points for incomplete rows, stable ties, com
  const rows=missions.map(m=>({dataset:{id:m.id},classList:{contains:()=>m.id==='e'||m.id==='f'}}));
  const comparator=sortSource.match(/rows\.slice\(\)\.sort\((\(a,b\)=>[^\n]+)\);/)[1];
  const early=new Map([['d',1]]);
- const sort=new Function('order','points','early','return '+comparator)(order,points,early);
+ const special=new Map();
+ const sort=new Function('order','points','early','special','return '+comparator)(order,points,early,special);
  const before=JSON.stringify(missions);assert.deepEqual(rows.slice().sort(sort).map(r=>r.dataset.id),['d','b','c','a','e','f']);assert.equal(JSON.stringify(missions),before);
 });
 test('school card tablet box is invisible without changing its sizing',()=>{
@@ -68,7 +69,7 @@ test('standby no-photo rest copy is absent and standby household title is Suho',
 
 test('standby incomplete missions match dashboard priority and preserve completed count',()=>{
  const missions=[{id:'low',points:1},{id:'tie',points:2},{id:'early',points:2,due:'08:00'},{id:'early2',points:2,due:'08:05'},{id:'high',points:3},{id:'done',points:9,doneOn:'2026-11-23'}];
- const c={missions,S:{missions},todayStr:()=> '2026-11-23',MissionRewards:{maximumEarlyBonus:d=>d?2:0,deadlineOf:m=>m.due},Number};vm.createContext(c);
+ const c={missions,S:{missions},todayStr:()=> '2026-11-23',isSpecialMissionToday:()=>false,MissionRewards:{maximumEarlyBonus:d=>d?2:0,deadlineOf:m=>m.due},Number};vm.createContext(c);
  const expression=source.match(/const remaining = ([^;]+);/)[1];const before=JSON.stringify(missions);
  assert.deepEqual(Array.from(vm.runInContext(expression,c),m=>m.id),['high','early','early2','tie','low']);
  assert.equal(JSON.stringify(missions),before);

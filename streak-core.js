@@ -83,7 +83,7 @@
  const valid=root.FamilyStreak.validDate;
  const nextDate=d=>{const n=new Date(d+'T12:00:00Z');n.setUTCDate(n.getUTCDate()+1);return n.toISOString().slice(0,10);};
  function schedule(missions){
-  return (Array.isArray(missions)?missions:[]).filter(m=>m&&!m.archived&&typeof m.id==='string'&&(m.member==='m3'||!m.member)).map(m=>({id:m.id,days:[...new Set((Array.isArray(m.days)?m.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort()})).sort((a,b)=>a.id.localeCompare(b.id));
+  return (Array.isArray(missions)?missions:[]).filter(m=>m&&!m.archived&&m.special!==true&&typeof m.id==='string'&&(m.member==='m3'||!m.member)).map(m=>({id:m.id,days:[...new Set((Array.isArray(m.days)?m.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort()})).sort((a,b)=>a.id.localeCompare(b.id));
  }
  function normalize(raw={}){
   const snapshots={};Object.keys(raw.snapshots||{}).filter(valid).sort().forEach(d=>{snapshots[d]=schedule(raw.snapshots[d]);});

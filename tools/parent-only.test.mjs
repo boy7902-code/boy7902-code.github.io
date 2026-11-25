@@ -9,7 +9,7 @@ test('locked parent mode hides parent-only controls instead of disabling them', 
   const html = await read('index.html');
   assert.match(css, /body\[data-parent="off"\] \.parent-only \{ display: none !important; \}/);
   assert.match(html, /<body data-parent="off" class="dashboard-refresh">/);
-  for (const id of ['settingsBtn', 'syncBadge', 'eventAddBtn', 'wikiAddBtn', 'schoolEditBtn', 'choreAddBtn', 'partnerBtn', 'pointUseBtn', 'adoptBtn', 'stickerResetBtn']) {
+  for (const id of ['settingsBtn', 'syncBadge', 'eventAddBtn', 'wikiAddBtn', 'schoolEditBtn', 'specialChoreAddBtn', 'choreAddBtn', 'partnerBtn', 'pointUseBtn', 'adoptBtn', 'stickerResetBtn']) {
     const re = new RegExp(`class="[^"]*parent-only[^"]*" id="${id}"`);
     assert.match(html, re, `${id} must be parent-only`);
   }

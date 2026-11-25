@@ -194,6 +194,12 @@ export function missionDocOf(m, { stamp } = {}) {
     due: isHhmm(m.due) ? m.due : '',
     weekendDue: isHhmm(m.weekendDue) ? m.weekendDue : '',
     ...(m.archived === true ? {archived:true} : {}),
+    ...(m.special === true ? {
+      special:true,
+      specialDate:isDateStr(m.specialDate)?m.specialDate:'',
+      specialPolicyVersion:String(m.specialPolicyVersion||''),
+      artSpecies:intOf(m.artSpecies),
+    } : {}),
     ...(m.mergedInto ? {mergedInto:String(m.mergedInto)} : {}),
     ...(Array.isArray(m.mergedFrom) ? {mergedFrom:m.mergedFrom.filter(x=>typeof x==='string')} : {}),
     bonus: isHhmm(m.due) ? intOf(m.bonus) : 0, // Compatibility data only; new scoring ignores it.
@@ -1604,4 +1610,4 @@ export function docsToState({ collections = {}, summary = null, partner = null, 
   const seen = new Set();
   out.logs = all.filter((l) => { const k = l.id || logDocId(l); if (seen.has(k)) return false; seen.add(k); return true; });
   return out;
-}
+           }

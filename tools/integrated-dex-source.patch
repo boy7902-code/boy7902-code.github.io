@@ -145,14 +145,14 @@
 -    return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM);
 +    return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM, todayStr());
 @@ -1955 +1999 @@
--    const all = S.missions.slice();
-+    const all = S.missions.filter((m) => !m.archived);
+-    const all = S.missions.filter((m) => missionAvailableToday(m));
++    const all = S.missions.filter((m) => !m.archived && missionAvailableToday(m));
 @@ -1972,3 +2016,3 @@
 -  function kidTodayGoal(dow = new Date().getDay()) {
--    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionOnDay(m, dow));
+-    const list = (S.missions || []).filter((m) => m.member === KID_ID && missionAvailableToday(m) && missionOnDay(m, dow));
 -    const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(m.due), 0);
 +  function kidTodayGoal(dow = boardNow().getDay()) {
-+    const list = (S.missions || []).filter((m) => !m.archived && m.member === KID_ID && missionOnDay(m, dow));
++    const list = (S.missions || []).filter((m) => !m.archived && m.member === KID_ID && missionAvailableToday(m) && missionOnDay(m, dow));
 +    const goal = list.reduce((s, m) => s + basePtsOf(m) + MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(m, todayStr())), 0);
 @@ -1997,0 +2042,10 @@
 +  function openWarningScore(id){
@@ -196,7 +196,7 @@
 +    const n = boardNow();
 @@ -2282,0 +2339,11 @@
 +  function missionStarHtml(mission) {
-+    if(mission.member && mission.member!==KID_ID)return '';
++    if(mission.special===true||(mission.member && mission.member!==KID_ID))return '';
 +    const view=FB.on?FB.lastStats?.missionStars:window.FamilyMissionStars?.compute(S.missionStars||{},{logs:S.logs||[],today:todayStr()});
 +    const progress=Math.max(0,Math.min(4,view?.byMission?.[mission.id]?.progress||0));
 +    const gid='star-'+String(mission.id).replace(/[^a-zA-Z0-9_-]/g,'');
@@ -209,8 +209,8 @@
 @@ -2284,0 +2352 @@
 +    c = { ...c, due: MissionRewards.deadlineOf(c, t) };
 @@ -2305 +2373 @@
--    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}" data-act="chore-toggle" data-id="${c.id}">
-+    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' bonus-ended' : ''}" data-act="chore-toggle" data-id="${c.id}">
+-    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}${special ? ' special-mission-card' : ''}" data-act="chore-toggle" data-id="${c.id}">
++    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' bonus-ended' : ''}${special ? ' special-mission-card' : ''}" data-act="chore-toggle" data-id="${c.id}">
 @@ -2315 +2383 @@
 -                <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
 +                ${dl === '매일' ? '' : `<span class="days-chip">${esc(dl)}</span>`}
@@ -232,7 +232,7 @@
 +    const dow = boardNow().getDay();
 @@ -2438 +2508 @@
 -      const todayList = list.filter((c) => missionOnDay(c, dow));
-+      const todayList = list.filter((c) => missionOnDay(c, dow)).sort((a,b) => Number(a.doneOn===t)-Number(b.doneOn===t) || (a.doneOn!==t ? (Number(b.points)||0)-(Number(a.points)||0) : 0) || S.missions.indexOf(a)-S.missions.indexOf(b));
++      const todayList = list.filter((c) => missionOnDay(c, dow)).sort((a,b) => Number(a.doneOn===t)-Number(b.doneOn===t) || (a.doneOn!==t ? Number(!isSpecialMissionToday(a,t))-Number(!isSpecialMissionToday(b,t)) || (Number(b.points)||0)-(Number(a.points)||0) : 0) || S.missions.indexOf(a)-S.missions.indexOf(b));
 @@ -2488 +2558 @@
 -    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/151`;
 +    if ($('#dexCount')) $('#dexCount').textContent = `${caughtCount()}/${POKE_NOS.length}`;
@@ -704,8 +704,8 @@
 -    if ($('#sbMission')) {
 -      const sig = [pct, tg.got, tg.goal, tg.left, doneCount, totalToday, balancePts(), Math.round(S.pokemon.xp)].join('|');
 -      if (sig === sbMissionSig) return sbSyncPartner();
-+    const missions = S.missions.filter(m => !m.archived && m.member === KID_ID && missionOnDay(m, dow));
-+    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0)||Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(b,todayStr()))>0)-Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(a,todayStr()))>0)||S.missions.indexOf(a)-S.missions.indexOf(b));
++    const missions = S.missions.filter(m => !m.archived && missionAvailableToday(m) && m.member === KID_ID && missionOnDay(m, dow));
++    const remaining = missions.filter(m => m.doneOn !== todayStr()).sort((a,b)=>Number(!isSpecialMissionToday(a))-Number(!isSpecialMissionToday(b))||(Number(b.points)||0)-(Number(a.points)||0)||Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(b,todayStr()))>0)-Number(MissionRewards.maximumEarlyBonus(MissionRewards.deadlineOf(a,todayStr()))>0)||S.missions.indexOf(a)-S.missions.indexOf(b));
 +    const limit = innerWidth <= 600 && innerHeight < 720 ? 2 : 3;
 +    const sig = JSON.stringify([missions.length, remaining.map(m=>[m.id,m.title,m.points]),limit]);
 +    if ($('#sbMission') && sig !== sbMissionSig) {
@@ -764,8 +764,12 @@
 @@ -5508 +5559 @@
 -    const d = new Date();
 +    const d = boardNow();
-@@ -5538,0 +5590 @@
+@@ -5538 +5590,4 @@
+-  $('#dexModal').addEventListener('click', (e) => { if (e.target.id === 'dexModal') $('#dexModal').hidden = true; });
++  $('#dexModal').addEventListener('click', (e) => {
++    if (e.target.id === 'dexModal') $('#dexModal').hidden = true;
 +    const extra=e.target.closest('[data-infoid]');if(extra){selectDex(Number(extra.dataset.infoid));return;}
++  });
 @@ -5561 +5613 @@
 -    const st = stagesOf()[stageIndex(S.pokemon.xp)];
 +    const st = typeEggSecret()?{name:'타입 알'}:stagesOf()[stageIndex(S.pokemon.xp)];
