@@ -7,15 +7,23 @@ const read = (name) => readFileSync(new URL(`../${name}`, import.meta.url), 'utf
 test('approved special mission UI is loaded from the parent mission area', () => {
   const html = read('index.html');
   const app = read('app.js');
-  assert.match(html, /special-missions\.css\?v=special-mission-20261126-1/);
-  assert.match(html, /special-missions-core\.js\?v=special-mission-20261126-1/);
+  assert.match(html, /special-missions\.css\?v=special-mission-20261126-2/);
+  assert.match(html, /special-missions-core\.js\?v=special-mission-20261126-2/);
   assert.match(html, /class="[^"]*parent-only[^"]*" id="specialChoreAddBtn"/);
   assert.match(app, /specialChoreAddBtn'\)\.addEventListener\('click'.*특별 미션 추가는 보호자만/);
   assert.match(app, /async function addSpecialMission\(\)/);
   assert.match(app, /특별 미션 만들기/);
   assert.match(app, /돌림판 돌리기/);
   assert.match(app, /포켓몬은 자동으로 골라져요/);
-  assert.match(app, /await specialMissionWait\(reduced \? 80 : 3350\);\s*spinning = false;\s*hub\.textContent = points/);
+  assert.match(app, /await specialMissionWait\(reduced \? 80 : 3350\);\s*spinning = false;\s*spinBtn\.textContent = '돌림판 완료';\s*hub\.textContent = points/);
+});
+
+
+test('tablet special card keeps status and points outside the content flow', () => {
+  const css = read('special-missions.css');
+  assert.match(css, /@media\(min-width:768px\)[\s\S]*\.special-mission-card \.mission-card-status[\s\S]*position: absolute !important/);
+  assert.match(css, /@media\(min-width:768px\)[\s\S]*\.special-mission-card \.chore-top \.pts[\s\S]*right: 8px !important/);
+  assert.match(css, /@media\(min-width:768px\)[\s\S]*\.special-mission-card \.chore-main[\s\S]*margin-bottom: 0 !important/);
 });
 
 test('special missions are today-only, child-owned, wheel-point missions with stored random art', () => {

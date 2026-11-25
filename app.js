@@ -3205,6 +3205,7 @@
       wheel.style.transform = `rotate(${specialMissionTargetRotation(points)}deg)`;
       await specialMissionWait(reduced ? 80 : 3350);
       spinning = false;
+      spinBtn.textContent = '돌림판 완료';
       hub.textContent = points;
       status.textContent = `+${points}P 특별 미션이에요`;
       submitBtn.disabled = false;
