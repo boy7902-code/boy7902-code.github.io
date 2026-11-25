@@ -6,12 +6,12 @@ permissions:
   contents: write
 jobs:
   apply:
-    if: ${{ github.event.head_commit.message == 'Add temporary special fix workflow' }}
+    if: ${{ github.event.head_commit.message == 'Add temporary special fix workflow v2' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.before }}
+          ref: 385cac27bf168afdf7d32deda0da22d8df93d927
           fetch-depth: 0
       - name: Apply verified feedback patch
         run: |
@@ -26,13 +26,8 @@ jobs:
           p.write_text(s.replace('special-mission-20261126-1', 'special-mission-20261126-2'))
           p = Path('app.js')
           s = p.read_text()
-          old = """      await specialMissionWait(reduced ? 80 : 3350);
-      spinning = false;
-      hub.textContent = points;"""
-          new = """      await specialMissionWait(reduced ? 80 : 3350);
-      spinning = false;
-      spinBtn.textContent = '돌림판 완료';
-      hub.textContent = points;"""
+          old = '      await specialMissionWait(reduced ? 80 : 3350);\n      spinning = false;\n      hub.textContent = points;'
+          new = '      await specialMissionWait(reduced ? 80 : 3350);\n      spinning = false;\n      spinBtn.textContent = \'돌림판 완료\';\n      hub.textContent = points;'
           assert s.count(old) == 1
           p.write_text(s.replace(old, new, 1))
           p = Path('app-dex-integrated.js')
