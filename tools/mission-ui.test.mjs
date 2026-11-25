@@ -34,7 +34,7 @@ test('confirmed dashboard mockup keeps the two-column cards and one-line time/we
   assert.ok(timerIndex > rightColumnStart, 'timer belongs in the right column');
   assert.ok(timerIndex > html.indexOf('id="cardChores"'), 'timer follows the mission card');
   assert.doesNotMatch(html.slice(supportGridStart, rightColumnStart), /id="cardTimer"/);
-  assert.match(html, /id="appVersion"[^>]*>v 3\.1\.0/);
+  assert.match(html, /id="appVersion"[^>]*>v 3\.2\.0/);
   assert.match(css, /grid-template-columns:\s*minmax\(0, \.96fr\) minmax\(0, 1\.04fr\)/);
   assert.match(css, /\.support-grid \{ order: 3; display: grid;/);
   assert.match(css, /grid-template-areas: "school wish"; grid-template-rows: minmax\(70px, 190px\)/);
