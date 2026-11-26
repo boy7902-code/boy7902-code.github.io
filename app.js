@@ -2304,6 +2304,8 @@
     const missionArtIds = [175, 446, 25, 133, 35, 39, 1, 4, 7, 143, 54, 132];
     const artHash = Array.from(String(c.id || c.title)).reduce((h, ch) => (h * 31 + ch.codePointAt(0)) >>> 0, 0);
     const special = isSpecialMissionToday(c, t);
+    const specialPending = special && !done && base === 0;
+    const ptsText = specialPending ? '+?P' : `+${pts}P${done && earlyBonus ? ' ⚡' : ''}`;
     const storedArt = Math.round(Number(c.artSpecies || 0));
     const missionArt = special && storedArt > 0 ? storedArt : missionArtIds[artHash % missionArtIds.length];
     return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}${special ? ' special-mission-card' : ''}" data-act="chore-toggle" data-id="${c.id}">
@@ -2311,11 +2313,10 @@
             <img class="mission-art" src="${SPRITE_ROOT}/other/official-artwork/${missionArt}.png" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.hidden=true" />
             <div class="chore-main">
               <div class="chore-top">
-                ${special ? '<span class="special-tag">✦ 특별 미션</span>' : ''}
                 <span class="chore-title">${esc(c.title)}</span>
-                <span class="pts${done && c.goalMet ? ' goal' : ''}">+${pts}P${done && earlyBonus ? ' ⚡' : ''}</span>
+                <span class="pts${done && c.goalMet ? ' goal' : ''}">${ptsText}</span>
               </div>
-              ${special ? '<span class="special-note">부모가 직접 정해요</span>' : ''}
+              ${specialPending ? '<span class="special-note">완료하면 돌림판!</span>' : ''}
               <div class="chore-meta">
                 <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
                 <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
@@ -2831,6 +2832,10 @@
       return { earned: undo, isKid, checked: false };
     }
 
+    // 특별 미션(황금 카드)은 아이가 완료할 때 직접 돌림판을 돌려 포인트를 정합니다.
+    // 아직 포인트가 정해지지 않은(points 0) 특별 미션이면 먼저 돌림판을 열고, 돌린 뒤 이어서 완료 처리합니다.
+    if (c.special === true && basePtsOf(c) === 0) { spinSpecialMission(c); return; }
+
     const at = hhmm();
     const r = missionEarn(c, at);
     c.doneOn = t;
@@ -3139,6 +3144,78 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // 아이가 특별 미션을 완료할 때 여는 돌림판 — 아이가 직접 돌려 오늘의 포인트를 정합니다.
+  function spinSpecialMission(c) {
+    const core = window.FamilySpecialMissionCore;
+    if (!core || !core.validatePolicy()) {
+      toast('특별 미션 정책을 불러오지 못했어요', 'coral', 2600);
+      return;
+    }
+    const old = $('#specialSpinDialog');
+    if (old) old.remove();
+    const dlg = document.createElement('dialog');
+    dlg.id = 'specialSpinDialog';
+    dlg.className = 'special-mission-dialog';
+    dlg.innerHTML = `
+      <form method="dialog" class="special-dialog-inner">
+        <div class="special-dialog-head">
+          <div>
+            <div class="special-dialog-eyebrow">특별 미션 완료!</div>
+            <h3>${esc(c.title)}</h3>
+          </div>
+          <button type="button" class="special-dialog-close" aria-label="닫기">×</button>
+        </div>
+        <div class="special-wheel-block">
+          <div class="special-wheel-frame" aria-hidden="true">
+            <div class="special-wheel">${specialMissionWheelGraphic()}</div>
+            <div class="special-wheel-hub">?</div>
+          </div>
+          <div class="special-wheel-status" aria-live="polite">돌림판을 돌려 주세요</div>
+        </div>
+        <div class="special-dialog-actions">
+          <button type="button" class="special-spin-btn">돌림판 돌리기</button>
+        </div>
+        <p class="special-dialog-note">오늘만 1회 · 돌림판이 포인트를 정해요</p>
+      </form>`;
+    document.body.appendChild(dlg);
+
+    const spinBtn = dlg.querySelector('.special-spin-btn');
+    const closeBtn = dlg.querySelector('.special-dialog-close');
+    const wheel = dlg.querySelector('.special-wheel');
+    const hub = dlg.querySelector('.special-wheel-hub');
+    const status = dlg.querySelector('.special-wheel-status');
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let points = 0;
+    let spinning = false;
+
+    closeBtn.addEventListener('click', () => { if (!spinning) dlg.close(); });
+    dlg.addEventListener('cancel', (e) => { if (spinning) e.preventDefault(); });
+    spinBtn.addEventListener('click', async () => {
+      if (spinning || points) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      spinBtn.textContent = '돌아가는 중…';
+      status.textContent = '두근두근… 포인트를 고르고 있어요';
+      hub.textContent = '…';
+      points = core.pickPoints();
+      if (reduced) wheel.classList.add('no-motion');
+      wheel.style.transform = `rotate(${specialMissionTargetRotation(points)}deg)`;
+      await specialMissionWait(reduced ? 80 : 3350);
+      hub.textContent = points;
+      status.textContent = `+${points}P 당첨!`;
+      // 오늘의 결과를 미션에 새겨 둡니다. 완료를 취소했다 다시 완료해도 같은 포인트를 받고 돌림판은 다시 돌리지 않아요.
+      c.points = points;
+      save();
+      await specialMissionWait(reduced ? 200 : 900);
+      spinning = false;
+      dlg.close();
+      toggleMission(c.id);
+    });
+
+    dlg.addEventListener('close', () => dlg.remove(), { once: true });
+    dlg.showModal();
+  }
+
   async function addSpecialMission() {
     const core = window.FamilySpecialMissionCore;
     if (!core || !core.validatePolicy()) {
@@ -3159,64 +3236,27 @@
           </div>
           <button type="button" class="special-dialog-close" aria-label="닫기">×</button>
         </div>
-        <p class="special-dialog-hint">포인트 돌림판을 한 번 돌린 뒤 미션을 주세요. 포켓몬은 자동으로 골라져요.</p>
+        <p class="special-dialog-hint">미션 이름만 적어 주세요. 아이가 완료하면 포인트 돌림판이 나와요. 포켓몬은 자동으로 골라져요.</p>
         <div class="special-field">
           <label for="specialMissionTitle">미션 이름</label>
           <input id="specialMissionTitle" maxlength="24" autocomplete="off" placeholder="예: 신발 정리하기">
         </div>
-        <div class="special-wheel-block">
-          <div class="special-wheel-frame" aria-hidden="true">
-            <div class="special-wheel">${specialMissionWheelGraphic()}</div>
-            <div class="special-wheel-hub">?</div>
-          </div>
-          <div class="special-wheel-status" aria-live="polite">돌림판을 돌려 주세요</div>
-        </div>
         <div class="special-dialog-actions">
-          <button type="button" class="special-spin-btn">돌림판 돌리기</button>
-          <button type="button" class="special-submit-btn" disabled>특별 미션 주기</button>
+          <button type="button" class="special-submit-btn">특별 미션 주기</button>
         </div>
-        <p class="special-dialog-note">오늘만 1회 · 기본 미션처럼 포인트와 경험치가 쌓여요</p>
+        <p class="special-dialog-note">오늘만 1회 · 완료하면 돌림판으로 포인트를 정해요</p>
       </form>`;
     document.body.appendChild(dlg);
 
     const titleInput = dlg.querySelector('#specialMissionTitle');
-    const spinBtn = dlg.querySelector('.special-spin-btn');
     const submitBtn = dlg.querySelector('.special-submit-btn');
     const closeBtn = dlg.querySelector('.special-dialog-close');
-    const wheel = dlg.querySelector('.special-wheel');
-    const hub = dlg.querySelector('.special-wheel-hub');
-    const status = dlg.querySelector('.special-wheel-status');
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let points = 0;
-    let spinning = false;
     const artSpecies = core.pickPokemon();
 
     closeBtn.addEventListener('click', () => dlg.close());
-    dlg.addEventListener('cancel', () => { spinning = true; });
-    spinBtn.addEventListener('click', async () => {
-      if (spinning || points) return;
-      spinning = true;
-      spinBtn.disabled = true;
-      spinBtn.textContent = '돌아가는 중…';
-      status.textContent = '두근두근… 포인트를 고르고 있어요';
-      hub.textContent = '…';
-      points = core.pickPoints();
-      if (reduced) wheel.classList.add('no-motion');
-      wheel.style.transform = `rotate(${specialMissionTargetRotation(points)}deg)`;
-      await specialMissionWait(reduced ? 80 : 3350);
-      spinning = false;
-      spinBtn.textContent = '돌림판 완료';
-      hub.textContent = points;
-      status.textContent = `+${points}P 특별 미션이에요`;
-      submitBtn.disabled = false;
-      submitBtn.focus();
-    });
-
     submitBtn.addEventListener('click', () => {
-      if (!points || spinning) return;
       const title = String(titleInput.value || '').trim();
       if (!title) {
-        status.textContent = '미션 이름을 적어 주세요';
         titleInput.focus();
         return;
       }
@@ -3224,7 +3264,7 @@
       const mission = {
         id: uid(),
         title,
-        points,
+        points: 0,
         due: '',
         weekendDue: '',
         bonus: 0,
@@ -3243,7 +3283,7 @@
       S.missions.push(mission);
       save(); renderMissions();
       dlg.close();
-      toast(`특별 미션을 줬어요 · +${points}P · 오늘만 1회`, 'mint', 3200);
+      toast('특별 미션을 줬어요 · 완료하면 아이가 돌림판을 돌려요 · 오늘만 1회', 'mint', 3200);
     });
 
     dlg.addEventListener('close', () => dlg.remove(), { once: true });
@@ -3254,7 +3294,9 @@
   async function editSpecialMission(c) {
     const r = await askModal({
       title: '특별 미션 수정',
-      hint: `포인트 ${Math.round(+c.points || 0)}P는 돌림판 결과 그대로 유지돼요. 제목만 고칠 수 있어요.`,
+      hint: basePtsOf(c) === 0
+        ? '아이가 완료하면 돌림판으로 포인트를 정해요. 제목만 고칠 수 있어요.'
+        : `포인트 ${Math.round(+c.points || 0)}P는 돌림판 결과 그대로 유지돼요. 제목만 고칠 수 있어요.`,
       fields: [{ name: 'title', label: '미션', value: c.title }],
       okText: '저장',
       extraAction: { label: '삭제', act: 'del' },
