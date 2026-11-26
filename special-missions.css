@@ -41,6 +41,24 @@
     radial-gradient(circle at 12% 8%, rgba(255, 255, 255, .7), transparent 34%),
     linear-gradient(145deg, rgba(231, 255, 241, .94), rgba(247, 201, 72, .22) 48%, rgba(224, 255, 237, .9));
 }
+
+/* 대시보드 기본 카드(.dashboard-refresh #cardChores .chore 의 흰색 배경)보다 우선해 황금 카드 색을 복원합니다.
+   크기·배치는 대시보드 규칙을 그대로 따르고 색·테두리·그림자만 되살립니다. */
+.dashboard-refresh #cardChores .chore.special-mission-card,
+#cardChores .chore.special-mission-card {
+  border: 2px solid rgba(247, 201, 72, .78);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, .72), transparent 34%),
+    linear-gradient(145deg, rgba(255, 247, 216, .96), rgba(247, 201, 72, .25) 48%, rgba(255, 244, 196, .9));
+  box-shadow: 0 8px 24px rgba(183, 121, 31, .20), inset 0 1px 0 rgba(255, 255, 255, .62);
+}
+.dashboard-refresh #cardChores .chore.special-mission-card.done,
+#cardChores .chore.special-mission-card.done {
+  border-color: rgba(247, 201, 72, .8);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, .7), transparent 34%),
+    linear-gradient(145deg, rgba(231, 255, 241, .94), rgba(247, 201, 72, .22) 48%, rgba(224, 255, 237, .9));
+}
 .chore.special-mission-card .chore-check {
   position: absolute;
   top: 10px;
