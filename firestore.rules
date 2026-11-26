@@ -112,7 +112,8 @@ service cloud.firestore {
     // due ''(마감 없음)은 그대로 허용하고, 값이 있으면 00:00~23:59 만 통과합니다.
     match /households/{hh}/missions/{missionId} {
       allow read: if isFamily();
-      allow write: if isParent() && missionShape();
+      allow create, update: if isParent() && missionShape();
+      allow delete: if isParent();
     }
 
     function missionShape() {
