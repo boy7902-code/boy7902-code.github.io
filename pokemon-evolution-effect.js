@@ -3,7 +3,8 @@
   'use strict';
   const ART = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
   let dialog, timers = [], previousFocus;
-  const VIDEO = {전기:'electric',물:'water',불꽃:'fire'};
+  const VIDEO = {전기:'electric',물:'water',불꽃:'fire',얼음:'ice',드래곤:'dragon',에스퍼:'psychic',고스트:'ghost'};
+  const AUDIO = {전기:true,물:true};
   function mediaType(data){
     if(data.hatch || data.from.egg || Number(data.from.id)===Number(data.to.id))return '';
     const info=root.PokemonEncyclopediaData?.species||{};
@@ -67,7 +68,7 @@
       art.prepend(movie);
       const mute=node('button','pe-audio','소리 켜기');mute.type='button';mute.addEventListener('click',()=>{movie.muted=!movie.muted;mute.textContent=movie.muted?'소리 켜기':'소리 끄기';});
       const skip=node('button','pe-skip','건너뛰기');skip.type='button';skip.addEventListener('click',()=>{reveal();movie.pause();skip.hidden=true;});
-      button.textContent='닫기';if(type!=='불꽃')card.append(mute);card.append(skip);
+      button.textContent='닫기';if(AUDIO[type])card.append(mute);card.append(skip);
       movie.addEventListener('timeupdate',()=>{if(dialog!==current)return;const at=movie.currentTime;dialog.classList.toggle('pe-charging',at>=2.4&&at<3.25);if(at>=3.25)reveal();});
       movie.addEventListener('ended',reveal,{once:true});movie.addEventListener('error',()=>{reveal();movie.hidden=true;},{once:true});
       movie.play().catch(()=>{reveal();movie.hidden=true;});
