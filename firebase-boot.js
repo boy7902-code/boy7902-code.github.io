@@ -5,7 +5,7 @@
    • 원격 도메인에서는 firebase-config.js 설정을 사용하고 emulator=true 면 실패 처리.
    • 로그인은 팝업 우선, 팝업이 막힌 경우에만 redirect 로 넘어갑니다.
    ========================================================================== */
-import * as Sync from './firebase-sync.js?v=warning-partial-20261124-1';
+import * as Sync from './firebase-sync.js?v=sealed-20261127-1';
 import { firebaseConfigForRuntime } from './firebase-runtime.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
 import * as authSdk from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
