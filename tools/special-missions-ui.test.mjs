@@ -7,17 +7,18 @@ const read = (name) => readFileSync(new URL(`../${name}`, import.meta.url), 'utf
 test('approved special mission UI is loaded from the parent mission area', () => {
   const html = read('index.html');
   const app = read('app.js');
-  assert.match(html, /special-missions\.css\?v=special-mission-20261127-1/);
-  assert.match(html, /special-missions-core\.js\?v=special-mission-20261127-1/);
+  assert.match(html, /special-missions\.css\?v=special-mission-20261127-2/);
+  assert.match(html, /special-missions-core\.js\?v=special-mission-20261127-2/);
   assert.match(html, /class="[^"]*parent-only[^"]*" id="specialChoreAddBtn"/);
   assert.match(app, /specialChoreAddBtn'\)\.addEventListener\('click'.*특별 미션 추가는 보호자만/);
   assert.match(app, /async function addSpecialMission\(\)/);
   assert.match(app, /특별 미션 만들기/);
-  assert.match(app, /미션 이름만 적어 주세요\. 아이가 완료하면 포인트 돌림판이 나와요\. 포켓몬은 자동으로 골라져요/);
+  assert.match(app, /미션 이름만 적어 주세요\. 점수는 만들 때 무작위로 정해지고 부모 화면에도 \?로 가려져요\. 아이가 돌림판을 돌릴 때 공개돼요\. 포켓몬은 자동으로 골라져요/);
   const addBranch = app.slice(app.indexOf('async function addSpecialMission'), app.indexOf('async function editSpecialMission'));
   assert.doesNotMatch(addBranch, /special-spin-btn|special-wheel/);
-  assert.match(addBranch, /points: 0/);
-  assert.match(addBranch, /특별 미션을 줬어요 · 완료하면 아이가 돌림판을 돌려요 · 오늘만 1회/);
+  assert.match(addBranch, /points: core\.pickPoints\(\)/);
+  assert.match(addBranch, /specialSealed: true/);
+  assert.match(addBranch, /특별 미션을 줬어요 · 점수는 아이가 돌릴 때 공개돼요 · 오늘만 1회/);
 });
 
 
@@ -36,12 +37,13 @@ test('tablet special card keeps status and points outside the content flow', () 
 
 test('child spins the wheel after completing the special mission', () => {
   const app = read('app.js');
-  assert.match(app, /if \(c\.special === true && basePtsOf\(c\) === 0\) \{ spinSpecialMission\(c\); return; \}/);
+  assert.match(app, /if \(c\.special === true && basePtsOf\(c\) === 0 && !specialLate\) \{ spinSpecialMission\(c\); return; \}/);
+  assert.match(app, /c\.specialSealed !== true && basePtsOf\(c\) === 0 && !specialLate\) \{ toast\('예전 방식 카드예요/);
   assert.match(app, /function spinSpecialMission\(c\)/);
   assert.match(app, /특별 미션 완료!/);
   assert.match(app, /돌림판 돌리기/);
-  assert.match(app, /points = core\.pickPoints\(\)/);
-  assert.match(app, /c\.points = points;[\s\S]*toggleMission\(c\.id\)/);
+  assert.match(app, /points = c\.specialSealed === true \? Math\.max\(1, Math\.round\(\+c\.points \|\| 0\)\) : core\.pickPoints\(\)/);
+  assert.match(app, /if \(c\.specialSealed === true\) specialRevealed\.add\(c\.id\);\s*else \{ c\.points = points; save\(\); \}[\s\S]*toggleMission\(c\.id\)/);
   assert.match(app, /\+\?P/);
   const card = app.slice(app.indexOf('function choreCardHtml'), app.indexOf('function renderMissions'));
   assert.doesNotMatch(card, /special-tag|✦ 특별 미션/);
@@ -57,7 +59,7 @@ test('special missions are today-only, child-owned, wheel-point missions with st
   assert.match(app, /kidTodayGoal[\s\S]*missionAvailableToday\(m\) && missionOnDay/);
   assert.match(app, /special: true/);
   assert.match(app, /specialDate: today/);
-  assert.match(app, /specialPolicyVersion: core\.POLICY_VERSION/);
+  assert.match(app, /specialPolicyVersion: core\.SEALED_POLICY_VERSION/);
   assert.match(app, /artSpecies,/);
   assert.match(app, /member: KID_ID/);
   assert.match(app, /due: ''/);
@@ -69,7 +71,7 @@ test('special mission points cannot be edited through the regular mission form',
   const app = read('app.js');
   assert.match(app, /if \(c\.special === true\) \{ await editSpecialMission\(c\); return; \}/);
   assert.match(app, /포인트 .*는 돌림판 결과 그대로 유지돼요\. 제목만 고칠 수 있어요/);
-  assert.match(app, /아이가 완료하면 돌림판으로 포인트를 정해요\. 제목만 고칠 수 있어요/);
+  assert.match(app, /점수는 만들 때 무작위로 정해졌고 아이가 돌림판을 돌릴 때 공개돼요\. 제목만 고칠 수 있어요/);
   const start = app.indexOf('async function editSpecialMission');
   const end = app.indexOf('async function editMission', start);
   const branch = app.slice(start, end);
