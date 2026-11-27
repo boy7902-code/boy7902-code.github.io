@@ -54,3 +54,17 @@ test('mission-star and daily-streak schedules do not include one-day special mis
   const special = { id: 'special-1', member: 'm3', days: [4], special: true, specialDate: '2026-11-26' };
   assert.deepEqual(globalThis.FamilyMissionStars.schedule([regular, special]), [{ id: 'regular-1', days: [] }]);
 });
+
+test('isPastDue: HH:MM 정각까지 제때, 다음 초부터 지각 (순수 경계)', () => {
+  const sec = (h, m, s) => h * 3600 + m * 60 + s;
+  assert.equal(core.isPastDue('08:00', sec(7, 59, 59)), false);
+  assert.equal(core.isPastDue('08:00', sec(8, 0, 0)), false);
+  assert.equal(core.isPastDue('08:00', sec(8, 0, 1)), true);
+  assert.equal(core.isPastDue('08:00', sec(8, 0, 59)), true);
+  assert.equal(core.isPastDue('00:00', sec(0, 0, 0)), false);
+  assert.equal(core.isPastDue('23:59', sec(23, 59, 1)), true);
+  assert.equal(core.isPastDue('', sec(12, 0, 0)), false);
+  assert.equal(core.isPastDue('8:00', sec(12, 0, 0)), false);
+  assert.equal(core.isPastDue('24:00', sec(12, 0, 0)), false);
+  assert.equal(core.isPastDue('08:00', NaN), false);
+});
