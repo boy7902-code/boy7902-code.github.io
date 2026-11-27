@@ -152,6 +152,17 @@
   border: 1px solid rgba(183, 121, 31, .18);
   font: 900 12px/1.2 var(--font, inherit);
 }
+.special-validity.has-due {
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 16px;
+  max-width: 100%;
+  text-align: center;
+}
+.special-validity .special-due {
+  display: block;
+  white-space: nowrap;
+}
 .chore.special-mission-card .chore-meta,
 .chore.special-mission-card .mission-streak-star {
   display: none !important;
