@@ -149,6 +149,18 @@ service cloud.firestore {
       return m.get('weekendDue', '') != '' ? missionDue(hh, m) : m.get('due', '');
     }
 
+    // 특별 미션(새 방식): 부모가 만들 때 확정한 점수(points)가 마감 전 완료의 base 입니다.
+    // 마감(specialDue)은 기기 신고 시각(at)이 아니라 서버 request.time 의 실제 KST 로 판단합니다.
+    // 마감 시각 정각(HH:MM:00)까지는 제때, 그 초 이후(HH:MM:01~)는 base 0 만 허용합니다(초 단위 판정).
+    function realKstSeconds() { let t = request.time + duration.value(9, 'h'); return t.hours() * 3600 + t.minutes() * 60 + t.seconds(); }
+    function specialBaseOk(m, d) {
+      return (m.get('special', false) == true && m.get('specialSealed', false) == true && isHhmm(m.get('specialDue', '')))
+        ? (realKstSeconds() <= hhmmToMin(m.get('specialDue', '')) * 60
+            ? d.base == m.get('points', 0)
+            : d.base == 0)
+        : d.base == m.get('points', 0);
+    }
+
     function childLogCreate(hh, logId) {
       let d = request.resource.data;
       let m = get(/databases/$(database)/documents/households/$(hh)/missions/$(d.mid)).data;
@@ -174,7 +186,7 @@ service cloud.firestore {
         && d.base is int
         && (d.mid == 'ms-gyeonggo'
           ? (d.get('warningCount', -1) is int && d.get('warningCount', -1) >= 0 && d.get('warningCount', -1) <= 3 && d.base == 3 - d.warningCount && due == '')
-          : (!('warningCount' in d) && d.base == m.get('points', 0)))
+          : (!('warningCount' in d) && specialBaseOk(m, d)))
         // 날짜는 서버 시각 기준 오늘만 (미래·과거 날짜 차단)
         && isTodayKst(d.date)
         // 만든 시각·만든 사람은 서버가 정한 값만
