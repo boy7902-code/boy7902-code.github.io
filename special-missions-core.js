@@ -4,6 +4,7 @@
   'use strict';
 
   const POLICY_VERSION = 'special-mission-20261126-v1';
+  const SEALED_POLICY_VERSION = 'special-mission-20261127-sealed-v1';
   const POLICY = Object.freeze({
     version: POLICY_VERSION,
     totalWeight: 1000,
@@ -62,6 +63,13 @@
     throw new Error('special mission roll overflow');
   }
 
+  // 마감 판정(순수 함수): HH:MM 마감의 정각(HH:MM:00)까지 제때, 다음 초부터 지각. secOfDay = 실제 KST 하루 중 초.
+  function isPastDue(dueHM, secOfDay) {
+    const m = /^(\d{2}):(\d{2})$/.exec(String(dueHM || ''));
+    if (!m || +m[1] > 23 || +m[2] > 59 || !Number.isFinite(secOfDay)) return false;
+    return secOfDay > (+m[1] * 60 + +m[2]) * 60;
+  }
+
   function pickPoints(policy = POLICY) {
     return pointsFromRoll(secureRoll(policy.totalWeight), policy);
   }
@@ -77,11 +85,13 @@
   root.FamilySpecialMissionCore = Object.freeze({
     POLICY,
     POLICY_VERSION,
+    SEALED_POLICY_VERSION,
     POKEMON_POOL,
     validatePolicy,
     secureRoll,
     pointsFromRoll,
     pickPoints,
+    isPastDue,
     pickPokemon,
   });
 })(typeof window !== 'undefined' ? window : globalThis);
