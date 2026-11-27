@@ -1943,7 +1943,11 @@
     S.points.total = Math.max(0, Math.round((+S.points.total || 0) + delta));
     S.points.byMember[k] = Math.max(0, Math.round((+S.points.byMember[k] || 0) + delta));
   }
-  const basePtsOf = (c) => Math.max(0, Math.round(+c.points || 0));
+  // 새 특별 미션(specialSealed)은 부모가 만들 때 포인트를 미리 확정해 미션 문서에 넣습니다.
+  // 아이가 완료해 돌림판이 공개하기 전까지 화면/합계/정렬에는 0(미정)으로만 보입니다.
+  const specialRevealed = new Set();
+  const sealedHidden = (c) => !!c && c.special === true && c.specialSealed === true && c.doneOn !== todayStr() && !specialRevealed.has(c.id);
+  const basePtsOf = (c) => (sealedHidden(c) ? 0 : Math.max(0, Math.round(+c.points || 0)));
   const earnOf = (c) => Math.max(0, Math.round(typeof c.earned === 'number' ? c.earned : basePtsOf(c)));
   function missionEarn(c, atHM) {
     return MissionRewards.calculateMissionReward({ ...c, points: basePtsOf(c) }, atHM);
@@ -2308,7 +2312,7 @@
     const ptsText = specialPending ? '+?P' : `+${pts}P${done && earlyBonus ? ' ⚡' : ''}`;
     const storedArt = Math.round(Number(c.artSpecies || 0));
     const missionArt = special && storedArt > 0 ? storedArt : missionArtIds[artHash % missionArtIds.length];
-    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}${special ? ' special-mission-card' : ''}" data-act="chore-toggle" data-id="${c.id}">
+    return `<div class="chore ${String(c.title||'').length>20 ? 'long-title ' : ''}${done ? 'done' : ''}${offday ? ' offday' : ''}${overdue ? ' overdue' : ''}${special ? ' special-mission-card' : ''}${special && c.specialSealed === true ? ' special-sealed' : ''}" data-special-kind="${special ? (c.specialSealed === true ? 'sealed' : 'legacy') : ''}" data-act="chore-toggle" data-id="${c.id}">
             <button class="chore-check" data-act="chore-toggle" data-id="${c.id}" aria-label="${esc(c.title)} 완료">${done ? '✓' : '○'}</button>
             <img class="mission-art" src="${SPRITE_ROOT}/other/official-artwork/${missionArt}.png" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.hidden=true" />
             <div class="chore-main">
@@ -2316,14 +2320,14 @@
                 <span class="chore-title">${esc(c.title)}</span>
                 <span class="pts${done && c.goalMet ? ' goal' : ''}">${ptsText}</span>
               </div>
-              ${specialPending ? '<span class="special-note">완료하면 돌림판!</span>' : ''}
+              ${specialPending ? `<span class="special-note">${isSpecialLate(c) ? '마감 지남 · 0P' : (c.specialSealed === true ? '완료하면 돌림판!' : '예전 방식 · 부모 확인 필요')}</span>` : ''}
               <div class="chore-meta">
                 <span class="mem"><span class="mdot" style="background:${m ? esc(m.color) : '#9aa4bd'}"></span>${esc(m ? m.name : '공용')}</span>
                 <span class="days-chip${dl === '매일' ? ' all' : ''}">${esc(dl)}</span>
                 ${chip}
                 ${earlyHint}
               </div>
-              ${special ? '<span class="special-validity">오늘만 · 1회</span>' : ''}
+              ${special ? `<span class="special-validity${c.specialDue ? ' has-due' : ''}">오늘만 · 1회${c.specialDue ? `<span class="special-due">${esc(c.specialDue)}까지</span>` : ''}</span>` : ''}
             </div>
             <div class="chore-tools">
               <button class="btn icon sm ghost parent-only" data-act="chore-edit" data-id="${c.id}" aria-label="수정">✎</button>
@@ -2806,6 +2810,12 @@
     return rows;
   }
 
+    // 특별 미션 마감은 사용자가 말한 실제 KST 시각 기준입니다(일반 미션 마감은 보드 시계 기준 그대로).
+  const realSec = () => { const d = new Date(); return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(); };
+  function isSpecialLate(c, atSec = realSec()) {
+    return !!(c && c.special === true && window.FamilySpecialMissionCore.isPastDue(c.specialDue, atSec));
+  }
+
   function toggleMission(id) {
     const c = S.missions.find((x) => x.id === id);
     if (!c) return;
@@ -2834,10 +2844,17 @@
 
     // 특별 미션(황금 카드)은 아이가 완료할 때 직접 돌림판을 돌려 포인트를 정합니다.
     // 아직 포인트가 정해지지 않은(points 0) 특별 미션이면 먼저 돌림판을 열고, 돌린 뒤 이어서 완료 처리합니다.
-    if (c.special === true && basePtsOf(c) === 0) { spinSpecialMission(c); return; }
+    // 마감 시각(due)이 있는 특별 미션은 마감 뒤에 완료하면 돌림판 없이 0P로 끝납니다(미완료·마감 후 완료 = 0점).
+    const specialLate = c.special === true && isSpecialLate(c);
+    // 부모 모드에서는 확정 점수가 보이지 않으므로(아이가 돌릴 때만 공개) 부모 화면에서 돌림판을 열지 않습니다.
+    if (c.special === true && c.specialSealed === true && basePtsOf(c) === 0 && !specialLate && document.body.dataset.parent === 'on') { toast('점수는 아이가 돌릴 때 공개돼요', '', 2400); return; }
+    // 예전 방식(부모 확정 없는 points 0) 특별 카드는 아이 기기 추첨이 서버 규칙에서 거절되므로 돌림판 대신 안내만 합니다(데이터 변경 없음).
+    if (c.special === true && c.specialSealed !== true && basePtsOf(c) === 0 && !specialLate) { toast('예전 방식 카드예요 · 부모님이 새 특별 카드로 바꿔 줘요', '', 3200); return; }
+    if (c.special === true && basePtsOf(c) === 0 && !specialLate) { spinSpecialMission(c); return; }
 
     const at = hhmm();
-    const r = missionEarn(c, at);
+    // 마감이 지난 특별 미션은 미리 확정된 점수가 있어도 0P(서버 규칙도 같은 기준으로 base 0만 허용)
+    const r = specialLate ? { base: 0, earned: 0, earlyBonus: 0, goalMet: false } : missionEarn(c, at);
     c.doneOn = t;
     c.doneAt = at;
     c.earned = r.earned;
@@ -2869,6 +2886,8 @@
       confetti(90);
       beep('up');
       showLevelUp(after, before);
+    } else if (specialLate) {
+      toast(`마감 시간(${c.specialDue})이 지나 0P로 완료했어요`, '', 3200);
     } else if (r.earlyBonus) {
       confetti(40);
       beep('up');
@@ -3175,7 +3194,7 @@
         <div class="special-dialog-actions">
           <button type="button" class="special-spin-btn">돌림판 돌리기</button>
         </div>
-        <p class="special-dialog-note">오늘만 1회 · 돌림판이 포인트를 정해요</p>
+        <p class="special-dialog-note">오늘만 1회 · 돌림판이 정해진 점수를 보여줘요</p>
       </form>`;
     document.body.appendChild(dlg);
 
@@ -3192,20 +3211,25 @@
     dlg.addEventListener('cancel', (e) => { if (spinning) e.preventDefault(); });
     spinBtn.addEventListener('click', async () => {
       if (spinning || points) return;
+      if (isSpecialLate(c)) {
+        dlg.close();
+        toggleMission(c.id);
+        return;
+      }
       spinning = true;
       spinBtn.disabled = true;
       spinBtn.textContent = '돌아가는 중…';
       status.textContent = '두근두근… 포인트를 고르고 있어요';
       hub.textContent = '…';
-      points = core.pickPoints();
+      points = c.specialSealed === true ? Math.max(1, Math.round(+c.points || 0)) : core.pickPoints();
       if (reduced) wheel.classList.add('no-motion');
       wheel.style.transform = `rotate(${specialMissionTargetRotation(points)}deg)`;
       await specialMissionWait(reduced ? 80 : 3350);
       hub.textContent = points;
       status.textContent = `+${points}P 당첨!`;
       // 오늘의 결과를 미션에 새겨 둡니다. 완료를 취소했다 다시 완료해도 같은 포인트를 받고 돌림판은 다시 돌리지 않아요.
-      c.points = points;
-      save();
+      if (c.specialSealed === true) specialRevealed.add(c.id);
+      else { c.points = points; save(); }
       await specialMissionWait(reduced ? 200 : 900);
       spinning = false;
       dlg.close();
@@ -3236,7 +3260,7 @@
           </div>
           <button type="button" class="special-dialog-close" aria-label="닫기">×</button>
         </div>
-        <p class="special-dialog-hint">미션 이름만 적어 주세요. 아이가 완료하면 포인트 돌림판이 나와요. 포켓몬은 자동으로 골라져요.</p>
+        <p class="special-dialog-hint">미션 이름만 적어 주세요. 점수는 만들 때 무작위로 정해지고 부모 화면에도 ?로 가려져요. 아이가 돌림판을 돌릴 때 공개돼요. 포켓몬은 자동으로 골라져요.</p>
         <div class="special-field">
           <label for="specialMissionTitle">미션 이름</label>
           <input id="specialMissionTitle" maxlength="24" autocomplete="off" placeholder="예: 신발 정리하기">
@@ -3244,7 +3268,7 @@
         <div class="special-dialog-actions">
           <button type="button" class="special-submit-btn">특별 미션 주기</button>
         </div>
-        <p class="special-dialog-note">오늘만 1회 · 완료하면 돌림판으로 포인트를 정해요</p>
+        <p class="special-dialog-note">오늘만 1회 · 점수는 만들 때 정해지고 돌릴 때 공개돼요</p>
       </form>`;
     document.body.appendChild(dlg);
 
@@ -3264,15 +3288,16 @@
       const mission = {
         id: uid(),
         title,
-        points: 0,
+        points: core.pickPoints(),
         due: '',
         weekendDue: '',
         bonus: 0,
         member: KID_ID,
         days: [new Date().getDay()],
         special: true,
+        specialSealed: true,
         specialDate: today,
-        specialPolicyVersion: core.POLICY_VERSION,
+        specialPolicyVersion: core.SEALED_POLICY_VERSION,
         artSpecies,
         doneOn: null,
         doneAt: '',
@@ -3283,7 +3308,7 @@
       S.missions.push(mission);
       save(); renderMissions();
       dlg.close();
-      toast('특별 미션을 줬어요 · 완료하면 아이가 돌림판을 돌려요 · 오늘만 1회', 'mint', 3200);
+      toast('특별 미션을 줬어요 · 점수는 아이가 돌릴 때 공개돼요 · 오늘만 1회', 'mint', 3200);
     });
 
     dlg.addEventListener('close', () => dlg.remove(), { once: true });
@@ -3295,9 +3320,12 @@
     const r = await askModal({
       title: '특별 미션 수정',
       hint: basePtsOf(c) === 0
-        ? '아이가 완료하면 돌림판으로 포인트를 정해요. 제목만 고칠 수 있어요.'
-        : `포인트 ${Math.round(+c.points || 0)}P는 돌림판 결과 그대로 유지돼요. 제목만 고칠 수 있어요.`,
-      fields: [{ name: 'title', label: '미션', value: c.title }],
+        ? c.specialSealed === true ? '점수는 만들 때 무작위로 정해졌고 아이가 돌림판을 돌릴 때 공개돼요. 제목만 고칠 수 있어요.' : '예전 방식 카드예요. 부모님이 새 특별 카드로 바꿔 주세요. 제목만 고칠 수 있어요.'
+        : `포인트 ${basePtsOf(c)}P는 돌림판 결과 그대로 유지돼요. 제목만 고칠 수 있어요.`,
+      fields: [
+        { name: 'title', label: '미션', value: c.title },
+        { name: 'specialDue', label: '마감 시간 (선택 · 마감 후 완료는 0P)', type: 'time', value: c.specialDue || '', quick: TIME_QUICK },
+      ],
       okText: '저장',
       extraAction: { label: '삭제', act: 'del' },
     });
@@ -3313,6 +3341,7 @@
     }
     if (!r || !r.title.trim()) return;
     c.title = r.title.trim();
+    c.specialDue = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(r.specialDue || '')) ? r.specialDue : '';
     save(); renderMissions();
   }
 
